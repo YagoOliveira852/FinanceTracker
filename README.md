@@ -1,0 +1,1 @@
+Iniciando o projeto Finance Tracker, um aplicativo para gerenciamento financeiro pessoal. Este projeto tem como objetivo ajudar os usuários a acompanhar suas despesas, receitas e investimentos de forma eficiente e intuitiva.
