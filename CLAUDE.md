@@ -33,6 +33,15 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 
 > Comandos previstos; ajuste quando o setup real divergir e mantenha esta seção correta — é a mais consultada.
 
+### Pré-requisitos da máquina
+
+- **Docker** (Desktop no Windows) com Compose.
+- **uv** — baixa sozinho o Python 3.12 fixado no projeto; ruff entra como dependência de dev.
+- **JDK 17+** em `JAVA_HOME` (Gradle do Android e openapi-generator).
+- **Flutter** canal stable, com `flutter/bin` no `PATH`.
+- **Android SDK sem Android Studio:** command-line tools em `$ANDROID_HOME/cmdline-tools/latest`, mais `platform-tools`, `platforms;android-36` e `build-tools;36.0.0` via `sdkmanager`. Licenças: `flutter doctor --android-licenses`. O aviso do `sdkmanager` sugerindo o novo Android CLI pode ser ignorado: o Flutter ainda chama o `sdkmanager` diretamente.
+- Aparelho físico com depuração USB (ou Wi-Fi) é o alvo principal; emulador é opcional (`sdkmanager "emulator" "system-images;..."` + `avdmanager`).
+
 ### Banco (Docker)
 
 ```bash
