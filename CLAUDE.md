@@ -196,7 +196,8 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 - **App:** `flutter test` para cubits (bloc_test) e formatação de dinheiro; widget tests nas telas de início e revisão.
 - **Testes herméticos:** não dependem de `.env` local nem de banco pré-populado.
 - **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`) e `app.yml` (build_runner + flutter analyze + flutter test); em tag `v*`, gera o APK assinado e anexa ao release.
-- **Ruleset na `main`:** mudança só via PR, com os checks `backend` e `app` obrigatórios e sem exigir aprovação (projeto solo: o CI é o revisor obrigatório).
+- **Ruleset "main protegida":** mudança só via PR (sem exigir aprovação: projeto solo), sem force-push e sem apagar a `main`. **Push direto na `main` é bloqueado.** Os checks `backend` e `app` entram como obrigatórios no ruleset assim que cada workflow rodar pela primeira vez (o nome do check só existe depois disso).
+- **Repositório:** público; branch apagada após o merge; secret scanning e push protection ativos (push com segredo é bloqueado); alertas e PRs de segurança do Dependabot ativos (passam pelo CI como qualquer PR); `GITHUB_TOKEN` só leitura; workflows de PR vindos de fork exigem aprovação para qualquer colaborador externo.
 
 ## Design
 
