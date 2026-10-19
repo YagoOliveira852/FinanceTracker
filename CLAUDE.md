@@ -147,17 +147,20 @@ Bearer, sem cookie e sem CSRF (cliente é um app nativo, não um navegador).
 
 Manual, importação OFX/CSV e Open Finance via Pluggy. Tudo que não é manual entra como **rascunho** e é confirmado na tela de revisão.
 
-- **Idempotência:** unique `(conta_id, fonte, id_externo)`. `id_externo` = FITID (OFX), id da Pluggy, ou hash de (conta, data, valor, descrição original, ordem no dia) para CSV. `importacao.hash_arquivo` impede reimportar o mesmo arquivo.
+- **Formatos:** Nubank (conta e cartão) só por **OFX**; Mercado Pago por **CSV** (não exporta OFX). Não há parser de CSV do Nubank.
+- **Idempotência:** unique `(conta_id, fonte, id_externo)`. `id_externo` = FITID (OFX; a linha de IOF usa `FITID:iof`, porque compra e IOF compartilham o FITID no Nubank), id da Pluggy, ou identificador/hash para o CSV do Mercado Pago. FITID ainda repetido no arquivo = erro explícito, nunca descarte silencioso. `importacao.hash_arquivo` impede reimportar o mesmo arquivo.
 - **Mesma transação por fontes diferentes** (CSV e Pluggy): não fundir automaticamente; preencher `possivel_duplicata_de` e decidir na revisão.
 - **Não contam como gasto:** `pagamento_fatura` e transferências entre contas próprias (`transferencia_par_id`).
-- **Cartão:** toda transação de conta `cartao_credito` tem `fatura_id`. Data da compra ≠ competência da fatura ≠ data do pagamento. Compra parcelada = `compra_parcelada` + N transações, uma por fatura.
+- **Cartão:** toda transação de conta `cartao_credito` tem `fatura_id`. Data da compra ≠ competência da fatura ≠ data do pagamento. Compra parcelada = `compra_parcelada` + uma transação por parcela, cada uma na sua fatura; o app só gera parcelas no lançamento manual — das fontes, chegam as que a Pluggy/OFX enviam.
 
 ### Pluggy (Open Finance)
 
 - **Consulte o MCP `pluggy-docs` antes de escrever ou alterar código de integração.** Não confie em memória sobre a API. Se não estiver configurado: `claude mcp add --transport http pluggy-docs https://mcp.pluggy.ai/mcp`.
 - Conector **MeuPluggy**, item **proxy**: espelha o item do Meu Pluggy (atualizado a cada 24h) e **não pode ser atualizado via API**. Atraso de ~24h é aceito.
-- **Sem webhook:** `jobs/sync_pluggy.py` roda uma vez por dia e lê as transações novas.
-- Cada atualização traz **sobreposição de 4 dias** → deduplicar pelo id da Pluggy.
+- **Sem webhook:** `jobs/sync_pluggy.py` roda uma vez por dia e relê uma **janela de 40 dias** por conta via **`GET /v2/transactions`** (o v1 `GET /transactions` some após 2026-12-31).
+- Cada atualização traz **sobreposição de 4 dias** → deduplicar pelo id da Pluggy. **Não há id estável** (sem `providerId`): transação da janela que sumiu da API é removida se rascunho, ou marcada `removida_na_origem_em` se confirmada.
+- **`date` vem em UTC com horário** → converter para `America/Fortaleza` antes de truncar. No cartão o sinal de `amount` é o inverso da conta; use `type`.
+- Uso pessoal: autorização de 1 ano, renovada à mão; a renovação pode gerar **itemId novo**, religado à conexão existente. Detalhes na spec `2026-10-19-pluggy-spike-design.md`.
 - `GET /items/{id}/resources` diz o que o banco realmente compartilhou; consentimento tem validade — o app avisa antes de expirar (`conexao_pluggy.consentimento_expira_em`).
 - **Somente leitura.** Cliente em `modulos/pluggy/client.py` expõe só métodos GET (além do `/auth`).
 
@@ -193,6 +196,11 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 - **App:** `flutter test` para cubits (bloc_test) e formatação de dinheiro; widget tests nas telas de início e revisão.
 - **Testes herméticos:** não dependem de `.env` local nem de banco pré-populado.
 - **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`) e `app.yml` (build_runner + flutter analyze + flutter test); em tag `v*`, gera o APK assinado e anexa ao release.
+- **Ruleset na `main`:** mudança só via PR, com os checks `backend` e `app` obrigatórios e sem exigir aprovação (projeto solo: o CI é o revisor obrigatório).
+
+## Design
+
+As telas são desenhadas no **Claude Design** antes de implementadas, sempre com **dados fictícios**. Cores, tipografia e espaçamentos viram tokens em `app/lib/app/tema.dart`; as telas viram widgets em `features/<feature>/ui/`. Os links dos designs ficam no `CLAUDE.local.md`.
 
 ## Documentation Map
 
@@ -208,7 +216,7 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 
 Nomes: `YYYY-MM-DD-<tema>-design.md` (specs), `YYYY-MM-DD-<tema>.md` (planos), `NN-<tema>.md` (explicações).
 
-Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e alerta; dinheiro no contrato da API; backend síncrono e usuário único; revisão e classificação. Previstas: resultado do spike da Pluggy (sync sem webhook, campos de cartão e investimento); deduplicação entre fontes.
+Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e alerta; dinheiro no contrato da API; backend síncrono e usuário único; revisão e classificação; spike da Pluggy (sync, reconciliação, cartão, investimentos). Prevista: deduplicação entre fontes.
 
 ## Do / Don't
 
