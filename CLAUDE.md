@@ -22,12 +22,12 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 
 ## Stack
 
-- **Backend:** Python 3.12, FastAPI, Pydantic v2 (+ pydantic-settings), SQLAlchemy 2.0 (estilo tipado, `Mapped[]`), Alembic, psycopg 3, argon2 (senha), PyJWT, httpx (clientes Pluggy e BCB).
+- **Backend:** Python 3.12, FastAPI **síncrono** (rotas `def`, `Session`), Pydantic v2 (+ pydantic-settings), SQLAlchemy 2.0 (estilo tipado, `Mapped[]`), Alembic, psycopg 3, argon2 (senha), PyJWT, httpx (`httpx.Client` para Pluggy e BCB), holidays (feriados nacionais).
 - **App:** Flutter estável / Dart 3, go_router, flutter_bloc (Cubit), dio, freezed + json_serializable, `decimal`, drift (cache de leitura), fl_chart, local_auth, flutter_secure_storage, flutter_local_notifications.
-- **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator, alvo `dart-dio`) em `app/packages/api_client/`.
+- **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator, alvo `dart-dio`, serialização `built_value`) em `app/packages/api_client/`.
 - **Banco:** PostgreSQL 16.
 - **Ferramentas:** uv (dependências Python), ruff (lint/format), pytest + httpx + testcontainers.
-- **Deploy:** Coolify (API + Postgres + cron dos jobs). APK assinado gerado pelo CI em tag.
+- **Deploy:** VPS acessível só pela Tailscale, Docker Compose puro (`api`, `db`, `jobs`), GitHub Actions → Tailscale → ssh → `docker compose up -d`. Backup diário criptografado (restic → Backblaze B2). APK assinado gerado pelo CI em tag. Ver `docs/superpowers/specs/2026-10-19-hospedagem-deploy-design.md`.
 
 ## Setup & commands
 
@@ -41,6 +41,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 - **Flutter** canal stable, com `flutter/bin` no `PATH`.
 - **Android SDK sem Android Studio:** command-line tools em `$ANDROID_HOME/cmdline-tools/latest`, mais `platform-tools`, `platforms;android-36` e `build-tools;36.0.0` via `sdkmanager`. Licenças: `flutter doctor --android-licenses`. O aviso do `sdkmanager` sugerindo o novo Android CLI pode ser ignorado: o Flutter ainda chama o `sdkmanager` diretamente.
 - Aparelho físico com depuração USB (ou Wi-Fi) é o alvo principal; emulador é opcional (`sdkmanager "emulator" "system-images;..."` + `avdmanager`).
+- **Tailscale** no PC e no celular: a API de produção só é alcançável pela tailnet.
 
 ### Banco (Docker)
 
@@ -56,7 +57,8 @@ cd backend
 uv sync                                           # instala dependências (lock)
 uv run alembic upgrade head                       # aplica migrations
 uv run fastapi dev app/main.py                    # API com hot reload em :8000
-uv run python -m app.seed                         # dados FICTÍCIOS (modo demo)
+uv run python -m app.criar_usuario                # cria o usuário único (pede e-mail e senha)
+uv run python -m app.seed                         # dados FICTÍCIOS (modo demo, banco local separado)
 ```
 
 Migrations:
@@ -117,7 +119,7 @@ cd app && flutter analyze && flutter test
 Organizado **por módulo de domínio**, não por camada: `backend/app/modulos/<modulo>/` com `models.py` (tabelas), `schemas.py` (entrada/saída Pydantic), `service.py` (regras de negócio) e `router.py` (HTTP). Routers só traduzem HTTP; toda regra fica no service.
 
 - `app/main.py` — cria a app e registra os routers. **Router novo precisa ser incluído aqui.**
-- `app/core/` — `config.py` (pydantic-settings lê o `.env`), `db.py` (engine, sessão, `Base`), `seguranca.py` (hash, JWT), `deps.py` (dependências: sessão, usuário logado), `dinheiro.py`, `erros.py`.
+- `app/core/` — `config.py` (pydantic-settings lê o `.env`), `db.py` (engine, sessão, `Base`), `seguranca.py` (hash, JWT), `deps.py` (dependências: sessão, usuário logado), `dinheiro.py` (tipo `Dinheiro`, usado em **todo** campo monetário de schema), `erros.py`.
 - `app/modulos/` — `auth`, `contas`, `cartoes`, `transacoes`, `categorias`, `importacao` (com `parsers/`), `planejamento`, `investimentos`, `indices`, `pluggy`, `relatorios`.
 - `app/modulos/planejamento/calculo.py` — **funções puras** (sem banco, sem I/O): aporte do dia de salário, meses de reserva, alerta de ritmo. É a regra mais importante do app; cobertura de teste completa.
 - `app/jobs/` — scripts do cron; reutilizam os services, não duplicam lógica.
@@ -128,7 +130,7 @@ Organizado **por módulo de domínio**, não por camada: `backend/app/modulos/<m
 - `lib/core/api/` — configura o dio: injeta o access token, faz refresh em 401 e repete a requisição. **É o único lugar que fala com a API.**
 - `lib/core/auth/` — tokens no flutter_secure_storage, desbloqueio por biometria.
 - `lib/core/cache/` — drift, só leitura offline; o servidor é a fonte da verdade.
-- `lib/features/<feature>/` — `data/` (repositório que usa o cliente gerado), `cubit/` (estado), `ui/` (telas e widgets).
+- `lib/features/<feature>/` — `data/` (repositório que usa o cliente gerado e converte seus modelos `built_value` em modelos `freezed` do app, `String` monetária → `Decimal`), `cubit/` (estado), `ui/` (telas e widgets). Telas e cubits nunca importam tipos do cliente gerado.
 - Features: `login`, `inicio` (aporte, reserva, alerta), `revisao` (rascunhos para confirmar), `transacoes`, `contas`, `faturas`, `importacao`, `investimentos`, `configuracoes`.
 
 ### Autenticação
@@ -175,7 +177,9 @@ TZ_NEGOCIO=America/Fortaleza
 
 **Compose** (`.env` na raiz): `POSTGRES_PASSWORD` obrigatório.
 
-**App:** só `--dart-define=API_URL=...` no build. **Nenhum segredo no APK** — chave da Pluggy fica exclusivamente no backend.
+**App:** só `--dart-define=API_URL=...` no build (em release, o endereço `https://...ts.net` da VPS). **Nenhum segredo no APK** — chave da Pluggy fica exclusivamente no backend.
+
+**Produção:** o `.env` real fica só na VPS. Segredos do deploy (OAuth client da Tailscale, chave ssh, keystore do APK, credenciais do B2/restic) ficam nos secrets do GitHub ou na VPS, nunca no repositório.
 
 Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 
@@ -183,7 +187,7 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 
 - **Backend:** pytest contra **Postgres real** via testcontainers, nunca SQLite — `NUMERIC` e `CHECK` precisam se comportar como em produção. Fixtures em `backend/tests/conftest.py`.
   - `tests/unit/` — `calculo.py`, parsers, datas de fatura/feriado. Sem banco, rápidos.
-  - `tests/integration/` — endpoints via `httpx.AsyncClient` com banco real e transação revertida por teste.
+  - `tests/integration/` — endpoints via `TestClient` com banco real e transação revertida por teste.
   - `tests/fixtures/` — OFX/CSV **fictícios**. Nunca extratos reais.
   - Pluggy é mockado nos testes (respx ou cliente fake); nenhum teste chama a API real.
 - **App:** `flutter test` para cubits (bloc_test) e formatação de dinheiro; widget tests nas telas de início e revisão.
@@ -204,7 +208,7 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 
 Nomes: `YYYY-MM-DD-<tema>-design.md` (specs), `YYYY-MM-DD-<tema>.md` (planos), `NN-<tema>.md` (explicações).
 
-Specs previstas: usuário único sem `usuario_id` no domínio; dinheiro como Decimal/string; sync Pluggy sem webhook; deduplicação entre fontes.
+Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e alerta; dinheiro no contrato da API; backend síncrono e usuário único; revisão e classificação. Previstas: resultado do spike da Pluggy (sync sem webhook, campos de cartão e investimento); deduplicação entre fontes.
 
 ## Do / Don't
 
@@ -221,7 +225,7 @@ Specs previstas: usuário único sem `usuario_id` no domínio; dinheiro como Dec
 
 ## Gotchas
 
-**Pydantic v2 serializa `Decimal` como string no JSON.** É o que queremos; não troque por `float` para "simplificar". No Dart, o cliente gerado recebe `String` — converta para `Decimal` no repositório, nunca para `double`.
+**Pydantic v2 serializa `Decimal` como string no JSON, mas o schema de entrada vira `number | string`.** Isso duplica schemas (`XInput`/`XOutput`) no OpenAPI e gera tipo genérico no Dart. Use sempre o tipo `Dinheiro` de `core/dinheiro.py`, que fixa `string`/`decimal` nos dois sentidos; nunca `Decimal` direto num schema, nunca `float`. No Dart, o cliente gerado recebe `String` — converta para `Decimal` no repositório, nunca para `double`.
 
 **Alembic autogenerate não enxerga tudo.** Mudanças em `CHECK` constraints (nossos enums) e em alguns defaults de servidor não são detectadas. Revise todo arquivo gerado e escreva à mão o que faltar.
 

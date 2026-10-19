@@ -54,7 +54,7 @@ O app precisa funcionar sem depender de disciplina de registro: a maior parte do
 |---|---|---|
 | Terceiro guarda os dados | Transações ficam armazenadas na Pluggy. | Instituição regulada; revogar se deixar de usar. |
 | Vazamento das credenciais de API | Client id/secret dão leitura de todo o histórico. Maior risco real. | Só no backend (`.env`), nunca no APK nem no repositório. |
-| Backend e banco de dados | O Postgres guarda o histórico financeiro. | HTTPS + autenticação ou rede privada (Tailscale); backups; dados reais nunca no seed/demo. |
+| Backend e banco de dados | O Postgres guarda o histórico financeiro. | Rede privada (só Tailscale) + autenticação; backup criptografado fora da VPS; dados reais nunca no seed/demo. |
 | Movimentação de dinheiro | Compartilhamento de dados é só leitura; pagamento exige consentimento próprio. | Usar apenas endpoints de leitura. Nada de pagamentos. |
 | Dependência de serviço gratuito | Termos podem mudar; conexão pode cair (`LOGIN_ERROR`). | Fontes plugáveis; OFX/CSV sempre disponível. |
 | Golpes | Mensagens falsas "em nome do Open Finance". | Autorizar só pelos canais oficiais. |
@@ -85,20 +85,22 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 
 **Backend — FastAPI**
 - FastAPI + Pydantic v2 + SQLAlchemy 2.0 + Alembic + PostgreSQL 16.
-- uv (dependências), ruff (lint), pytest + httpx, testcontainers (Postgres real — `NUMERIC` e `CHECK` precisam se comportar como em produção).
-- Auth: Bearer com access + refresh token (sem cookie/CSRF).
-- Jobs: cron no Coolify rodando scripts (sync Pluggy, CDI do BCB). Sem Celery.
+- **Síncrono:** rotas `def`, `Session` do SQLAlchemy, `httpx.Client` para Pluggy e BCB (ver spec `2026-10-19-backend-sincrono-usuario-unico`).
+- uv (dependências), ruff (lint), pytest + `TestClient`, testcontainers (Postgres real — `NUMERIC` e `CHECK` precisam se comportar como em produção).
+- Auth: Bearer com access + refresh token (sem cookie/CSRF). Usuário único criado por comando (`python -m app.criar_usuario`), sem endpoint de cadastro.
+- Jobs: container `jobs` com cron no Compose da VPS rodando scripts (sync Pluggy 07:00 com nova tentativa às 13:00; CDI do BCB). Sem Celery.
 - Por que existe um backend: segredos fora do APK; tarefas agendadas; cálculos testáveis em Python.
 
 **App — Flutter (Android)**
 - go_router; Bloc/Cubit.
-- dio + freezed/json_serializable; cliente Dart gerado do OpenAPI (openapi-generator, alvo `dart-dio`).
+- dio + freezed/json_serializable nos modelos e estados do app; cliente Dart gerado do OpenAPI (openapi-generator, alvo `dart-dio`, `built_value`) confinado em `packages/api_client/`. O repositório de cada feature converte um no outro (ver spec `2026-10-19-dinheiro-contrato-api`).
 - drift (SQLite) como cache de leitura offline; servidor é a fonte da verdade.
 - fl_chart; local_auth (biometria); flutter_secure_storage (tokens); flutter_local_notifications (lembrete local nos dias de salário — não lê notificações de outros apps).
 
 **Infra/portfólio**
-- Repositório público; dados reais nunca: `.env`, seed fictício, modo demo para prints do README.
-- CI: ruff + pytest; flutter analyze + flutter test; APK assinado por tag.
+- Repositório público desde o início, com secret scanning e push protection; dados reais nunca: `.env`, seed fictício, modo demo **local** para prints do README.
+- Hospedagem: VPS acessível **só pela Tailscale** (HTTPS via `*.ts.net`), Docker Compose puro (`api`, `db`, `jobs`), deploy por GitHub Actions → Tailscale → ssh. Backup diário criptografado (restic) no Backblaze B2, com restauração testada. Detalhes na spec `2026-10-19-hospedagem-deploy`.
+- CI: ruff + pytest; flutter analyze + flutter test; deploy na `main`; APK assinado por tag.
 
 ---
 
@@ -184,7 +186,7 @@ Saldo atual = `saldo_inicial` + soma das transações confirmadas após `data_sa
 
 Total calculado = soma das transações da fatura. Diferença entre calculado e informado = lançamentos faltando.
 
-**feriado** — `data` PK, `descricao`. Usado para ajustar vencimento. Seed com feriados nacionais e de Fortaleza.
+**feriado** — `data` PK, `descricao`. Usado para ajustar vencimento e a data esperada do salário. Seed só com feriados nacionais, gerado pela biblioteca `holidays` (feriado municipal não move vencimento de banco digital).
 
 ### 7.3 Transações
 
@@ -236,7 +238,7 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 
 **Regras de `id_externo`:** OFX → FITID; Pluggy → id da transação; CSV sem id → hash de (conta, data, valor, descrição original, ordem da linha no mesmo dia).
 
-**Por que `transferencia_par_id`:** um Pix entre duas contas próprias aparece como saída numa e entrada na outra. Ligadas, não contam como gasto nem como renda.
+**Por que `transferencia_par_id`:** um Pix entre duas contas próprias aparece como saída numa e entrada na outra. Ligadas, não contam como gasto nem como renda. O app sugere o par (mesmo valor, sentidos opostos, contas próprias diferentes, até ±2 dias) e só liga com confirmação na revisão; depósito de dinheiro físico (carteira → corrente) também é transferência.
 
 **Por que `pagamento_fatura` é tipo próprio:** sai dinheiro da conta corrente, mas o gasto já foi contado nas compras do cartão. Se contasse de novo, o gasto do mês dobraria.
 
@@ -244,11 +246,11 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
-| padrao | text | texto contido na descrição original (case-insensitive) |
+| padrao | text | descrição original normalizada (sem acentos, números, datas, códigos e termos genéricos como "pix enviado") |
 | conta_id | uuid FK null | restringe a uma conta |
 | categoria_id | uuid FK | |
 | prioridade | int | maior vence |
-| origem | text | `manual` \| `aprendida` (criada ao confirmar uma categoria) |
+| origem | text | `manual` \| `aprendida` (criada na 1ª confirmação de categoria; uma correção sobrescreve a categoria e zera `vezes_aplicada`) |
 | vezes_aplicada | int | |
 
 ### 7.4 Planejamento
@@ -274,16 +276,19 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 
 O cálculo de aporte e o alerta de reserva **não são tabelas**: são funções puras no backend (`planejamento/calculo.py`) que recebem saldos, faturas, rendas previstas e configuração, e devolvem o resultado. Isso as torna fáceis de testar e de explicar.
 
-Fórmula do aporte (só nos dias de salário):
+Fórmula do aporte (sugerida quando a receita do salário é detectada):
 
 ```
-aporte = saldo em conta
-       − faturas que vencem até o próximo salário
+aporte = saldo disponível (contas corrente + carteira)
+       − faturas que vencem até o próximo salário, inclusive
+         (pelo maior entre valor_informado e o total calculado)
        − gastos previstos até o próximo salário
        − colchao
 ```
 
-O dinheiro das faturas fica na conta, fora dos investimentos (evita IR/IOF de resgate curto). O **alerta de reserva** dispara quando o ritmo de gastos da quinzena projeta aporte negativo ou exige resgate da reserva.
+O dinheiro das faturas fica na conta, fora dos investimentos (evita IR/IOF de resgate curto). Aporte e alerta consideram transações confirmadas **e rascunhos** (menos os marcados como possível duplicata), avisando quantos rascunhos estão pendentes; o saldo oficial usa só confirmadas. O **alerta de ritmo** tem três níveis — 🟢 sobra ≥ colchão, 🟡 entre 0 e o colchão, 🔴 negativo (exigiria resgatar a reserva) — e aparece na tela inicial.
+
+Definições completas (data esperada do salário, gastos previstos, meses de reserva, exemplos) na spec `docs/superpowers/specs/2026-10-19-calculo-aporte-alerta-design.md`.
 
 ### 7.5 Investimentos
 
@@ -358,7 +363,8 @@ FinanceTracker/
 ├── docker-compose.yml            # Postgres local
 ├── .github/workflows/
 │   ├── backend.yml               # ruff + pytest
-│   └── app.yml                   # flutter analyze + test; APK assinado em tag
+│   ├── app.yml                   # flutter analyze + test; APK assinado em tag
+│   └── deploy.yml                # imagem no GHCR → Tailscale → ssh → docker compose up
 ├── docs/
 │   ├── arquitetura.md            # este documento
 │   ├── briefing.md               # dados e cronograma pessoais (local, fora do git)
@@ -400,7 +406,7 @@ FinanceTracker/
 │   │       ├── sync_pluggy.py
 │   │       └── atualizar_cdi.py
 │   └── tests/
-│       ├── conftest.py           # Postgres via testcontainers, cliente httpx
+│       ├── conftest.py           # Postgres via testcontainers, TestClient
 │       ├── unit/                 # calculo.py, parsers, datas de fatura
 │       ├── integration/          # endpoints com banco real
 │       └── fixtures/             # OFX/CSV fictícios
@@ -443,10 +449,11 @@ FinanceTracker/
 
 ## 9. Questões técnicas em aberto
 
+As três são respondidas pelo spike da Pluggy e pela coleta de amostras, no início do desenvolvimento, antes de modelar cartão e investimento.
+
 1. Investimentos de caixinha/cofrinho aparecem como investimento via Open Finance? (`GET /items/{id}/resources`)
-2. Formato de exportação da **fatura** do cartão em cada banco.
+2. Formato de exportação da **fatura** do cartão em cada banco. Se não houver CSV/OFX, cartão chega só pela Pluggy e por lançamento manual.
 3. Campos de cartão na API da Pluggy (parcela, fatura) — consultar o MCP `pluggy-docs`.
-4. Hospedagem: backend público com HTTPS ou só na Tailscale.
 
 ---
 
