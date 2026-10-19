@@ -15,6 +15,7 @@ Tudo abaixo vive em `backend/app/modulos/planejamento/calculo.py` como **funçõ
 - A **data esperada** de cada `renda_prevista` é o `dia_previsto` do mês ajustado para o **dia útil seguinte** quando cai em fim de semana ou feriado (tabela `feriado`).
 - O **dia de aporte** é disparado pela **receita detectada**: uma transação `receita` na conta da renda prevista, com valor próximo do previsto, a partir de alguns dias antes da data esperada. O app sugere "salário chegou, aporte de R$ X". A data esperada serve para a projeção do alerta e para o lembrete local.
 - **Próximo salário** = a próxima data esperada após a data de referência.
+- `renda_prevista.conta_id` é a conta **onde o salário cai**, que pode não ser a conta do dia a dia. Quando o salário cai num banco e é transferido manualmente para outro, a receita é detectada no banco de origem, o saldo dele entra no saldo disponível e a transferência posterior vira par entre contas próprias (não conta como renda duas vezes). Se a conta de origem não tiver fonte de dados (por exemplo, conta-salário fora do Open Finance), `conta_id` aponta para a conta que recebe a transferência, e o crédito ali é tratado como a receita.
 
 ### Aporte
 

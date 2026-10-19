@@ -34,7 +34,32 @@ Seed versionado com uma lista genérica, sem nada pessoal: Alimentação, Mercad
 
 - Extratos reais ficam numa pasta **fora do repositório** e nunca são lidos diretamente nem versionados.
 - Um script local imprime só a estrutura (encoding, separador, cabeçalhos, formato de data e valor, linhas com letras e números mascarados). As fixtures em `backend/tests/fixtures/` são escritas à mão com dados inventados no mesmo formato.
-- Se nenhum banco exportar a **fatura do cartão** em CSV/OFX, lançamentos de cartão chegam só pela Pluggy e por lançamento manual; leitura de PDF está fora do escopo.
+- Leitura de PDF está fora do escopo; só CSV e OFX são importados.
+
+### Formatos observados nas amostras (2026-10-19)
+
+Lidos pela estrutura mascarada e por comparações agregadas (contagens e sim/não), sem conteúdo real. Amostras: extrato da conta e fatura do cartão Nubank de um mês, em CSV e OFX.
+
+**Extrato da conta Nubank**
+- OFX (`BANKMSGSRSV1`, `ACCTTYPE` = `CHECKING`): cada `STMTTRN` tem `TRNTYPE` (`CREDIT`/`DEBIT`, coerente com o sinal), `DTPOSTED` (`aaaammddhhmmss[-3:BRT]`), `TRNAMT` (ponto decimal, negativo = saída), `FITID` (UUID único) e `MEMO`. `LEDGERBAL` traz o saldo final com data (`DTASOF`).
+- CSV (`Data, Valor, Identificador, Descrição`) tem **o mesmo conteúdo**: os `FITID` são exatamente os valores de `Identificador`, com mesmo sinal e mesma data em todas as linhas.
+- Prefixos de descrição: "Compra no débito", "Transferência enviada/recebida pelo Pix", "Depósito Recebido por Boleto", "Estorno", "Débito em conta", "Pagamento de fatura".
+
+**Fatura do cartão Nubank**
+- OFX (`CREDITCARDMSGSRSV1`): compras e IOF negativos (`DEBIT`), "Pagamento recebido" positivo (`CREDIT`). `BALAMT` = −(soma de compras e IOF), ou seja, o total da fatura. `DTSTART..DTEND` cobre ~1 mês e `DTEND` é a data de fechamento; **não há data de vencimento** no arquivo.
+- **Compra e o IOF dela vêm com o mesmo `FITID`.**
+- "- Parcela N/M" no `MEMO` indica parcela; o `DTPOSTED` é a data de **cobrança na fatura**, não a da compra original.
+- CSV (`date, title, amount`) tem o mesmo conteúdo, mas com sinal invertido, vírgula decimal, separador de milhar e negativo no formato `- 9.999,99` (espaço após o sinal), e sem identificador por linha.
+
+**Mercado Pago:** conta nova, ainda sem dados. O app exporta extrato em PDF/XLSX/CSV (sem OFX); o CSV do extrato e o formato da fatura serão coletados antes da importação ser implementada.
+
+### Decisões de importação a partir das amostras
+
+- **Nubank só por OFX**, conta e cartão, com um parser OFX genérico. Não há parser de CSV do Nubank; CSV é usado só para o Mercado Pago. `fonte` passa a ser `manual | ofx | csv_mercadopago | pluggy`.
+- **`id_externo` no OFX:** o `FITID`; a linha cujo `MEMO` começa com `IOF de` usa `FITID:iof`. Determinístico entre reimportações. Se ainda restar `FITID` repetido no mesmo arquivo, a importação falha com erro explícito em vez de descartar linha.
+- **Dados de fatura vindos do OFX:** `valor_informado` = −`BALAMT`; `data_fechamento` = `DTEND`; vencimento continua calculado pela regra do cartão e editável.
+- **Saldo da conta vindo do OFX:** `LEDGERBAL` vira `snapshot_saldo` com `fonte = ofx`, para conferência.
+- **Parcelas:** `compra_parcelada.data_compra` é **estimada** recuando N−1 meses a partir da data de cobrança da parcela N, marcada como estimada (`data_compra_estimada = true`) e editável na revisão. Quando a mesma compra vem pela Pluggy, o `purchaseDate` real substitui a estimativa (spec `2026-10-19-pluggy-spike`).
 
 ## Alternativas consideradas
 
@@ -48,4 +73,6 @@ Seed versionado com uma lista genérica, sem nada pessoal: Alimentação, Mercad
 
 - Normalização e pareamento são funções puras com testes de tabela.
 - `holidays` é dependência nova do backend.
-- O cartão depende mais da Pluggy se não houver exportação estruturada da fatura; o spike da Pluggy confirma.
+- O cartão do Nubank tem exportação estruturada (OFX), então não depende só da Pluggy; o do Mercado Pago ainda será verificado.
+- Um único parser OFX atende conta e cartão do Nubank, o que reduz parsers e fixtures na fase de importação.
+- Importar CSV do Nubank fica fora do escopo; se for necessário depois, o `Identificador` do CSV é o mesmo `FITID` do OFX.

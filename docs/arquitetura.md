@@ -21,7 +21,7 @@ O app precisa funcionar sem depender de disciplina de registro: a maior parte do
 | Fonte | Como funciona | Observações |
 |---|---|---|
 | **Lançamento manual** | Formulário rápido | Dinheiro em espécie e ajustes. |
-| **Importação OFX/CSV** | Nubank envia extrato da conta por e-mail em PDF, OFX e CSV (pedido manual no app). Mercado Pago exporta PDF/XLSX/CSV, até 31 dias por extrato. | Reserva para quando a Pluggy falhar e para histórico. FITID do OFX para deduplicar. |
+| **Importação OFX/CSV** | Nubank: extrato da conta e fatura do cartão, importados por **OFX** (o app também oferece PDF e CSV). Mercado Pago: extrato por **CSV** (exporta PDF/XLSX/CSV, até 31 dias; sem OFX). | Reserva para quando a Pluggy falhar e para histórico. FITID do OFX para deduplicar. Formatos detalhados na spec `2026-10-19-revisao-classificacao`. |
 | **Open Finance via Meu Pluggy** | O usuário conecta os bancos em meu.pluggy.ai; o backend lê pela API usando o conector MeuPluggy. | Gratuito para os próprios dados. Até 5 conexões do mesmo titular. **Atraso de ~24h aceito.** |
 | **API SGS do Banco Central** | CDI diário (série 12) | Pública e gratuita. Rendimento estimado e benchmark. |
 
@@ -37,16 +37,21 @@ O app precisa funcionar sem depender de disciplina de registro: a maior parte do
 
 **Fluxo:**
 1. O usuário cria conta em meu.pluggy.ai e autoriza cada banco pelo fluxo oficial de consentimento.
-2. Cria uma aplicação em dashboard.pluggy.ai e obtém client id/secret.
-3. Autoriza o conector MeuPluggy na aplicação, uma vez por banco.
-4. O backend troca client id/secret por API key e lê contas, saldos, transações e investimentos (se o banco compartilhar).
+2. Cria uma aplicação de desenvolvimento em dashboard.pluggy.ai e obtém client id/secret (uso pessoal: gratuito, sem due diligence, até 5 conexões; não precisa do "Unlock real data").
+3. Na **Demo** da aplicação, conecta o conector **MeuPluggy** (não o do banco), uma vez por banco, e guarda cada `itemId` — não há endpoint para listá-los.
+4. O backend troca client id/secret por API key (`POST /auth`, header `X-API-KEY`) e lê contas, saldos, faturas, transações (`GET /v2/transactions`) e investimentos.
+
+Resultado completo do spike e decisões de sync: spec `docs/superpowers/specs/2026-10-19-pluggy-spike-design.md`.
 
 **Comportamento que afeta a arquitetura:**
 - Dois Items: o **original** (no Meu Pluggy, atualizado a cada 24h) e o **proxy** (na aplicação), que espelha o original, **não tem auto-sync próprio e não pode ser atualizado via API**.
 - **Sem webhook.** Um cron diário lê as transações novas pela API. Assim o backend não precisa estar exposto para a Pluggy.
-- Na criação do Item vêm até 365 dias de histórico; atualizações trazem sobreposição de 4 dias → deduplicar pelo id da transação da Pluggy.
+- Na criação do Item vêm até 365 dias de histórico; atualizações trazem sobreposição de 4 dias. O sync relê uma **janela de 40 dias** e deduplica pelo id da transação da Pluggy.
+- **Sem id estável:** o MeuPluggy não envia `providerId`/`providerCode`. A Pluggy pode apagar e recriar uma transação com id novo, e sem webhook não há aviso. Transação da janela que sumiu da API: rascunho é removido; confirmada recebe `removida_na_origem_em` e vira alerta na revisão.
+- **`date` vem em UTC com horário:** converter para `America/Fortaleza` antes de truncar para data. No cartão, o sinal de `amount` é o inverso da conta; o sentido vem do `type`.
+- `GET /transactions` (v1) só funciona até 2026-12-31; o sync usa `GET /v2/transactions` (cursor).
 - O que foi pedido ≠ o que o banco compartilha: consultar `GET /items/{id}/resources`.
-- Consentimento tem validade (tipicamente 12 meses) e pode ser revogado no app do banco ou no Meu Pluggy. O app mostra a validade e avisa antes de expirar.
+- Consentimento vale 1 ano (`consentExpiresAt`) e pode ser revogado no app do banco ou no Meu Pluggy. O app mostra a validade e avisa antes de expirar. A renovação é manual e pode gerar **itemId novo**: o app religa o item à conexão existente, casando contas pelo número e transações por (data local, valor, descrição original).
 
 **Riscos e mitigação:**
 
@@ -202,7 +207,7 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
-| fonte | text | `ofx` \| `csv_nubank` \| `csv_mercadopago` \| `pluggy` |
+| fonte | text | `ofx` \| `csv_mercadopago` \| `pluggy` |
 | conta_id | uuid FK null | |
 | nome_arquivo | text null | |
 | hash_arquivo | text null unique | impede importar o mesmo arquivo duas vezes |
@@ -211,7 +216,7 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 | status | text | `ok` \| `erro` |
 | erro | text null | |
 
-**compra_parcelada** — `id`, `descricao`, `valor_total`, `qtd_parcelas`, `data_compra`. Agrupa as parcelas.
+**compra_parcelada** — `id`, `descricao`, `valor_total`, `qtd_parcelas`, `data_compra`, `data_compra_estimada` (bool). Agrupa as parcelas. A Pluggy traz a data real da compra (`creditCardMetadata.purchaseDate`); o OFX só traz a data de cobrança, e aí a data da compra é estimada (parcela N recuada N−1 meses), marcada como estimada e editável na revisão. O app não projeta parcelas futuras a partir das fontes (a Pluggy já as envia como `PENDING`; o OFX traz a do mês); só o lançamento manual de compra parcelada gera as N parcelas.
 
 **transacao**
 | coluna | tipo | nota |
@@ -225,7 +230,7 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 | descricao | text | editável pelo usuário |
 | categoria_id | uuid FK null | |
 | status | text | `rascunho` \| `confirmada` \| `ignorada` |
-| fonte | text | `manual` \| `ofx` \| `csv_nubank` \| `csv_mercadopago` \| `pluggy` |
+| fonte | text | `manual` \| `ofx` \| `csv_mercadopago` \| `pluggy` |
 | id_externo | text null | FITID, id da Pluggy ou hash gerado |
 | importacao_id | uuid FK null | |
 | fatura_id | uuid FK null | obrigatório se a conta é cartão |
@@ -234,9 +239,12 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 | transferencia_par_id | uuid FK null | liga saída e entrada entre contas próprias |
 | investimento_id | uuid FK null | para `aporte`/`resgate` |
 | possivel_duplicata_de | uuid FK null | marcada quando outra fonte trouxe algo igual |
+| removida_na_origem_em | timestamptz null | transação confirmada que sumiu da Pluggy na janela de reconciliação; alerta na revisão |
 | unique | (conta_id, fonte, id_externo) | coração da idempotência |
 
-**Regras de `id_externo`:** OFX → FITID; Pluggy → id da transação; CSV sem id → hash de (conta, data, valor, descrição original, ordem da linha no mesmo dia).
+**Regras de `id_externo`:** OFX → FITID, com sufixo `:iof` na linha de IOF (no Nubank, a compra e o IOF dela compartilham o FITID); se ainda sobrar FITID repetido no arquivo, a importação falha com erro explícito. Pluggy → id da transação. CSV (Mercado Pago) → identificador próprio, se o layout tiver; senão hash de (conta, data, valor, descrição original, ordem da linha no mesmo dia). Formatos observados: spec `2026-10-19-revisao-classificacao`.
+
+**Dados de fatura vindos do OFX do cartão:** `valor_informado` = −`BALAMT`; `data_fechamento` = `DTEND`. O arquivo não traz vencimento: ele continua calculado pela regra do cartão.
 
 **Por que `transferencia_par_id`:** um Pix entre duas contas próprias aparece como saída numa e entrada na outra. Ligadas, não contam como gasto nem como renda. O app sugere o par (mesmo valor, sentidos opostos, contas próprias diferentes, até ±2 dias) e só liga com confirmação na revisão; depósito de dinheiro físico (carteira → corrente) também é transferência.
 
@@ -305,9 +313,10 @@ Definições completas (data esperada do salário, gastos previstos, meses de re
 | restricao | text null | ex.: "rendimento só no Mercado Livre" |
 | conta_reserva | bool | conta para a meta de reserva? |
 | ativo | bool | |
-| pluggy_investment_id | text null unique | |
+| pluggy_investment_id | text null unique | CDBs/caixinhas de `/investments` |
+| pluggy_saldo_reservado_id | text null unique | cofrinho que vem como `bankData.reservedBalances` da conta corrente (`identification`) |
 
-Aportes e resgates são `transacao` com `investimento_id` (saem/entram na conta corrente).
+Aportes e resgates são `transacao` com `investimento_id` (saem/entram na conta corrente). Para o cofrinho, vêm das transações `TRANSFERENCIA_SALDO_RESERVADO` da Pluggy; o percentual do CDI é informado à mão, porque o saldo reservado não traz taxa.
 
 **snapshot_saldo** (saldo real em uma data)
 | coluna | tipo | nota |
@@ -317,7 +326,7 @@ Aportes e resgates são `transacao` com `investimento_id` (saem/entram na conta 
 | investimento_id | uuid FK null | um dos dois preenchido |
 | data | date | |
 | saldo | numeric(14,2) | |
-| fonte | text | `manual` \| `pluggy` |
+| fonte | text | `manual` \| `ofx` (saldo final do extrato) \| `pluggy` |
 | unique | (conta_id, investimento_id, data) | |
 
 Uso: conferir saldos, rendimento real (`saldo atual − saldo anterior − aportes + resgates`) e o 31/12 do IR.
@@ -395,7 +404,7 @@ FinanceTracker/
 │   │   │   ├── transacoes/       #   service.py (regras de negócio)
 │   │   │   ├── categorias/       #   router.py  (endpoints HTTP)
 │   │   │   ├── importacao/
-│   │   │   │   └── parsers/      # ofx.py, csv_nubank.py, csv_mercadopago.py
+│   │   │   │   └── parsers/      # ofx.py (Nubank conta e cartão), csv_mercadopago.py
 │   │   │   ├── planejamento/
 │   │   │   │   └── calculo.py    # funções puras: aporte, meses de reserva, alerta
 │   │   │   ├── investimentos/
@@ -449,11 +458,9 @@ FinanceTracker/
 
 ## 9. Questões técnicas em aberto
 
-As três são respondidas pelo spike da Pluggy e pela coleta de amostras, no início do desenvolvimento, antes de modelar cartão e investimento.
+1. Formato de exportação do extrato (CSV) e da **fatura** do Mercado Pago — a conta ainda não tem dados; coletar antes da importação.
 
-1. Investimentos de caixinha/cofrinho aparecem como investimento via Open Finance? (`GET /items/{id}/resources`)
-2. Formato de exportação da **fatura** do cartão em cada banco. Se não houver CSV/OFX, cartão chega só pela Pluggy e por lançamento manual.
-3. Campos de cartão na API da Pluggy (parcela, fatura) — consultar o MCP `pluggy-docs`.
+Respondidas em 2026-10-19 (spec `2026-10-19-pluggy-spike`): caixinhas de banco digital aparecem como CDB em `/investments`; o cofrinho do Mercado Pago aparece como saldo reservado da conta; a Pluggy traz parcela, data real da compra e fatura (`/bills`). O Nubank exporta a fatura em OFX (spec `2026-10-19-revisao-classificacao`).
 
 ---
 

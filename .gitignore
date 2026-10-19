@@ -1,2 +1,15 @@
 # Instruções pessoais para o Claude Code
 CLAUDE.local.md
+
+# Segredos e configuração local
+.env
+.env.*
+!.env.example
+
+# Dados financeiros reais nunca entram no repositório
+*.ofx
+*.csv
+!backend/tests/fixtures/**/*.ofx
+!backend/tests/fixtures/**/*.csv
+*.dump
+*.sql.gz
