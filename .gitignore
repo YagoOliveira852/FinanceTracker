@@ -13,3 +13,9 @@ CLAUDE.local.md
 !backend/tests/fixtures/**/*.csv
 *.dump
 *.sql.gz
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
