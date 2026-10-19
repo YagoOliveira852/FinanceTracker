@@ -199,6 +199,7 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 | `docs/superpowers/specs/` | Decisões e motivos, escritas antes de implementar |
 | `docs/superpowers/plans/` | Planos passo a passo derivados de uma spec |
 | `docs/explicacoes/` | Notas de aprendizado (FastAPI, Flutter, conceitos do domínio) |
+| `docs/agents/` | Configuração dos skills de engenharia: issue tracker, labels de triagem, docs de domínio |
 | `README.md` | Vitrine do portfólio: prints do modo demo, arquitetura, como rodar |
 
 Nomes: `YYYY-MM-DD-<tema>-design.md` (specs), `YYYY-MM-DD-<tema>.md` (planos), `NN-<tema>.md` (explicações).
@@ -233,6 +234,20 @@ Specs previstas: usuário único sem `usuario_id` no domínio; dinheiro como Dec
 **Pluggy proxy não aceita refresh.** Chamar update num item MeuPluggy falha por desenho; o dado chega em até 24h. Não "conserte" isso com polling agressivo.
 
 **Snapshot de 31/12 precisa existir.** O IR usa os saldos dessa data e não dá para reconstruí-los depois com precisão; a funcionalidade de snapshot tem que estar em produção antes do fim do ano.
+
+## Agent skills
+
+### Issue tracker
+
+Issues no GitHub do repositório, via `gh`. O Trello fica só como visão do cronograma por semana. Ver `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Os cinco papéis padrão, com label de mesmo nome (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). Ver `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `docs/arquitetura.md` + `CONTEXT.md` na raiz (criado quando necessário); decisões em `docs/superpowers/specs/`, sem `docs/adr/`. Ver `docs/agents/domain.md`.
 
 ## Pull Request Workflow
 
