@@ -10,7 +10,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 |---|---|---|---|
 | App | Flutter (Android) | emulador / aparelho | `app/` |
 | API | FastAPI + SQLAlchemy 2.0 + Alembic | http://localhost:8000 (docs em `/docs`) | `backend/` |
-| Banco | PostgreSQL 16 | `localhost:5432` (só em dev) | `docker-compose.yml` |
+| Banco | PostgreSQL 16 | `127.0.0.1:5432` (só em dev) | `docker-compose.yml` |
 | Jobs | scripts Python chamados por cron | — | `backend/app/jobs/` |
 
 ## Como trabalhar
@@ -46,6 +46,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 ### Banco (Docker)
 
 ```bash
+cp .env.example .env             # 1ª vez: defina POSTGRES_PASSWORD
 docker compose up -d db          # sobe só o Postgres
 docker compose down              # para (NUNCA use -v: apaga os dados)
 ```
@@ -54,7 +55,8 @@ docker compose down              # para (NUNCA use -v: apaga os dados)
 
 ```bash
 cd backend
-uv sync                                           # instala dependências (lock)
+cp .env.example .env                              # 1ª vez: DATABASE_URL com a mesma senha do compose
+uv sync                                           # instala o Python 3.12 e as dependências (lock)
 uv run alembic upgrade head                       # aplica migrations
 uv run fastapi dev app/main.py                    # API com hot reload em :8000
 uv run python -m app.criar_usuario                # cria o usuário único (pede e-mail e senha)
@@ -169,7 +171,7 @@ Manual, importação OFX/CSV e Open Finance via Pluggy. Tudo que não é manual 
 **Backend** (`backend/.env`, ver `.env.example`):
 
 ```
-DATABASE_URL=postgresql+psycopg://financas:<senha>@localhost:5432/financas
+DATABASE_URL=postgresql+psycopg://financas:<senha>@127.0.0.1:5432/financas
 JWT_SECRET=...                     # 32+ caracteres
 ACCESS_TOKEN_MINUTOS=15
 REFRESH_TOKEN_DIAS=30
@@ -237,6 +239,8 @@ Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e aler
 **Pydantic v2 serializa `Decimal` como string no JSON, mas o schema de entrada vira `number | string`.** Isso duplica schemas (`XInput`/`XOutput`) no OpenAPI e gera tipo genérico no Dart. Use sempre o tipo `Dinheiro` de `core/dinheiro.py`, que fixa `string`/`decimal` nos dois sentidos; nunca `Decimal` direto num schema, nunca `float`. No Dart, o cliente gerado recebe `String` — converta para `Decimal` no repositório, nunca para `double`.
 
 **Alembic autogenerate não enxerga tudo.** Mudanças em `CHECK` constraints (nossos enums) e em alguns defaults de servidor não são detectadas. Revise todo arquivo gerado e escreva à mão o que faltar.
+
+**`DATABASE_URL` com `127.0.0.1`, não `localhost`.** No Windows, `localhost` tenta IPv6 (`::1`) primeiro e a porta do compose só escuta em `127.0.0.1`: cada conexão trava ~20–60 s antes de cair no IPv4 (a API parece "pendurada").
 
 **Emulador Android não enxerga `localhost` do PC.** Use `http://10.0.2.2:8000`. Em aparelho físico, use o IP da máquina na rede ou o endereço da Tailscale. Android bloqueia HTTP sem TLS por padrão em release — só HTTPS fora do debug.
 
