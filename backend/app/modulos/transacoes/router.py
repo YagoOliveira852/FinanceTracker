@@ -1,0 +1,68 @@
+"""Rotas de transações. Só traduzem HTTP; as regras estão no service."""
+
+import uuid
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.exceptions import RequestValidationError
+
+from app.core.deps import SessaoDep, get_usuario_atual
+from app.core.erros import RespostaErro
+from app.modulos.transacoes import service
+from app.modulos.transacoes.schemas import TransacaoEntrada, TransacaoSaida
+
+router = APIRouter(
+    prefix="/transacoes",
+    tags=["transacoes"],
+    dependencies=[Depends(get_usuario_atual)],
+    responses={status.HTTP_401_UNAUTHORIZED: {"model": RespostaErro}},
+)
+
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+def lancar(dados: TransacaoEntrada, sessao: SessaoDep) -> TransacaoSaida:
+    """Lançamento manual de despesa ou receita, já confirmado."""
+    transacao = service.lancar(
+        sessao,
+        conta_id=dados.conta_id,
+        tipo=dados.tipo,
+        valor=dados.valor,
+        data=dados.data,
+        descricao=dados.descricao,
+    )
+    return TransacaoSaida.model_validate(transacao)
+
+
+@router.get("")
+def listar(
+    sessao: SessaoDep,
+    conta_id: uuid.UUID | None = None,
+    de: date | None = None,
+    ate: date | None = None,
+) -> list[TransacaoSaida]:
+    """Transações (todos os status), da mais recente para a mais antiga.
+
+    `de` e `ate` são inclusivos; para um mês, use o primeiro e o último dia dele.
+    """
+    if de is not None and ate is not None and de > ate:
+        raise RequestValidationError(
+            [
+                {
+                    "type": "periodo_invalido",
+                    "loc": ("query", "ate"),
+                    "msg": "A data final não pode ser antes da inicial.",
+                    "input": ate,
+                }
+            ]
+        )
+    transacoes = service.listar(sessao, conta_id=conta_id, de=de, ate=ate)
+    return [TransacaoSaida.model_validate(transacao) for transacao in transacoes]
+
+
+@router.get("/{transacao_id}", responses={status.HTTP_404_NOT_FOUND: {"model": RespostaErro}})
+def obter(transacao_id: uuid.UUID, sessao: SessaoDep) -> TransacaoSaida:
+    try:
+        transacao = service.obter(sessao, transacao_id)
+    except service.TransacaoNaoEncontrada as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Transação não encontrada.") from exc
+    return TransacaoSaida.model_validate(transacao)

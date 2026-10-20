@@ -3,15 +3,20 @@ from typing import Annotated
 import pytest
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.dinheiro import Dinheiro
-from app.core.erros import registrar_tratadores_de_erro
+from app.core.erros import CampoInvalido, registrar_tratadores_de_erro
 
 
 class Entrada(BaseModel):
     descricao: str
     valor: Dinheiro
+
+
+class Textos(BaseModel):
+    obrigatorio: str = Field(min_length=1)
+    codigo: str = Field(min_length=4)
 
 
 @pytest.fixture
@@ -34,6 +39,14 @@ def client() -> TestClient:
     @api.get("/limite")
     def limite(limite: Annotated[int, Query(le=100)]) -> int:
         return limite
+
+    @api.post("/textos")
+    def textos(textos: Textos) -> Textos:
+        return textos
+
+    @api.post("/regra")
+    def regra():
+        raise CampoInvalido("conta_id", "Conta não encontrada.")
 
     @api.get("/quebra")
     def quebra():
@@ -89,6 +102,26 @@ def test_erro_de_validacao_sem_traducao_mantem_a_mensagem_original(client):
     assert resposta.json()["campos"] == [
         {"campo": "query.limite", "mensagem": "Input should be less than or equal to 100"}
     ]
+
+
+def test_texto_vazio_e_texto_curto_tem_mensagens_diferentes(client):
+    resposta = client.post("/textos", json={"obrigatorio": "", "codigo": "ab"})
+
+    assert resposta.status_code == 422
+    assert resposta.json()["campos"] == [
+        {"campo": "body.obrigatorio", "mensagem": "Não pode ficar em branco."},
+        {"campo": "body.codigo", "mensagem": "Texto curto demais."},
+    ]
+
+
+def test_campo_invalido_do_service_vira_422_no_mesmo_formato(client):
+    resposta = client.post("/regra")
+
+    assert resposta.status_code == 422
+    assert resposta.json() == {
+        "detail": "Dados inválidos.",
+        "campos": [{"campo": "body.conta_id", "mensagem": "Conta não encontrada."}],
+    }
 
 
 def test_json_malformado_vira_422_no_mesmo_formato(client):

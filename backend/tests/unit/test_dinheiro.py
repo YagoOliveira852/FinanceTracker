@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI
 from pydantic import BaseModel, ValidationError
 
-from app.core.dinheiro import Dinheiro
+from app.core.dinheiro import Dinheiro, DinheiroPositivo
 from app.main import app
 
 SCHEMA_DINHEIRO = {"type": "string", "format": "decimal"}
@@ -12,6 +12,10 @@ SCHEMA_DINHEIRO = {"type": "string", "format": "decimal"}
 
 class Exemplo(BaseModel):
     valor: Dinheiro
+
+
+class ExemploPositivo(BaseModel):
+    valor: DinheiroPositivo
 
 
 @pytest.mark.parametrize(
@@ -56,6 +60,29 @@ def test_recusa_valor_fora_do_formato(entrada):
         Exemplo(valor=entrada)
 
     assert erro.value.errors()[0]["type"] == "dinheiro_invalido"
+
+
+def test_dinheiro_positivo_aceita_a_partir_de_um_centavo():
+    assert ExemploPositivo(valor="0.01").valor == Decimal("0.01")
+
+
+@pytest.mark.parametrize("entrada", ["0", "0.00", "-0.01", "-10"])
+def test_dinheiro_positivo_recusa_zero_e_negativo(entrada):
+    with pytest.raises(ValidationError) as erro:
+        ExemploPositivo(valor=entrada)
+
+    assert erro.value.errors()[0]["type"] == "dinheiro_invalido"
+    assert erro.value.errors()[0]["msg"] == "Informe um valor maior que zero."
+
+
+def test_dinheiro_positivo_mantem_o_formato_de_dinheiro():
+    with pytest.raises(ValidationError):
+        ExemploPositivo(valor=1.5)
+    assert ExemploPositivo.model_json_schema()["properties"]["valor"] == {
+        **SCHEMA_DINHEIRO,
+        "title": "Valor",
+    }
+    assert ExemploPositivo(valor="3").model_dump(mode="json") == {"valor": "3.00"}
 
 
 def test_serializa_como_string_com_duas_casas():
