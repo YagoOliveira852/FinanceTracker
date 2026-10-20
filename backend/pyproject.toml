@@ -5,9 +5,11 @@ description = "API de finanças pessoais (FastAPI síncrono)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.20.0",
+    "argon2-cffi>=25.1.0",
     "fastapi[standard]>=0.149.0",
     "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.16.0",
+    "pyjwt>=2.15.1",
     "sqlalchemy>=2.0",
 ]
 
