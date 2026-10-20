@@ -155,7 +155,7 @@ Access token: JWT HS256 assinado com `JWT_SECRET`, com `sub` (id do usuário), `
 
 ### 7.2 Contas e cartões
 
-**instituicao** — `id`, `nome` (ex.: Nubank, Mercado Pago), `codigo_compe` (null).
+**instituicao** — `id`, `nome` (unique; ex.: Nubank, Mercado Pago). Sem código COMPE: nenhuma fonte precisa dele (a conta da importação é escolhida pelo usuário, e a Pluggy liga pelo id da conta); entra com migration se algum dia for útil.
 
 **conta**
 | coluna | tipo | nota |
@@ -164,14 +164,14 @@ Access token: JWT HS256 assinado com `JWT_SECRET`, com `sub` (id do usuário), `
 | instituicao_id | uuid FK null | obrigatório, exceto na carteira (`CHECK`); no cadastro vem o nome, e o backend reaproveita a instituição de mesmo nome (sem diferenciar maiúsculas) ou cria uma |
 | nome | text | ex.: "Nubank conta" |
 | tipo | text | `corrente` \| `cartao_credito` \| `carteira` (dinheiro) |
-| saldo_inicial | numeric(14,2) | saldo ao fim do dia abaixo; pode ser negativo |
+| saldo_inicial | numeric(14,2) | saldo no começo do dia abaixo; pode ser negativo |
 | data_saldo_inicial | date | ponto de partida dos cálculos; não pode ser depois de hoje |
 | ativa | bool | |
 | pluggy_account_id | text null unique | vínculo com a conta na Pluggy |
 | conexao_pluggy_id | uuid FK null | conexão que alimenta a conta; desativá-la não desativa a conta |
 | pluggy_numero_final | text null | 4 últimos dígitos do número na Pluggy; sugere o vínculo na renovação |
 
-Saldo atual = `saldo_inicial` + soma das transações confirmadas após `data_saldo_inicial` (entradas somam, saídas subtraem; transação no próprio dia já está no saldo inicial e não entra). Não é guardado: o service calcula numa consulta agregada só para a lista inteira. O "total disponível" da tela de contas soma correntes e carteiras ativas; cartão não entra. Saldo informado pela Pluggy fica em `snapshot_saldo` e serve para conferir se falta algum lançamento.
+Saldo atual = `saldo_inicial` + soma das transações confirmadas a partir de `data_saldo_inicial`, inclusive (entradas somam, saídas subtraem). Transação do próprio dia entra: o caso real é criar a conta e lançar algo no mesmo dia; o risco inverso (transação do dia que já estava no saldo informado) é raro e aparece na conferência. Não é guardado: o service calcula numa consulta agregada só para a lista inteira. O "total disponível" da tela de contas soma correntes e carteiras ativas; cartão não entra. Saldo informado pela Pluggy fica em `snapshot_saldo` e serve para conferir se falta algum lançamento.
 
 **cartao** (1:1 com conta do tipo `cartao_credito`)
 | coluna | tipo | nota |
@@ -228,7 +228,7 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 |---|---|---|
 | id | uuid PK | |
 | conta_id | uuid FK | |
-| tipo | text | entradas: `receita` \| `transferencia_entrada` \| `resgate` \| `estorno`; saídas: `despesa` \| `transferencia_saida` \| `pagamento_fatura` \| `aporte` |
+| tipo | text | entradas: `receita` \| `transferencia_entrada` \| `resgate` \| `estorno` \| `ajuste_entrada`; saídas: `despesa` \| `transferencia_saida` \| `pagamento_fatura` \| `aporte` \| `ajuste_saida` |
 | valor | numeric(14,2) | sempre > 0 |
 | data | date | data da operação (compra/Pix) |
 | descricao_original | text | como veio do banco, nunca editada |
@@ -247,7 +247,7 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 | removida_na_origem_em | timestamptz null | transação confirmada que sumiu da Pluggy na janela de reconciliação; alerta na revisão |
 | unique | (conta_id, fonte, id_externo) | coração da idempotência |
 
-**Sem tipo `ajuste` por enquanto:** com valor sempre positivo, um ajuste precisa dizer se entra ou sai. Fica para a conferência de saldo (snapshots), que decide entre dois tipos (`ajuste_entrada`/`ajuste_saida`) ou outra forma; até lá o `CHECK` não aceita `ajuste`.
+**Ajuste em dois tipos:** com valor sempre positivo, a correção de saldo na conferência com o banco (snapshots) precisa dizer se entra ou sai: `ajuste_entrada` (sobrou dinheiro) e `ajuste_saida` (faltou). Assim o ajuste segue a regra de sinal como qualquer outro tipo e fica no histórico.
 
 **Lançamento manual** entra com `fonte = manual`, `status = confirmada`, `descricao_original = descricao` e `id_externo` nulo.
 

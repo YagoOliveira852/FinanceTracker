@@ -1,12 +1,16 @@
 """As migrations sobem e descem num banco vazio e batem com os modelos."""
 
+import re
 from collections.abc import Iterator
 
 import pytest
 from alembic import command
-from sqlalchemy import create_engine, text
+from sqlalchemy import CheckConstraint, create_engine, text
 from sqlalchemy.engine import make_url
 
+import app.modulos.contas.models  # noqa: F401
+import app.modulos.transacoes.models  # noqa: F401
+from app.core.db import Base
 from tests.utils import alembic_config
 
 NOME_BANCO = "migrations_teste"
@@ -40,3 +44,34 @@ def test_modelos_nao_tem_mudanca_sem_migration(url_banco_vazio):
     command.upgrade(config, "head")
 
     command.check(config)
+
+
+def _checks_de_enum_dos_modelos() -> dict[str, set[str]]:
+    """{nome do CHECK: valores} de cada `check_enum` declarado nos modelos."""
+    checks = {}
+    for tabela in Base.metadata.tables.values():
+        for constraint in tabela.constraints:
+            if isinstance(constraint, CheckConstraint):
+                enum = re.fullmatch(r"\w+ IN \((.*)\)", str(constraint.sqltext))
+                if enum:
+                    checks[str(constraint.name)] = set(re.findall(r"'([^']*)'", enum.group(1)))
+    return checks
+
+
+def test_check_dos_enums_no_banco_bate_com_os_modelos(url_banco_vazio):
+    """O autogenerate (e o `alembic check`) não enxerga mudança em CHECK: este
+    teste pega a migration escrita à mão que esqueceu ou errou um valor."""
+    command.upgrade(alembic_config(url_banco_vazio), "head")
+    engine = create_engine(url_banco_vazio)
+    with engine.connect() as conexao:
+        linhas = conexao.execute(
+            text("SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE contype = 'c'")
+        ).all()
+    engine.dispose()
+    no_banco = {nome: set(re.findall(r"'([^']*)'::text", definicao)) for nome, definicao in linhas}
+
+    esperados = _checks_de_enum_dos_modelos()
+
+    assert esperados  # o teste não pode passar por não achar nada
+    for nome, valores in esperados.items():
+        assert no_banco.get(nome) == valores, nome

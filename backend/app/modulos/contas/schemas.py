@@ -27,7 +27,7 @@ class ContaEntrada(BaseModel):
             "uma nova é criada."
         ),
     )
-    saldo_inicial: Dinheiro = Field(description="Saldo ao fim do dia `data_saldo_inicial`.")
+    saldo_inicial: Dinheiro = Field(description="Saldo no começo do dia `data_saldo_inicial`.")
     data_saldo_inicial: date = Field(description="Não pode ser depois de hoje.")
 
 
@@ -47,7 +47,7 @@ class ContaSaida(BaseModel):
     data_saldo_inicial: date
     saldo_atual: Dinheiro = Field(
         description=(
-            "`saldo_inicial` mais as transações confirmadas com data depois de "
+            "`saldo_inicial` mais as transações confirmadas com data a partir de "
             "`data_saldo_inicial`."
         )
     )
