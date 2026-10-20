@@ -25,6 +25,14 @@ O Dart não tem reflexão no Flutter, então serializar JSON exige código gerad
 
 O contrato declara dinheiro como `{"type": "string", "format": "decimal"}`, mas o `dart-dio` traduz o formato `decimal` para `double`. O script corrige isso com `--type-mappings decimal=String`. O cliente entrega `"1234.56"`, e o repositório converte para `Decimal` (pacote `decimal`). `double` nunca aparece, nem na leitura nem no envio.
 
+## Nomes dos métodos
+
+O `dart-dio` cria uma classe por tag (`ContasApi`) e um método por rota, com o nome tirado do `operationId` em camelCase. O padrão do FastAPI é `{função}{caminho}_{método}` (`listar_contas_get` → `listarContasGet()`), e o caminho muda o nome do método sempre que a URL muda.
+
+Por isso `app/main.py` passa `generate_unique_id_function=operation_id`: o FastAPI chama essa função para cada rota ao montá-la e publica `<tag>_<função>` (`contas_listar`). É o papel do `endpoint` no Flask, o nome da view que o `url_for` usa, só que publicado no contrato. O prefixo da tag deixa o id único no documento inteiro (`contas_listar` ≠ `transacoes_listar`), como o OpenAPI exige. O script passa `removeOperationIdPrefix=true` ao gerador, que corta tudo até o primeiro `_`, e o método vira `ContasApi.listar()`.
+
+Isso impõe duas regras, garantidas por `tests/unit/test_operation_ids.py`: cada rota tem exatamente uma tag (vem do `APIRouter(tags=[...])`), e a tag não tem `_`. Renomear a função de uma rota renomeia o método no Dart.
+
 ## Fronteira
 
 Telas e cubits nunca importam `package:api_client`. O repositório de cada feature converte o modelo gerado no modelo `freezed` do app, como uma camada anticorrupção: se a API mudar, quebra só a conversão.
