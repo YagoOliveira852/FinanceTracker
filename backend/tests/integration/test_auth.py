@@ -75,6 +75,13 @@ def test_login_sem_senha_e_422(client, usuario):
     assert resposta.json()["campos"] == [{"campo": "body.senha", "mensagem": "Campo obrigatório."}]
 
 
+def test_login_com_senha_enorme_e_422_sem_chegar_no_argon2(client, usuario):
+    resposta = client.post("/auth/login", json={"email": EMAIL, "senha": "x" * 1_000_000})
+
+    assert resposta.status_code == 422
+    assert resposta.json()["campos"] == [{"campo": "body.senha", "mensagem": "Texto longo demais."}]
+
+
 def test_banco_guarda_so_o_hash_do_refresh_token_com_validade_de_30_dias(client, sessao, usuario):
     antes = datetime.now(UTC)
     refresh_token = _login(client).json()["refresh_token"]

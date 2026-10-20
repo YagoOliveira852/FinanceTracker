@@ -9,18 +9,22 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.modulos.auth.service import TAMANHO_MAXIMO_SENHA
 
+
+# Limites de tamanho: sem eles, uma "senha" de megabytes iria inteira para o
+# argon2 a cada tentativa de login.
 class LoginEntrada(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: str
-    senha: str
+    email: str = Field(max_length=320)
+    senha: str = Field(max_length=TAMANHO_MAXIMO_SENHA)
 
 
 class RefreshEntrada(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    refresh_token: str
+    refresh_token: str = Field(max_length=256)
 
 
 class Tokens(BaseModel):

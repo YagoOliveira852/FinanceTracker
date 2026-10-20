@@ -24,6 +24,8 @@ from app.core.seguranca import (
 from app.modulos.auth.models import RefreshToken, Usuario
 
 TAMANHO_MINIMO_SENHA = 12
+# O login recusa senha maior que isso (ver schemas.py); criar uma seria inútil.
+TAMANHO_MAXIMO_SENHA = 256
 
 _validador_email = TypeAdapter(EmailStr)
 
@@ -64,6 +66,8 @@ def criar_usuario(sessao: Session, email: str, senha: str) -> Usuario:
         raise DadosInvalidos("E-mail inválido.") from exc
     if len(senha) < TAMANHO_MINIMO_SENHA:
         raise DadosInvalidos(f"A senha precisa ter pelo menos {TAMANHO_MINIMO_SENHA} caracteres.")
+    if len(senha) > TAMANHO_MAXIMO_SENHA:
+        raise DadosInvalidos(f"A senha pode ter no máximo {TAMANHO_MAXIMO_SENHA} caracteres.")
     if sessao.scalar(select(func.count()).select_from(Usuario)):
         raise UsuarioJaExiste
 
