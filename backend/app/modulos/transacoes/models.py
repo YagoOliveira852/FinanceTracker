@@ -20,6 +20,9 @@ class TipoTransacao(StrEnum):
     aporte = "aporte"
     resgate = "resgate"
     estorno = "estorno"
+    # Correção de saldo na conferência com o banco (sobrou ou faltou dinheiro).
+    ajuste_entrada = "ajuste_entrada"
+    ajuste_saida = "ajuste_saida"
 
 
 # O valor é sempre positivo; o sentido vem do tipo. Todo tipo está em exatamente
@@ -30,6 +33,7 @@ TIPOS_ENTRADA = frozenset(
         TipoTransacao.transferencia_entrada,
         TipoTransacao.resgate,
         TipoTransacao.estorno,
+        TipoTransacao.ajuste_entrada,
     }
 )
 TIPOS_SAIDA = frozenset(
@@ -38,6 +42,7 @@ TIPOS_SAIDA = frozenset(
         TipoTransacao.transferencia_saida,
         TipoTransacao.pagamento_fatura,
         TipoTransacao.aporte,
+        TipoTransacao.ajuste_saida,
     }
 )
 

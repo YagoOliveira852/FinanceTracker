@@ -228,7 +228,7 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 |---|---|---|
 | id | uuid PK | |
 | conta_id | uuid FK | |
-| tipo | text | entradas: `receita` \| `transferencia_entrada` \| `resgate` \| `estorno`; saídas: `despesa` \| `transferencia_saida` \| `pagamento_fatura` \| `aporte` |
+| tipo | text | entradas: `receita` \| `transferencia_entrada` \| `resgate` \| `estorno` \| `ajuste_entrada`; saídas: `despesa` \| `transferencia_saida` \| `pagamento_fatura` \| `aporte` \| `ajuste_saida` |
 | valor | numeric(14,2) | sempre > 0 |
 | data | date | data da operação (compra/Pix) |
 | descricao_original | text | como veio do banco, nunca editada |
@@ -247,7 +247,7 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 | removida_na_origem_em | timestamptz null | transação confirmada que sumiu da Pluggy na janela de reconciliação; alerta na revisão |
 | unique | (conta_id, fonte, id_externo) | coração da idempotência |
 
-**Sem tipo `ajuste` por enquanto:** com valor sempre positivo, um ajuste precisa dizer se entra ou sai. Fica para a conferência de saldo (snapshots), que decide entre dois tipos (`ajuste_entrada`/`ajuste_saida`) ou outra forma; até lá o `CHECK` não aceita `ajuste`.
+**Ajuste em dois tipos:** com valor sempre positivo, a correção de saldo na conferência com o banco (snapshots) precisa dizer se entra ou sai: `ajuste_entrada` (sobrou dinheiro) e `ajuste_saida` (faltou). Assim o ajuste segue a regra de sinal como qualquer outro tipo e fica no histórico.
 
 **Lançamento manual** entra com `fonte = manual`, `status = confirmada`, `descricao_original = descricao` e `id_externo` nulo.
 

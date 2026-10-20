@@ -215,8 +215,10 @@ def test_saldo_soma_entradas_e_subtrai_saidas_confirmadas_a_partir_da_data_inici
     _transacao(sessao, conta["id"], "transferencia_saida", "200.00", depois)
     _transacao(sessao, conta["id"], "pagamento_fatura", "100.00", depois)
     _transacao(sessao, conta["id"], "estorno", "10.00", depois)
+    _transacao(sessao, conta["id"], "ajuste_entrada", "30.00", depois)
+    _transacao(sessao, conta["id"], "ajuste_saida", "5.00", depois)
 
-    assert api.get(f"/contas/{conta['id']}").json()["saldo_atual"] == "1372.60"
+    assert api.get(f"/contas/{conta['id']}").json()["saldo_atual"] == "1397.60"
 
 
 def test_transacao_no_dia_do_saldo_inicial_entra_no_saldo(api, sessao):
