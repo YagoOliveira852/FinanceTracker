@@ -34,8 +34,14 @@ def test_recusa_email_invalido(sessao, email):
 
 
 def test_recusa_senha_curta(sessao):
-    with pytest.raises(service.DadosInvalidos, match="pelo menos 12 caracteres"):
-        service.criar_usuario(sessao, "pessoa@exemplo.com", "curta-11ch")
+    with pytest.raises(service.DadosInvalidos, match="pelo menos 8 caracteres"):
+        service.criar_usuario(sessao, "pessoa@exemplo.com", "curta7")
+
+
+def test_aceita_senha_com_exatamente_8_caracteres(sessao):
+    usuario = service.criar_usuario(sessao, "pessoa@exemplo.com", "oito1234")
+
+    assert verificar_senha("oito1234", usuario.senha_hash)
 
 
 def test_recusa_senha_que_o_login_nao_aceitaria(sessao):

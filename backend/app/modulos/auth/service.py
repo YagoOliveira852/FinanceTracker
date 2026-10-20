@@ -23,7 +23,7 @@ from app.core.seguranca import (
 )
 from app.modulos.auth.models import RefreshToken, Usuario
 
-TAMANHO_MINIMO_SENHA = 12
+TAMANHO_MINIMO_SENHA = 8
 # O login recusa senha maior que isso (ver schemas.py); criar uma seria inútil.
 TAMANHO_MAXIMO_SENHA = 256
 

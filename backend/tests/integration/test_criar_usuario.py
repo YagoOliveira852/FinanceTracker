@@ -46,7 +46,7 @@ def test_senha_curta_mostra_o_motivo(sessao, digitar, capsys):
 
     assert criar_usuario.executar(sessao) == 1
 
-    assert "pelo menos 12 caracteres" in capsys.readouterr().err
+    assert "pelo menos 8 caracteres" in capsys.readouterr().err
 
 
 def test_segundo_usuario_e_recusado(sessao, digitar, capsys):
