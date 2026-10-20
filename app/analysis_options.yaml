@@ -1,0 +1,9 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    # Cliente gerado do OpenAPI: não é código nosso (ver scripts/gerar-cliente-api.sh).
+    - packages/api_client/**
+    - "**/*.g.dart"

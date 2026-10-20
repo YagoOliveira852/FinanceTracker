@@ -1,0 +1,22 @@
+name: financas
+description: "App de finanças pessoais."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  api_client:
+    path: packages/api_client
+  dio: ^5.11.1
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

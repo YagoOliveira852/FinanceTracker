@@ -28,3 +28,7 @@ Dinheiro nunca é float no projeto: `Decimal` no Python, `NUMERIC(14,2)` no Post
 - Duas bibliotecas de codegen convivem no app, mas o `built_value` fica confinado ao pacote gerado.
 - O repositório é uma camada anticorrupção: mudanças na API quebram só a conversão, não as telas.
 - Testes do backend verificam o schema gerado (campo monetário = `string`/`decimal`) para impedir regressões.
+
+## Adendo (2026-10-20): `decimal` vira `double` no gerador
+
+Na primeira geração, o `dart-dio` (openapi-generator 7.26.0) traduziu `{"type": "string", "format": "decimal"}` para `double`, apesar do contrato correto. O script `scripts/gerar-cliente-api.sh` passa `--type-mappings decimal=String`, e o cliente gerado recebe `String`, como previsto aqui. O teste `app/test/core/api/cliente_api_test.dart` falha se o mapeamento sumir.

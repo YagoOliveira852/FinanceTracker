@@ -1,0 +1,47 @@
+# Codegen, lint e testes do app Flutter. O job se chama "app": é esse nome que
+# entra como check obrigatório no ruleset da main.
+# Sem filtro de paths de propósito: check obrigatório que não roda trava o PR.
+name: app
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: app
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: 3.47.7
+          cache: true
+
+      # O cliente gerado é commitado sem os .g.dart: o build_runner do pacote os recria.
+      - name: build_runner do cliente da API
+        working-directory: app/packages/api_client
+        run: |
+          dart pub get
+          dart run build_runner build
+
+      # --enforce-lockfile: falha se o pubspec.lock não bate com o pubspec.yaml.
+      - run: flutter pub get --enforce-lockfile
+
+      - run: flutter analyze
+
+      - run: flutter test
