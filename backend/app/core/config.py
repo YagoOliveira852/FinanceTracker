@@ -3,7 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import PostgresDsn
+from pydantic import Field, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ARQUIVO_ENV = Path(__file__).resolve().parents[2] / ".env"
@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     )
 
     database_url: PostgresDsn
+    # SecretStr: não aparece em repr nem em log por engano.
+    jwt_secret: SecretStr = Field(min_length=32)
+    access_token_minutos: int = Field(default=15, gt=0)
+    refresh_token_dias: int = Field(default=30, gt=0)
 
 
 @lru_cache
