@@ -164,14 +164,14 @@ Access token: JWT HS256 assinado com `JWT_SECRET`, com `sub` (id do usuário), `
 | instituicao_id | uuid FK null | obrigatório, exceto na carteira (`CHECK`); no cadastro vem o nome, e o backend reaproveita a instituição de mesmo nome (sem diferenciar maiúsculas) ou cria uma |
 | nome | text | ex.: "Nubank conta" |
 | tipo | text | `corrente` \| `cartao_credito` \| `carteira` (dinheiro) |
-| saldo_inicial | numeric(14,2) | saldo ao fim do dia abaixo; pode ser negativo |
+| saldo_inicial | numeric(14,2) | saldo no começo do dia abaixo; pode ser negativo |
 | data_saldo_inicial | date | ponto de partida dos cálculos; não pode ser depois de hoje |
 | ativa | bool | |
 | pluggy_account_id | text null unique | vínculo com a conta na Pluggy |
 | conexao_pluggy_id | uuid FK null | conexão que alimenta a conta; desativá-la não desativa a conta |
 | pluggy_numero_final | text null | 4 últimos dígitos do número na Pluggy; sugere o vínculo na renovação |
 
-Saldo atual = `saldo_inicial` + soma das transações confirmadas após `data_saldo_inicial` (entradas somam, saídas subtraem; transação no próprio dia já está no saldo inicial e não entra). Não é guardado: o service calcula numa consulta agregada só para a lista inteira. O "total disponível" da tela de contas soma correntes e carteiras ativas; cartão não entra. Saldo informado pela Pluggy fica em `snapshot_saldo` e serve para conferir se falta algum lançamento.
+Saldo atual = `saldo_inicial` + soma das transações confirmadas a partir de `data_saldo_inicial`, inclusive (entradas somam, saídas subtraem). Transação do próprio dia entra: o caso real é criar a conta e lançar algo no mesmo dia; o risco inverso (transação do dia que já estava no saldo informado) é raro e aparece na conferência. Não é guardado: o service calcula numa consulta agregada só para a lista inteira. O "total disponível" da tela de contas soma correntes e carteiras ativas; cartão não entra. Saldo informado pela Pluggy fica em `snapshot_saldo` e serve para conferir se falta algum lançamento.
 
 **cartao** (1:1 com conta do tipo `cartao_credito`)
 | coluna | tipo | nota |

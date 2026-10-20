@@ -1,8 +1,8 @@
 """Regras de contas: cadastro e saldo atual.
 
-O saldo não é guardado: é calculado a partir de `saldo_inicial` e das
-transações confirmadas depois de `data_saldo_inicial`, numa consulta só para a
-lista inteira (sem uma consulta por conta).
+O saldo não é guardado: é calculado com `saldo_inicial` e as transações
+confirmadas a partir de `data_saldo_inicial`, numa consulta só para a lista
+inteira (sem uma consulta por conta).
 """
 
 import uuid
@@ -105,8 +105,8 @@ def _obter_ou_criar_instituicao(sessao: Session, nome: str) -> Instituicao:
 def _contas_com_saldo() -> Select:
     """SELECT de (Conta, saldo_atual).
 
-    Transação no próprio dia `data_saldo_inicial` não entra: o saldo inicial é o
-    do fim daquele dia e já a inclui.
+    O saldo inicial é o do começo do dia `data_saldo_inicial`: transação nesse
+    mesmo dia entra no saldo (é o caso de quem cria a conta e já lança algo).
     """
     movimento = case(
         (Transacao.tipo.in_([tipo.value for tipo in TIPOS_ENTRADA]), Transacao.valor),
@@ -117,7 +117,7 @@ def _contas_com_saldo() -> Select:
         .join(Conta, Conta.id == Transacao.conta_id)
         .where(
             Transacao.status == StatusTransacao.confirmada.value,
-            Transacao.data > Conta.data_saldo_inicial,
+            Transacao.data >= Conta.data_saldo_inicial,
         )
         .group_by(Transacao.conta_id)
         .subquery()

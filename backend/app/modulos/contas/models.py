@@ -31,7 +31,7 @@ class Conta(ComTimestamps, Base):
     """Conta corrente, cartão de crédito ou carteira (dinheiro em espécie).
 
     O saldo atual não é guardado: é `saldo_inicial` mais as transações
-    confirmadas depois de `data_saldo_inicial` (ver `contas/service.py`).
+    confirmadas a partir de `data_saldo_inicial` (ver `contas/service.py`).
     """
 
     __tablename__ = "conta"
