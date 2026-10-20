@@ -38,7 +38,7 @@ class TransacoesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TransacaoSaida] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TransacaoSaida>> lancarTransacoesPost({ 
+  Future<Response<TransacaoSaida>> lancar({ 
     required TransacaoEntrada transacaoEntrada,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -141,7 +141,7 @@ class TransacoesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BuiltList<TransacaoSaida>] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BuiltList<TransacaoSaida>>> listarTransacoesGet({ 
+  Future<Response<BuiltList<TransacaoSaida>>> listar({ 
     String? contaId,
     Date? de,
     Date? ate,
@@ -231,7 +231,7 @@ class TransacoesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TransacaoSaida] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TransacaoSaida>> obterTransacoesTransacaoIdGet({ 
+  Future<Response<TransacaoSaida>> obter({ 
     required String transacaoId,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

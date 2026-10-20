@@ -50,10 +50,10 @@ import 'package:api_client/api_client.dart';
 final api = ApiClient().getAuthApi();
 
 try {
-    final response = await api.euAuthEuGet();
+    final response = await api.eu();
     print(response);
 } on DioException catch (e) {
-    print("Exception when calling AuthApi->euAuthEuGet: $e\n");
+    print("Exception when calling AuthApi->eu: $e\n");
 }
 
 ```
@@ -64,16 +64,16 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
-[*AuthApi*](doc/AuthApi.md) | [**euAuthEuGet**](doc/AuthApi.md#euautheuget) | **GET** /auth/eu | Eu
-[*AuthApi*](doc/AuthApi.md) | [**loginAuthLoginPost**](doc/AuthApi.md#loginauthloginpost) | **POST** /auth/login | Login
-[*AuthApi*](doc/AuthApi.md) | [**refreshAuthRefreshPost**](doc/AuthApi.md#refreshauthrefreshpost) | **POST** /auth/refresh | Refresh
-[*ContasApi*](doc/ContasApi.md) | [**criarContasPost**](doc/ContasApi.md#criarcontaspost) | **POST** /contas | Criar
-[*ContasApi*](doc/ContasApi.md) | [**listarContasGet**](doc/ContasApi.md#listarcontasget) | **GET** /contas | Listar
-[*ContasApi*](doc/ContasApi.md) | [**obterContasContaIdGet**](doc/ContasApi.md#obtercontascontaidget) | **GET** /contas/{conta_id} | Obter
-[*SaudeApi*](doc/SaudeApi.md) | [**saudeSaudeGet**](doc/SaudeApi.md#saudesaudeget) | **GET** /saude | Saude
-[*TransacoesApi*](doc/TransacoesApi.md) | [**lancarTransacoesPost**](doc/TransacoesApi.md#lancartransacoespost) | **POST** /transacoes | Lancar
-[*TransacoesApi*](doc/TransacoesApi.md) | [**listarTransacoesGet**](doc/TransacoesApi.md#listartransacoesget) | **GET** /transacoes | Listar
-[*TransacoesApi*](doc/TransacoesApi.md) | [**obterTransacoesTransacaoIdGet**](doc/TransacoesApi.md#obtertransacoestransacaoidget) | **GET** /transacoes/{transacao_id} | Obter
+[*AuthApi*](doc/AuthApi.md) | [**eu**](doc/AuthApi.md#eu) | **GET** /auth/eu | Eu
+[*AuthApi*](doc/AuthApi.md) | [**login**](doc/AuthApi.md#login) | **POST** /auth/login | Login
+[*AuthApi*](doc/AuthApi.md) | [**refresh**](doc/AuthApi.md#refresh) | **POST** /auth/refresh | Refresh
+[*ContasApi*](doc/ContasApi.md) | [**criar**](doc/ContasApi.md#criar) | **POST** /contas | Criar
+[*ContasApi*](doc/ContasApi.md) | [**listar**](doc/ContasApi.md#listar) | **GET** /contas | Listar
+[*ContasApi*](doc/ContasApi.md) | [**obter**](doc/ContasApi.md#obter) | **GET** /contas/{conta_id} | Obter
+[*SaudeApi*](doc/SaudeApi.md) | [**saude**](doc/SaudeApi.md#saude) | **GET** /saude | Saude
+[*TransacoesApi*](doc/TransacoesApi.md) | [**lancar**](doc/TransacoesApi.md#lancar) | **POST** /transacoes | Lancar
+[*TransacoesApi*](doc/TransacoesApi.md) | [**listar**](doc/TransacoesApi.md#listar) | **GET** /transacoes | Listar
+[*TransacoesApi*](doc/TransacoesApi.md) | [**obter**](doc/TransacoesApi.md#obter) | **GET** /transacoes/{transacao_id} | Obter
 
 
 ## Documentation For Models

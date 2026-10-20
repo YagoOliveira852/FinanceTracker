@@ -37,7 +37,7 @@ class ContasApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ContaSaida] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ContaSaida>> criarContasPost({ 
+  Future<Response<ContaSaida>> criar({ 
     required ContaEntrada contaEntrada,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -137,7 +137,7 @@ class ContasApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ContasResumo] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ContasResumo>> listarContasGet({ 
+  Future<Response<ContasResumo>> listar({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -217,7 +217,7 @@ class ContasApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ContaSaida] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ContaSaida>> obterContasContaIdGet({ 
+  Future<Response<ContaSaida>> obter({ 
     required String contaId,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

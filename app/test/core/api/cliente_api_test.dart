@@ -55,7 +55,7 @@ void main() {
     });
     cliente.dio.httpClientAdapter = adaptador;
 
-    final resposta = await cliente.getContasApi().listarContasGet();
+    final resposta = await cliente.getContasApi().listar();
 
     expect(adaptador.ultimaRequisicao!.uri.toString(),
         'http://api.exemplo.test/contas');
