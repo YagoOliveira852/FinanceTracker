@@ -24,7 +24,6 @@ class Instituicao(ComTimestamps, Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(Text, unique=True)
-    codigo_compe: Mapped[str | None] = mapped_column(Text)
 
 
 class Conta(ComTimestamps, Base):
