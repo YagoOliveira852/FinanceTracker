@@ -1,6 +1,8 @@
 """Dependências compartilhadas pelas rotas (`Depends`)."""
 
+from datetime import date, datetime
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -41,3 +43,12 @@ def _nao_autenticado(detail: str) -> HTTPException:
 
 
 UsuarioDep = Annotated[Usuario, Depends(get_usuario_atual)]
+
+
+def get_hoje(config: ConfigDep) -> date:
+    """Data de hoje no fuso do negócio (`TZ_NEGOCIO`). Os testes fixam a data
+    sobrescrevendo esta dependência."""
+    return datetime.now(ZoneInfo(config.tz_negocio)).date()
+
+
+HojeDep = Annotated[date, Depends(get_hoje)]

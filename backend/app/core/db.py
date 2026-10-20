@@ -2,9 +2,10 @@
 
 from collections.abc import Iterator
 from datetime import datetime
+from enum import StrEnum
 from functools import lru_cache
 
-from sqlalchemy import DateTime, Engine, MetaData, create_engine, func
+from sqlalchemy import CheckConstraint, DateTime, Engine, MetaData, create_engine, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 from app.core.config import get_settings
@@ -31,6 +32,17 @@ class ComTimestamps:
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+def check_enum(coluna: str, enum: type[StrEnum]) -> CheckConstraint:
+    """CHECK que limita uma coluna `text` aos valores do enum (`ck_<tabela>_<coluna>`).
+
+    Enums do domínio são `text` + CHECK, não enum nativo do Postgres. Ao mudar os
+    valores de um enum, a migration precisa ser escrita à mão: o autogenerate não
+    enxerga mudança em CHECK.
+    """
+    valores = ", ".join(f"'{membro.value}'" for membro in enum)
+    return CheckConstraint(f"{coluna} IN ({valores})", name=coluna)
 
 
 @lru_cache

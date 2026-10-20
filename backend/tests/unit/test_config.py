@@ -14,6 +14,7 @@ def ambiente_valido(monkeypatch):
     monkeypatch.setenv("JWT_SECRET", SEGREDO)
     monkeypatch.delenv("ACCESS_TOKEN_MINUTOS", raising=False)
     monkeypatch.delenv("REFRESH_TOKEN_DIAS", raising=False)
+    monkeypatch.delenv("TZ_NEGOCIO", raising=False)
 
 
 def test_le_database_url_do_ambiente():
@@ -78,3 +79,19 @@ def test_validade_dos_tokens_tem_padrao_e_pode_mudar(monkeypatch):
 
     assert (padrao.access_token_minutos, padrao.refresh_token_dias) == (15, 30)
     assert (alterado.access_token_minutos, alterado.refresh_token_dias) == (5, 7)
+
+
+def test_fuso_do_negocio_tem_padrao_e_pode_mudar(monkeypatch):
+    padrao = Settings(_env_file=None)
+    monkeypatch.setenv("TZ_NEGOCIO", "America/Sao_Paulo")
+
+    assert padrao.tz_negocio == "America/Fortaleza"
+    assert Settings(_env_file=None).tz_negocio == "America/Sao_Paulo"
+
+
+@pytest.mark.parametrize("fuso", ["America/Atlantida", "", "../etc"])
+def test_recusa_fuso_desconhecido(monkeypatch, fuso):
+    monkeypatch.setenv("TZ_NEGOCIO", fuso)
+
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)

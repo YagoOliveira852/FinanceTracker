@@ -5,7 +5,9 @@ acrescenta `campos`, com o caminho e a mensagem de cada campo inválido:
 
     {"detail": "Dados inválidos.", "campos": [{"campo": "body.valor", "mensagem": "..."}]}
 
-Nas rotas, use `HTTPException(status_code, detail="mensagem em pt-BR")`.
+Nas rotas, use `HTTPException(status_code, detail="mensagem em pt-BR")`. Nos
+services, uma regra de negócio que recusa um campo do corpo levanta
+`CampoInvalido("campo", "mensagem")`: vira o mesmo 422, com `campo` = `body.campo`.
 """
 
 from collections.abc import Mapping
@@ -44,12 +46,16 @@ MENSAGENS_VALIDACAO = {
     "extra_forbidden": "Campo não permitido.",
     "json_invalid": "JSON inválido.",
     "string_type": "Deve ser um texto.",
+    "string_too_short": "Texto curto demais.",
     "string_too_long": "Texto longo demais.",
+    "literal_error": "Opção inválida.",
+    "enum": "Opção inválida.",
     "int_type": "Deve ser um número inteiro.",
     "int_parsing": "Deve ser um número inteiro.",
     "bool_type": "Deve ser verdadeiro ou falso.",
     "bool_parsing": "Deve ser verdadeiro ou falso.",
     "date_type": "Deve ser uma data no formato AAAA-MM-DD.",
+    "date_parsing": "Deve ser uma data no formato AAAA-MM-DD.",
     "date_from_datetime_parsing": "Deve ser uma data no formato AAAA-MM-DD.",
     "uuid_type": "Deve ser um UUID.",
     "uuid_parsing": "Deve ser um UUID.",
@@ -57,6 +63,20 @@ MENSAGENS_VALIDACAO = {
 
 MENSAGEM_ERRO_INTERNO = "Erro interno do servidor."
 MENSAGEM_DADOS_INVALIDOS = "Dados inválidos."
+MENSAGEM_TEXTO_VAZIO = "Não pode ficar em branco."
+
+
+class CampoInvalido(Exception):
+    """Regra de negócio recusou um campo do corpo da requisição (vira 422).
+
+    Deixa o service apontar o campo sem saber de HTTP, no mesmo formato do erro
+    de validação do Pydantic.
+    """
+
+    def __init__(self, campo: str, mensagem: str) -> None:
+        super().__init__(mensagem)
+        self.campo = campo
+        self.mensagem = mensagem
 
 
 def _resposta(
@@ -89,10 +109,25 @@ def _tratar_validacao(_: Request, exc: RequestValidationError) -> JSONResponse:
     campos = [
         ErroCampo(
             campo=".".join(str(parte) for parte in erro["loc"]),
-            mensagem=MENSAGENS_VALIDACAO.get(erro["type"], erro["msg"]),
+            mensagem=_mensagem_validacao(erro),
         )
         for erro in exc.errors()
     ]
+    return _dados_invalidos(campos)
+
+
+def _mensagem_validacao(erro: Mapping) -> str:
+    # min_length=1 é o jeito de exigir texto preenchido: a mensagem diz isso.
+    if erro["type"] == "string_too_short" and erro.get("ctx", {}).get("min_length") == 1:
+        return MENSAGEM_TEXTO_VAZIO
+    return MENSAGENS_VALIDACAO.get(erro["type"], erro["msg"])
+
+
+def _tratar_campo_invalido(_: Request, exc: CampoInvalido) -> JSONResponse:
+    return _dados_invalidos([ErroCampo(campo=f"body.{exc.campo}", mensagem=exc.mensagem)])
+
+
+def _dados_invalidos(campos: list[ErroCampo]) -> JSONResponse:
     return _resposta(
         HTTPStatus.UNPROCESSABLE_ENTITY,
         RespostaErro(detail=MENSAGEM_DADOS_INVALIDOS, campos=campos),
@@ -107,4 +142,5 @@ def _tratar_erro_interno(_: Request, __: Exception) -> JSONResponse:
 def registrar_tratadores_de_erro(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, _tratar_http)
     app.add_exception_handler(RequestValidationError, _tratar_validacao)
+    app.add_exception_handler(CampoInvalido, _tratar_campo_invalido)
     app.add_exception_handler(Exception, _tratar_erro_interno)

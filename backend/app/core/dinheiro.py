@@ -8,15 +8,16 @@
   na saída. Assim o FastAPI não duplica schemas (`XInput`/`XOutput`) e o cliente
   Dart recebe `String`. Ver spec `2026-10-19-dinheiro-contrato-api-design.md`.
 
-O sinal é permitido (saldo pode ser negativo); campos que exigem valor positivo
-restringem isso no próprio schema.
+O sinal é permitido (saldo pode ser negativo). Campo que só aceita valor maior
+que zero (ex.: valor de transação, cujo sentido vem do `tipo`) usa
+`DinheiroPositivo`.
 """
 
 import re
 from decimal import Decimal
 from typing import Annotated, Any
 
-from pydantic import BeforeValidator, PlainSerializer, WithJsonSchema
+from pydantic import AfterValidator, BeforeValidator, PlainSerializer, WithJsonSchema
 from pydantic_core import PydanticCustomError
 
 _FORMATO = re.compile(r"-?\d+(\.\d{1,2})?")
@@ -54,3 +55,12 @@ Dinheiro = Annotated[
     PlainSerializer(_serializar, return_type=str),
     WithJsonSchema({"type": "string", "format": "decimal"}),
 ]
+
+
+def _exigir_positivo(valor: Decimal) -> Decimal:
+    if valor <= 0:
+        raise _erro("Informe um valor maior que zero.")
+    return valor
+
+
+DinheiroPositivo = Annotated[Dinheiro, AfterValidator(_exigir_positivo)]
