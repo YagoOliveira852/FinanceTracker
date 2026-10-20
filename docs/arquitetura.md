@@ -155,7 +155,7 @@ Access token: JWT HS256 assinado com `JWT_SECRET`, com `sub` (id do usuário), `
 
 ### 7.2 Contas e cartões
 
-**instituicao** — `id`, `nome` (ex.: Nubank, Mercado Pago), `codigo_compe` (null).
+**instituicao** — `id`, `nome` (unique; ex.: Nubank, Mercado Pago). Sem código COMPE: nenhuma fonte precisa dele (a conta da importação é escolhida pelo usuário, e a Pluggy liga pelo id da conta); entra com migration se algum dia for útil.
 
 **conta**
 | coluna | tipo | nota |
