@@ -110,7 +110,8 @@ cd app && flutter analyze && flutter test
 - **Datas:** `date` para datas de negócio (compra, competência, vencimento); `timestamptz` só para auditoria (`criado_em`, `atualizado_em`, sync). Fuso de referência: `America/Fortaleza`.
 - **Enums** como `text` + `CHECK` no banco (não enum nativo do Postgres) e `StrEnum` no Python.
 - **Ids:** UUID em todas as tabelas; rotas validam o id pelo tipo (`uuid.UUID` no parâmetro) — id malformado é 422, nunca 500.
-- **Erros da API:** `HTTPException` com `detail` em pt-BR; manter um formato único definido em `app/core/erros.py`.
+- **Erros da API:** `HTTPException` com `detail` em pt-BR; manter um formato único definido em `app/core/erros.py`. Regra de negócio que recusa um campo do corpo: o service levanta `CampoInvalido("campo", "mensagem")`, que vira 422 com `campos` (mesmo formato da validação do Pydantic).
+- **"Hoje"** vem de `HojeDep` (`core/deps.py`), no fuso `TZ_NEGOCIO`; nunca `date.today()` (a VPS roda em UTC).
 - **Dependências Python** via `uv add` (dev: `uv add --dev`); `uv.lock` versionado; CI instala com `--locked`.
 - **Commits:** `feat:` / `fix:` / `test:` / `chore:` / `docs:`, em passos pequenos, teste junto com a mudança.
 
@@ -194,7 +195,7 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 
 ## Testing & CI
 
-- **Backend:** pytest contra **Postgres real** via testcontainers, nunca SQLite — `NUMERIC` e `CHECK` precisam se comportar como em produção. Fixtures em `backend/tests/conftest.py`.
+- **Backend:** pytest contra **Postgres real** via testcontainers, nunca SQLite — `NUMERIC` e `CHECK` precisam se comportar como em produção. Fixtures em `backend/tests/conftest.py`: `client` (sessão e config do teste, "hoje" fixo em `tests.utils.HOJE`) e `api` (o `client` já com o Bearer de um usuário fictício).
   - `tests/unit/` — `calculo.py`, parsers, datas de fatura/feriado. Sem banco, rápidos.
   - `tests/integration/` — endpoints via `TestClient` com banco real e transação revertida por teste.
   - `tests/fixtures/` — OFX/CSV **fictícios**. Nunca extratos reais.
