@@ -9,6 +9,7 @@ Nada aqui lê o `backend/.env`: a URL do banco vem do container.
 """
 
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from alembic import command
@@ -19,8 +20,11 @@ from testcontainers.community.postgres import PostgresContainer
 
 from app.core.config import Settings, get_settings
 from app.core.db import get_sessao
+from app.core.deps import get_hoje
+from app.core.seguranca import criar_access_token
 from app.main import app
-from tests.utils import alembic_config
+from app.modulos.auth import service as auth_service
+from tests.utils import HOJE, alembic_config
 
 IMAGEM_POSTGRES = "postgres:16-alpine"
 SEGREDO_JWT_TESTE = "segredo-ficticio-de-teste-com-32-caracteres-ou-mais"
@@ -71,11 +75,23 @@ def config(url_banco: str) -> Settings:
 
 @pytest.fixture
 def client(sessao: Session, config: Settings) -> Iterator[TestClient]:
-    """TestClient cujas rotas usam a sessão e a configuração do teste."""
+    """TestClient cujas rotas usam a sessão, a configuração e o "hoje" do teste."""
     app.dependency_overrides[get_sessao] = lambda: sessao
     app.dependency_overrides[get_settings] = lambda: config
+    app.dependency_overrides[get_hoje] = lambda: HOJE
     try:
         with TestClient(app) as client:
             yield client
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def api(client: TestClient, sessao: Session, config: Settings) -> TestClient:
+    """O `client` já autenticado: um usuário fictício e o Bearer dele no cabeçalho."""
+    usuario = auth_service.criar_usuario(sessao, "pessoa@exemplo.com", "senha-ficticia-123")
+    token = criar_access_token(
+        usuario.id, config.jwt_secret.get_secret_value(), timedelta(minutes=15), datetime.now(UTC)
+    )
+    client.headers["Authorization"] = f"Bearer {token}"
+    return client
