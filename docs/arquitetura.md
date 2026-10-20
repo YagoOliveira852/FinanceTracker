@@ -38,10 +38,11 @@ O app precisa funcionar sem depender de disciplina de registro: a maior parte do
 **Fluxo:**
 1. O usuário cria conta em meu.pluggy.ai e autoriza cada banco pelo fluxo oficial de consentimento.
 2. Cria uma aplicação de desenvolvimento em dashboard.pluggy.ai e obtém client id/secret (uso pessoal: gratuito, sem due diligence, até 5 conexões; não precisa do "Unlock real data").
-3. Na **Demo** da aplicação, conecta o conector **MeuPluggy** (não o do banco), uma vez por banco, e guarda cada `itemId` — não há endpoint para listá-los.
-4. O backend troca client id/secret por API key (`POST /auth`, header `X-API-KEY`) e lê contas, saldos, faturas, transações (`GET /v2/transactions`) e investimentos.
+3. Na **Demo** da aplicação, conecta o conector **MeuPluggy** (não o do banco), uma vez por banco, e copia cada `itemId` — não há endpoint para listá-los.
+4. No app, em Mais → Open Finance → "Adicionar conexão", cola o `itemId`; o backend valida com `GET /items/{id}`, lista as contas do item e o usuário cria contas novas ou vincula a contas existentes. A renovação anual usa o mesmo campo.
+5. O backend troca client id/secret por API key (`POST /auth`, header `X-API-KEY`) e lê contas, saldos, faturas, transações (`GET /v2/transactions`) e investimentos.
 
-Resultado completo do spike e decisões de sync: spec `docs/superpowers/specs/2026-10-19-pluggy-spike-design.md`.
+Resultado completo do spike e decisões de sync: spec `docs/superpowers/specs/2026-10-19-pluggy-spike-design.md`. Cadastro de conexões, vínculo de contas, "Buscar agora" e estado do sync: spec `docs/superpowers/specs/2026-10-20-conexoes-pluggy-design.md`.
 
 **Comportamento que afeta a arquitetura:**
 - Dois Items: o **original** (no Meu Pluggy, atualizado a cada 24h) e o **proxy** (na aplicação), que espelha o original, **não tem auto-sync próprio e não pode ser atualizado via API**.
@@ -167,6 +168,8 @@ Access token: JWT HS256 assinado com `JWT_SECRET`, com `sub` (id do usuário), `
 | data_saldo_inicial | date | ponto de partida dos cálculos |
 | ativa | bool | |
 | pluggy_account_id | text null unique | vínculo com a conta na Pluggy |
+| conexao_pluggy_id | uuid FK null | conexão que alimenta a conta; desativá-la não desativa a conta |
+| pluggy_numero_final | text null | 4 últimos dígitos do número na Pluggy; sugere o vínculo na renovação |
 
 Saldo atual = `saldo_inicial` + soma das transações confirmadas após `data_saldo_inicial`. Saldo informado pela Pluggy fica em `snapshot_saldo` e serve para conferir se falta algum lançamento.
 
@@ -341,12 +344,16 @@ Uso: conferir saldos, rendimento real (`saldo atual − saldo anterior − aport
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
-| item_id | text unique | item proxy MeuPluggy |
+| item_id | text unique | item proxy MeuPluggy, cadastrado pelo app; trocado na renovação |
 | instituicao_id | uuid FK | |
 | status | text | como a Pluggy informa |
+| ativa | bool | desativada = o sync não lê; sem exclusão pelo app |
 | consentimento_expira_em | timestamptz null | para o aviso |
-| ultimo_sync_em | timestamptz null | |
+| ultimo_sync_em | timestamptz null | último sync bem-sucedido |
+| ultima_tentativa_em | timestamptz null | última execução, com ou sem sucesso; limita o "Buscar agora" (1×/hora) |
 | ultimo_erro | text null | |
+
+O estado do sync aparece na tela Open Finance e, só quando há problema, num card no Início (consentimento vencido > sync com erro > mais de 30 h sem dados > consentimento vencendo em até 30 dias). Regras na spec `2026-10-20-conexoes-pluggy-design.md`.
 
 ### 7.7 Relacionamentos (resumo)
 
