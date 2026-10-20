@@ -17,11 +17,13 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 from testcontainers.community.postgres import PostgresContainer
 
+from app.core.config import Settings, get_settings
 from app.core.db import get_sessao
 from app.main import app
 from tests.utils import alembic_config
 
 IMAGEM_POSTGRES = "postgres:16-alpine"
+SEGREDO_JWT_TESTE = "segredo-ficticio-de-teste-com-32-caracteres-ou-mais"
 
 
 @pytest.fixture(scope="session")
@@ -56,9 +58,22 @@ def sessao(engine: Engine) -> Iterator[Session]:
 
 
 @pytest.fixture
-def client(sessao: Session) -> Iterator[TestClient]:
-    """TestClient cujas rotas usam a sessão do teste no lugar da real."""
+def config(url_banco: str) -> Settings:
+    """Configuração fictícia montada aqui, sem ler o .env nem o ambiente."""
+    return Settings(
+        _env_file=None,
+        database_url=url_banco,
+        jwt_secret=SEGREDO_JWT_TESTE,
+        access_token_minutos=15,
+        refresh_token_dias=30,
+    )
+
+
+@pytest.fixture
+def client(sessao: Session, config: Settings) -> Iterator[TestClient]:
+    """TestClient cujas rotas usam a sessão e a configuração do teste."""
     app.dependency_overrides[get_sessao] = lambda: sessao
+    app.dependency_overrides[get_settings] = lambda: config
     try:
         with TestClient(app) as client:
             yield client

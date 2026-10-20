@@ -55,7 +55,7 @@ docker compose down              # para (NUNCA use -v: apaga os dados)
 
 ```bash
 cd backend
-cp .env.example .env                              # 1ª vez: DATABASE_URL com a mesma senha do compose
+cp .env.example .env                              # 1ª vez: DATABASE_URL (senha do compose) e JWT_SECRET
 uv sync                                           # instala o Python 3.12 e as dependências (lock)
 uv run alembic upgrade head                       # aplica migrations
 uv run fastapi dev app/main.py                    # API com hot reload em :8000
@@ -143,7 +143,10 @@ Bearer, sem cookie e sem CSRF (cliente é um app nativo, não um navegador).
 2. O app guarda os dois no flutter_secure_storage; o dio envia `Authorization: Bearer`.
 3. Em 401, o dio chama `POST /auth/refresh` e repete a requisição.
 4. **Refresh com rotação:** cada uso revoga o anterior (`refresh_token.revogado_em`); o banco guarda só o hash. Reuso de token revogado derruba todas as sessões.
-5. Biometria (local_auth) só desbloqueia o app; não substitui o login.
+   - Por isso o app faz **um refresh por vez** (fila no interceptor do dio): dois refresh simultâneos com o mesmo token contam como reuso e derrubam tudo.
+   - 401 do próprio `/auth/login` ou `/auth/refresh` não dispara refresh: volta para a tela de login.
+5. Rotas protegidas recebem `UsuarioDep` (`core/deps.py`); `GET /auth/eu` devolve o usuário do token.
+6. Biometria (local_auth) só desbloqueia o app; não substitui o login.
 
 ### Fontes de dados
 

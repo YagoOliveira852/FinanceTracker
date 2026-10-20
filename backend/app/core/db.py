@@ -1,10 +1,11 @@
 """Engine, sessão e `Base` dos modelos SQLAlchemy."""
 
 from collections.abc import Iterator
+from datetime import datetime
 from functools import lru_cache
 
-from sqlalchemy import Engine, MetaData, create_engine
-from sqlalchemy.orm import DeclarativeBase, Session
+from sqlalchemy import DateTime, Engine, MetaData, create_engine, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 from app.core.config import get_settings
 
@@ -21,6 +22,15 @@ CONVENCAO_DE_NOMES = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=CONVENCAO_DE_NOMES)
+
+
+class ComTimestamps:
+    """`criado_em`/`atualizado_em` (timestamptz) preenchidos pelo banco."""
+
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 @lru_cache

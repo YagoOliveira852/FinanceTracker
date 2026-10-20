@@ -44,6 +44,7 @@ MENSAGENS_VALIDACAO = {
     "extra_forbidden": "Campo não permitido.",
     "json_invalid": "JSON inválido.",
     "string_type": "Deve ser um texto.",
+    "string_too_long": "Texto longo demais.",
     "int_type": "Deve ser um número inteiro.",
     "int_parsing": "Deve ser um número inteiro.",
     "bool_type": "Deve ser verdadeiro ou falso.",

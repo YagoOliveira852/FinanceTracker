@@ -138,17 +138,19 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
-| email | text unique | |
+| email | text unique | gravado em minúsculas, sem espaços nas pontas |
 | senha_hash | text | argon2 |
 
 **refresh_token**
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
-| usuario_id | uuid FK | |
-| token_hash | text unique | guarda só o hash |
+| usuario_id | uuid FK | `ON DELETE CASCADE`, indexado |
+| token_hash | text unique | SHA-256 do token; o token em si nunca é guardado |
 | expira_em | timestamptz | |
-| revogado_em | timestamptz null | rotação: cada uso revoga o anterior |
+| revogado_em | timestamptz null | rotação: cada uso revoga o anterior; reuso de um revogado revoga todos |
+
+Access token: JWT HS256 assinado com `JWT_SECRET`, com `sub` (id do usuário), `tipo=access`, `iat` e `exp`; não é guardado no banco. Senha entre 12 e 256 caracteres. Explicação em `docs/explicacoes/02-autenticacao-tokens.md`.
 
 ### 7.2 Contas e cartões
 
