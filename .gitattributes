@@ -1,0 +1,5 @@
+# Scripts de shell sempre com LF: com CRLF o bash quebra (core.autocrlf no Windows).
+*.sh text eol=lf
+
+# Cliente gerado pelo openapi-generator: o GitHub recolhe no diff dos PRs.
+app/packages/api_client/** linguist-generated=true
