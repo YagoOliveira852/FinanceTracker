@@ -166,8 +166,9 @@ Manual, importação OFX/CSV e Open Finance via Pluggy. Tudo que não é manual 
 - Cada atualização traz **sobreposição de 4 dias** → deduplicar pelo id da Pluggy. **Não há id estável** (sem `providerId`): transação da janela que sumiu da API é removida se rascunho, ou marcada `removida_na_origem_em` se confirmada.
 - **`date` vem em UTC com horário** → converter para `America/Fortaleza` antes de truncar. No cartão o sinal de `amount` é o inverso da conta; use `type`.
 - Uso pessoal: autorização de 1 ano, renovada à mão; a renovação pode gerar **itemId novo**, religado à conexão existente. Detalhes na spec `2026-10-19-pluggy-spike-design.md`.
+- **Sem endpoint para listar itens:** o `itemId` é colado no app (Mais → Open Finance), validado com `GET /items/{id}`; cada conta da Pluggy vira conta nova ou é vinculada a uma existente. Conexão só é desativada, nunca excluída. "Buscar agora" roda o nosso sync no máximo 1×/hora. Spec `2026-10-20-conexoes-pluggy-design.md`.
 - `GET /items/{id}/resources` diz o que o banco realmente compartilhou; consentimento tem validade — o app avisa antes de expirar (`conexao_pluggy.consentimento_expira_em`).
-- **Somente leitura.** Cliente em `modulos/pluggy/client.py` expõe só métodos GET (além do `/auth`).
+- **Somente leitura na Pluggy.** Cliente em `modulos/pluggy/client.py` expõe só métodos GET (além do `/auth`). Os endpoints de escrita de conexões e vínculos gravam só no nosso banco.
 
 ## Environment Variables
 
@@ -208,6 +209,11 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 
 As telas são desenhadas no **Claude Design** antes de implementadas, sempre com **dados fictícios**. Cores, tipografia e espaçamentos viram tokens em `app/lib/app/tema.dart`; as telas viram widgets em `features/<feature>/ui/`. Os links dos designs ficam no `CLAUDE.local.md`.
 
+- **Um canvas só**, uma página por feature, usando o design system do projeto (claro e escuro em cada tela).
+- **Fluxo:** o Claude Code desenha o rascunho direto no canvas a partir das specs; os ajustes vêm pelo chat (ou à mão no Claude Design, para detalhes visuais).
+- **Um card "Design · …" no Trello por feature**, com prazo no domingo antes da semana do código. O card de código só vai para "Em andamento" com o design aprovado.
+- Tela que ainda não existe no app aparece como placeholder "em breve" (aba, item de menu ou opção), nunca escondida.
+
 ## Documentation Map
 
 | Onde | O quê |
@@ -222,7 +228,7 @@ As telas são desenhadas no **Claude Design** antes de implementadas, sempre com
 
 Nomes: `YYYY-MM-DD-<tema>-design.md` (specs), `YYYY-MM-DD-<tema>.md` (planos), `NN-<tema>.md` (explicações).
 
-Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e alerta; dinheiro no contrato da API; backend síncrono e usuário único; revisão e classificação; spike da Pluggy (sync, reconciliação, cartão, investimentos). Prevista: deduplicação entre fontes.
+Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e alerta; dinheiro no contrato da API; backend síncrono e usuário único; revisão e classificação; spike da Pluggy (sync, reconciliação, cartão, investimentos). Em 2026-10-20: conexões da Pluggy pelo app (itemId, vínculo de contas, estado do sync). Prevista: deduplicação entre fontes.
 
 ## Do / Don't
 
