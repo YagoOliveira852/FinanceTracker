@@ -207,7 +207,7 @@ def test_total_disponivel_ignora_conta_desativada_e_cartao(api, sessao):
 # --- saldo atual -------------------------------------------------------------
 
 
-def test_saldo_soma_entradas_e_subtrai_saidas_confirmadas_depois_da_data_inicial(api, sessao):
+def test_saldo_soma_entradas_e_subtrai_saidas_confirmadas_a_partir_da_data_inicial(api, sessao):
     conta = _criar(api, _corrente(saldo_inicial="1000.00", data_saldo_inicial="2026-10-01"))
     depois = date(2026, 10, 5)
     _transacao(sessao, conta["id"], "receita", "850.00", depois)
@@ -219,15 +219,23 @@ def test_saldo_soma_entradas_e_subtrai_saidas_confirmadas_depois_da_data_inicial
     assert api.get(f"/contas/{conta['id']}").json()["saldo_atual"] == "1372.60"
 
 
+def test_transacao_no_dia_do_saldo_inicial_entra_no_saldo(api, sessao):
+    """O saldo inicial é o do começo do dia: quem cria a conta e já lança uma
+    despesa do mesmo dia vê o saldo mudar."""
+    conta = _criar(api, _corrente(saldo_inicial="1000.00", data_saldo_inicial=HOJE.isoformat()))
+    _transacao(sessao, conta["id"], "despesa", "50.00", HOJE)
+
+    assert api.get(f"/contas/{conta['id']}").json()["saldo_atual"] == "950.00"
+
+
 @pytest.mark.parametrize(
     ("data", "status"),
     [
-        (date(2026, 10, 1), "confirmada"),  # no dia do saldo: já está no saldo inicial
         (date(2026, 9, 30), "confirmada"),  # antes do saldo inicial
         (date(2026, 10, 5), "rascunho"),  # ainda não revisada
         (date(2026, 10, 5), "ignorada"),
     ],
-    ids=["mesmo-dia", "antes", "rascunho", "ignorada"],
+    ids=["antes", "rascunho", "ignorada"],
 )
 def test_saldo_nao_conta_transacao(api, sessao, data, status):
     conta = _criar(api, _corrente(saldo_inicial="1000.00", data_saldo_inicial="2026-10-01"))

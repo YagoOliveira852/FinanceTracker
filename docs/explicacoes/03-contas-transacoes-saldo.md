@@ -27,7 +27,7 @@ O Pydantic recusa o que dá para validar olhando só o JSON, como valor com 3 ca
 
 ## Saldo calculado, não guardado
 
-`saldo_atual` não é coluna: é `saldo_inicial` mais as transações confirmadas depois de `data_saldo_inicial`. Guardar o saldo exigiria atualizá-lo em toda criação, edição, exclusão e confirmação de transação. Um caminho esquecido e ele fica errado para sempre. Calculado, ele está sempre certo.
+`saldo_atual` não é coluna: é `saldo_inicial` mais as transações confirmadas a partir de `data_saldo_inicial` (inclusive). Guardar o saldo exigiria atualizá-lo em toda criação, edição, exclusão e confirmação de transação. Um caminho esquecido e ele fica errado para sempre. Calculado, ele está sempre certo.
 
 O custo é a consulta, e é aí que mora o **N+1**. O jeito ingênuo é listar as contas e, para cada uma, rodar um `SUM`, o que dá 1 + N consultas. Aqui uma subconsulta agrupa as transações por conta e o SELECT principal faz um `LEFT JOIN` nela. Pelo mesmo motivo, `relationship(lazy="joined")` traz a instituição no mesmo SELECT, e não numa consulta por conta (o padrão `lazy="select"` do SQLAlchemy, que você já conhece).
 
