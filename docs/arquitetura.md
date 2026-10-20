@@ -99,7 +99,7 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 
 **App — Flutter (Android)**
 - go_router; Bloc/Cubit.
-- dio + freezed/json_serializable nos modelos e estados do app; cliente Dart gerado do OpenAPI (openapi-generator, alvo `dart-dio`, `built_value`) confinado em `packages/api_client/`. O repositório de cada feature converte um no outro (ver spec `2026-10-19-dinheiro-contrato-api`).
+- dio + freezed/json_serializable nos modelos e estados do app; cliente Dart gerado do OpenAPI (openapi-generator via Docker, alvo `dart-dio`, `built_value`, `decimal=String` para dinheiro chegar como `String`) confinado em `packages/api_client/`. O repositório de cada feature converte um no outro (ver spec `2026-10-19-dinheiro-contrato-api`).
 - drift (SQLite) como cache de leitura offline; servidor é a fonte da verdade.
 - fl_chart; local_auth (biometria); flutter_secure_storage (tokens); flutter_local_notifications (lembrete local nos dias de salário — não lê notificações de outros apps).
 
@@ -385,7 +385,7 @@ FinanceTracker/
 ├── docker-compose.yml            # Postgres local
 ├── .github/workflows/
 │   ├── backend.yml               # ruff + pytest
-│   ├── app.yml                   # flutter analyze + test; APK assinado em tag
+│   ├── app.yml                   # build_runner + flutter analyze + test; APK assinado em tag
 │   └── deploy.yml                # imagem no GHCR → Tailscale → ssh → docker compose up
 ├── docs/
 │   ├── arquitetura.md            # este documento

@@ -24,7 +24,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 
 - **Backend:** Python 3.12, FastAPI **síncrono** (rotas `def`, `Session`), Pydantic v2 (+ pydantic-settings), SQLAlchemy 2.0 (estilo tipado, `Mapped[]`), Alembic, psycopg 3, argon2 (senha), PyJWT, httpx (`httpx.Client` para Pluggy e BCB), holidays (feriados nacionais).
 - **App:** Flutter estável / Dart 3, go_router, flutter_bloc (Cubit), dio, freezed + json_serializable, `decimal`, drift (cache de leitura), fl_chart, local_auth, flutter_secure_storage, flutter_local_notifications.
-- **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator, alvo `dart-dio`, serialização `built_value`) em `app/packages/api_client/`.
+- **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator 7.26.0 via Docker, alvo `dart-dio`, serialização `built_value`, `decimal=String`) em `app/packages/api_client/`.
 - **Banco:** PostgreSQL 16.
 - **Ferramentas:** uv (dependências Python), ruff (lint/format), pytest + httpx + testcontainers.
 - **Deploy:** VPS acessível só pela Tailscale, Docker Compose puro (`api`, `db`, `jobs`), GitHub Actions → Tailscale → ssh → `docker compose up -d`. Backup diário criptografado (restic → Backblaze B2). APK assinado gerado pelo CI em tag. Ver `docs/superpowers/specs/2026-10-19-hospedagem-deploy-design.md`.
@@ -35,9 +35,9 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 
 ### Pré-requisitos da máquina
 
-- **Docker** (Desktop no Windows) com Compose.
+- **Docker** (Desktop no Windows) com Compose; também roda o openapi-generator.
 - **uv** — baixa sozinho o Python 3.12 fixado no projeto; ruff entra como dependência de dev.
-- **JDK 17+** em `JAVA_HOME` (Gradle do Android e openapi-generator).
+- **JDK 17+** em `JAVA_HOME` (Gradle do Android).
 - **Flutter** canal stable, com `flutter/bin` no `PATH`.
 - **Android SDK sem Android Studio:** command-line tools em `$ANDROID_HOME/cmdline-tools/latest`, mais `platform-tools`, `platforms;android-36` e `build-tools;36.0.0` via `sdkmanager`. Licenças: `flutter doctor --android-licenses`. O aviso do `sdkmanager` sugerindo o novo Android CLI pode ser ignorado: o Flutter ainda chama o `sdkmanager` diretamente.
 - Aparelho físico com depuração USB (ou Wi-Fi) é o alvo principal; emulador é opcional (`sdkmanager "emulator" "system-images;..."` + `avdmanager`).
@@ -84,12 +84,16 @@ uv run python -m app.jobs.atualizar_cdi
 bash scripts/gerar-cliente-api.sh   # exporta openapi.json da API e regera app/packages/api_client/
 ```
 
+Precisa de uv, Docker rodando e Dart. Não sobe a API nem lê o `backend/.env`. Commite o resultado (inclusive o `openapi.json`, que mostra a mudança de contrato no PR); os `.g.dart` ficam fora do git.
+
 ### App
 
 ```bash
-cd app
+cd app/packages/api_client
+dart pub get && dart run build_runner build                  # .g.dart do cliente gerado (1ª vez e após regerar)
+cd ../..                                                     # volta para app/
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs   # freezed / json_serializable / drift
+dart run build_runner build                                  # freezed / json_serializable / drift (quando o app tiver)
 flutter run --dart-define=API_URL=http://10.0.2.2:8000      # emulador Android
 flutter build apk --release --dart-define=API_URL=<url de produção>
 ```
@@ -202,7 +206,7 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
   - Pluggy é mockado nos testes (respx ou cliente fake); nenhum teste chama a API real.
 - **App:** `flutter test` para cubits (bloc_test) e formatação de dinheiro; widget tests nas telas de início e revisão.
 - **Testes herméticos:** não dependem de `.env` local nem de banco pré-populado.
-- **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`) e `app.yml` (build_runner + flutter analyze + flutter test); em tag `v*`, gera o APK assinado e anexa ao release.
+- **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`) e `app.yml` (Flutter 3.47.7: build_runner do cliente gerado + `flutter pub get --enforce-lockfile` + flutter analyze + flutter test); em tag `v*`, gera o APK assinado e anexa ao release (previsto, card S10).
 - **Ruleset "main protegida":** mudança só via PR (sem exigir aprovação: projeto solo), sem force-push e sem apagar a `main`. **Push direto na `main` é bloqueado.** Os checks `backend` e `app` entram como obrigatórios no ruleset assim que cada workflow rodar pela primeira vez (o nome do check só existe depois disso).
 - **Repositório:** público; branch apagada após o merge; secret scanning e push protection ativos (push com segredo é bloqueado); alertas e PRs de segurança do Dependabot ativos (passam pelo CI como qualquer PR); `GITHUB_TOKEN` só leitura; workflows de PR vindos de fork exigem aprovação para qualquer colaborador externo.
 
@@ -254,7 +258,9 @@ Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e aler
 
 **Emulador Android não enxerga `localhost` do PC.** Use `http://10.0.2.2:8000`. Em aparelho físico, use o IP da máquina na rede ou o endereço da Tailscale. Android bloqueia HTTP sem TLS por padrão em release — só HTTPS fora do debug.
 
-**`build_runner` precisa rodar de novo** depois de mudar classes freezed, json_serializable ou tabelas drift; erro de "part file not found" quase sempre é isso.
+**`build_runner` precisa rodar de novo** depois de mudar classes freezed, json_serializable ou tabelas drift, e depois de regerar o cliente da API; erro de "part file not found" quase sempre é isso. Os `.g.dart` não são commitados. A flag `--delete-conflicting-outputs` foi removida no `build_runner` atual (só gera aviso).
+
+**O `dart-dio` traduz `format: decimal` para `double`.** O contrato está certo (`string`/`decimal`), mas sem o `--type-mappings decimal=String` do script todo campo de dinheiro vira `double` no Dart, e a leitura de `"1234.56"` quebra em tempo de execução. Ao mexer no script, confira que `saldoAtual`/`valor` continuam `String` (o teste `app/test/core/api/cliente_api_test.dart` acusa).
 
 **Vencimento e fechamento caem em feriado/fim de semana.** Sempre calcular pela tabela `feriado` + regra do cartão; nunca assumir o dia fixo.
 
