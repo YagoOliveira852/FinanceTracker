@@ -9,11 +9,13 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.deps import SessaoDep
 from app.core.erros import RespostaErro, registrar_tratadores_de_erro
+from app.modulos.auth.router import router as auth_router
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Finanças pessoais", version="0.1.0")
 registrar_tratadores_de_erro(app)
+app.include_router(auth_router)
 
 
 class Saude(BaseModel):
