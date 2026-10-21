@@ -16,7 +16,15 @@ import '../../apoio/transacoes_falso.dart';
 
 final _hoje = DateTime(2026, 10, 20);
 
-Widget _app(Widget tela) => MaterialApp(theme: temaClaro(), home: tela);
+/// App mínimo. A tela de Transações ouve o ContasCubit do topo do app; aqui
+/// ele fica parado, e os testes que precisam dele passam o próprio.
+Widget _app(Widget tela) => MaterialApp(
+  theme: temaClaro(),
+  home: BlocProvider(
+    create: (_) => ContasCubit(ContasRepositorioFalso()),
+    child: tela,
+  ),
+);
 
 void main() {
   testWidgets('lista agrupada por dia, com sinal e rascunho', (tester) async {
@@ -234,5 +242,38 @@ void main() {
 
     expect(transacoes.lancados.single.contaId, 'c1');
     expect(find.byType(LancamentoTela), findsNothing);
+  });
+
+  testWidgets('chips de filtro acompanham conta criada depois', (tester) async {
+    final contas = ContasRepositorioFalso(contas: [contaExemplo()]);
+    final contasCubit = ContasCubit(contas)..carregar();
+    addTearDown(contasCubit.close);
+    await tester.pumpWidget(
+      _app(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: contasCubit),
+            BlocProvider(
+              create: (_) => TransacoesCubit(
+                TransacoesRepositorioFalso(),
+                contas,
+                hoje: () => _hoje,
+              )..carregar(),
+            ),
+          ],
+          child: const TransacoesTela(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(FilterChip, 'Carteira'), findsNothing);
+
+    contas.contas.add(
+      contaExemplo(id: 'c2', nome: 'Carteira', tipo: TipoConta.carteira),
+    );
+    await contasCubit.carregar();
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(FilterChip, 'Carteira'), findsOneWidget);
   });
 }

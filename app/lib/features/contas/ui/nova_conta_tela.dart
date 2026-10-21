@@ -59,6 +59,7 @@ class _NovaContaTelaState extends State<NovaContaTela> {
           canPop: livre,
           child: Scaffold(
             appBar: AppBar(
+              titleSpacing: Espaco.x1,
               leading: IconButton(
                 tooltip: 'Fechar',
                 icon: const Icon(Icons.close_rounded),
@@ -102,6 +103,7 @@ class _NovaContaTelaState extends State<NovaContaTela> {
                 const SizedBox(height: Espaco.x6),
                 TextField(
                   controller: _nome,
+                  onChanged: (_) => cubit.limparErro('nome'),
                   enabled: livre,
                   maxLength: 100,
                   textCapitalization: TextCapitalization.sentences,
@@ -118,6 +120,7 @@ class _NovaContaTelaState extends State<NovaContaTela> {
                   const SizedBox(height: Espaco.x6),
                   TextField(
                     controller: _instituicao,
+                    onChanged: (_) => cubit.limparErro('instituicao'),
                     enabled: livre,
                     maxLength: 100,
                     textCapitalization: TextCapitalization.words,
@@ -132,6 +135,7 @@ class _NovaContaTelaState extends State<NovaContaTela> {
                 const SizedBox(height: Espaco.x6),
                 CampoDinheiro(
                   controller: _saldo,
+                  aoMudar: (_) => cubit.limparErro('saldo_inicial'),
                   rotulo: 'Saldo inicial',
                   aceitaNegativo: true,
                   habilitado: livre,
@@ -145,7 +149,10 @@ class _NovaContaTelaState extends State<NovaContaTela> {
                   rotulo: 'Saldo em',
                   data: _data,
                   habilitado: livre,
-                  aoMudar: (data) => setState(() => _data = data),
+                  aoMudar: (data) {
+                    setState(() => _data = data);
+                    cubit.limparErro('data_saldo_inicial');
+                  },
                   // O backend soma as transações a partir desta data,
                   // inclusive: o saldo informado é o do começo do dia.
                   ajuda:
