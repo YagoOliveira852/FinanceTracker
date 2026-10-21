@@ -87,6 +87,7 @@ class _LancamentoTelaState extends State<LancamentoTela> {
           canPop: livre,
           child: Scaffold(
             appBar: AppBar(
+              titleSpacing: Espaco.x1,
               leading: IconButton(
                 tooltip: 'Fechar',
                 icon: const Icon(Icons.close_rounded),
@@ -126,7 +127,10 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                       ),
                   ],
                   onChanged: livre
-                      ? (id) => setState(() => _contaEscolhida = id)
+                      ? (id) {
+                          setState(() => _contaEscolhida = id);
+                          cubit.limparErro('conta_id');
+                        }
                       : null,
                 ),
                 const SizedBox(height: Espaco.x6),
@@ -184,6 +188,7 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                 const SizedBox(height: Espaco.x6),
                 CampoDinheiro(
                   controller: _valor,
+                  aoMudar: (_) => cubit.limparErro('valor'),
                   rotulo: 'Valor',
                   habilitado: livre,
                   ajuda: 'Sempre positivo; o tipo define se entra ou sai.',
@@ -194,12 +199,16 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                   rotulo: 'Data',
                   data: _data,
                   habilitado: livre,
-                  aoMudar: (data) => setState(() => _data = data),
+                  aoMudar: (data) {
+                    setState(() => _data = data);
+                    cubit.limparErro('data');
+                  },
                   erro: estado.erros['data'],
                 ),
                 const SizedBox(height: Espaco.x6),
                 TextField(
                   controller: _descricao,
+                  onChanged: (_) => cubit.limparErro('descricao'),
                   enabled: livre,
                   maxLength: 200,
                   textCapitalization: TextCapitalization.sentences,

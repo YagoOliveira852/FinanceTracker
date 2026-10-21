@@ -15,9 +15,11 @@ class CampoDinheiro extends StatelessWidget {
     this.erro,
     this.aceitaNegativo = false,
     this.habilitado = true,
+    this.aoMudar,
   });
 
   final TextEditingController controller;
+  final ValueChanged<String>? aoMudar;
   final String rotulo;
   final String? ajuda;
   final String? erro;
@@ -29,6 +31,7 @@ class CampoDinheiro extends StatelessWidget {
     return TextField(
       controller: controller,
       enabled: habilitado,
+      onChanged: aoMudar,
       keyboardType: TextInputType.numberWithOptions(
         decimal: true,
         signed: aceitaNegativo,

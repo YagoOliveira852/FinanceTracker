@@ -100,4 +100,29 @@ void main() {
 
     expect(find.widgetWithText(TextField, 'Instituição'), findsNothing);
   });
+
+  testWidgets('Nova conta: o erro some quando o campo muda', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        BlocProvider(
+          create: (_) => NovaContaCubit(ContasRepositorioFalso()),
+          child: const NovaContaTela(),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Salvar conta'));
+    await tester.pump();
+    const erroNome = 'Dê um nome à conta, por exemplo: Conta principal.';
+    expect(find.text(erroNome), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nome da conta'),
+      'Conta principal',
+    );
+    await tester.pump();
+
+    expect(find.text(erroNome), findsNothing);
+    // Os outros campos continuam com erro até o próximo envio.
+    expect(find.text('Informe a instituição da conta.'), findsOneWidget);
+  });
 }

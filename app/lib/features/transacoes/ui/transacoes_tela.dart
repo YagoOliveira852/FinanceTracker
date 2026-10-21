@@ -20,16 +20,14 @@ class TransacoesTela extends StatelessWidget {
   const TransacoesTela({super.key});
 
   Future<void> _lancar(BuildContext context) async {
-    final cubit = context.read<TransacoesCubit>();
     final contas = context.read<ContasCubit>();
     final salvou = await context.push<bool>(
       rotaLancamento,
-      extra: cubit.state.contaId,
+      extra: context.read<TransacoesCubit>().state.contaId,
     );
-    // O lançamento muda a lista e o saldo das contas (Início e Contas).
-    if (salvou == true) {
-      await Future.wait([cubit.carregar(), contas.carregar()]);
-    }
+    // O lançamento muda o saldo das contas (Início e Contas); a lista desta
+    // tela recarrega junto, pelo BlocListener abaixo.
+    if (salvou == true) await contas.carregar();
   }
 
   @override
@@ -37,63 +35,71 @@ class TransacoesTela extends StatelessWidget {
     final estado = context.watch<TransacoesCubit>().state;
     final cubit = context.read<TransacoesCubit>();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Transações')),
-      floatingActionButton: estado.dias.isEmpty
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => _lancar(context),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Lançar'),
-            ),
-      body: Column(
-        children: [
-          _SeletorDeMes(estado: estado, cubit: cubit),
-          _FiltroDeContas(estado: estado, cubit: cubit),
-          Expanded(
-            child: switch (estado) {
-              TransacoesEstado(carregando: true, dias: []) =>
-                const Carregando(),
-              TransacoesEstado(:final erro?) => ErroComTentar(
-                mensagem: erro,
-                aoTentar: cubit.carregar,
+    // A aba fica viva: quando as contas mudam (conta nova, lançamento), a
+    // lista e os chips de filtro recarregam.
+    return BlocListener<ContasCubit, ContasEstado>(
+      listenWhen: (antes, depois) =>
+          depois is ContasCarregado && antes != depois,
+      listener: (_, _) => cubit.carregar(),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Transações')),
+        floatingActionButton: estado.dias.isEmpty
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () => _lancar(context),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Lançar'),
               ),
-              TransacoesEstado(dias: []) => _Vazio(
-                estado: estado,
-                aoLancar: () => _lancar(context),
-              ),
-              _ => RefreshIndicator(
-                onRefresh: cubit.carregar,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    Espaco.x4,
-                    0,
-                    Espaco.x4,
-                    96,
-                  ),
-                  children: [
-                    for (final dia in estado.dias) ...[
-                      TituloSecao(
-                        formatarCabecalhoDia(dia.data, estado.hoje),
-                        pequeno: true,
-                      ),
-                      GrupoLista(
-                        itens: [
-                          for (final t in dia.transacoes)
-                            _ItemTransacao(
-                              transacao: t,
-                              conta: estado.nomeDaConta(t.contaId) ?? '',
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: Espaco.x2),
-                    ],
-                  ],
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SeletorDeMes(estado: estado, cubit: cubit),
+            _FiltroDeContas(estado: estado, cubit: cubit),
+            Expanded(
+              child: switch (estado) {
+                TransacoesEstado(carregando: true, dias: []) =>
+                  const Carregando(),
+                TransacoesEstado(:final erro?) => ErroComTentar(
+                  mensagem: erro,
+                  aoTentar: cubit.carregar,
                 ),
-              ),
-            },
-          ),
-        ],
+                TransacoesEstado(dias: []) => _Vazio(
+                  estado: estado,
+                  aoLancar: () => _lancar(context),
+                ),
+                _ => RefreshIndicator(
+                  onRefresh: cubit.carregar,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      Espaco.x4,
+                      0,
+                      Espaco.x4,
+                      96,
+                    ),
+                    children: [
+                      for (final dia in estado.dias) ...[
+                        TituloSecao(
+                          formatarCabecalhoDia(dia.data, estado.hoje),
+                          pequeno: true,
+                        ),
+                        GrupoLista(
+                          itens: [
+                            for (final t in dia.transacoes)
+                              _ItemTransacao(
+                                transacao: t,
+                                conta: estado.nomeDaConta(t.contaId) ?? '',
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: Espaco.x2),
+                      ],
+                    ],
+                  ),
+                ),
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

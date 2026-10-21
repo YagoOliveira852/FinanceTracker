@@ -35,7 +35,7 @@ class ContasTela extends StatelessWidget {
     final vazio = estado is ContasCarregado && contas.isEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Contas')),
+      appBar: AppBar(titleSpacing: Espaco.x1, title: const Text('Contas')),
       floatingActionButton: estado is ContasCarregado && !vazio
           ? FloatingActionButton.extended(
               onPressed: () => _adicionar(context),

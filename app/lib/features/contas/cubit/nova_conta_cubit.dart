@@ -44,6 +44,12 @@ class NovaContaCubit extends Cubit<NovaContaEstado> {
     'data_saldo_inicial',
   };
 
+  /// O usuário mexeu no campo: o erro dele some até o próximo envio.
+  void limparErro(String campo) {
+    if (!state.erros.containsKey(campo)) return;
+    emit(state.copyWith(erros: {...state.erros}..remove(campo)));
+  }
+
   void escolherTipo(TipoConta tipo) =>
       emit(state.copyWith(tipo: tipo, erros: {}, erroGeral: null));
 

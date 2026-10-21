@@ -33,6 +33,12 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
 
   static const _camposDoFormulario = {'conta_id', 'valor', 'data', 'descricao'};
 
+  /// O usuário mexeu no campo: o erro dele some até o próximo envio.
+  void limparErro(String campo) {
+    if (!state.erros.containsKey(campo)) return;
+    emit(state.copyWith(erros: {...state.erros}..remove(campo)));
+  }
+
   void escolherTipo(TipoTransacao tipo) {
     assert(tipo == TipoTransacao.despesa || tipo == TipoTransacao.receita);
     emit(state.copyWith(tipo: tipo));
