@@ -23,7 +23,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 ## Stack
 
 - **Backend:** Python 3.12, FastAPI **síncrono** (rotas `def`, `Session`), Pydantic v2 (+ pydantic-settings), SQLAlchemy 2.0 (estilo tipado, `Mapped[]`), Alembic, psycopg 3, argon2 (senha), PyJWT, httpx (`httpx.Client` para Pluggy e BCB), holidays (feriados nacionais).
-- **App:** Flutter estável / Dart 3, go_router, flutter_bloc (Cubit), dio, freezed + json_serializable, `decimal`, drift (cache de leitura), fl_chart, local_auth, flutter_secure_storage, flutter_local_notifications.
+- **App:** Flutter estável / Dart 3, go_router, flutter_bloc (Cubit), dio, freezed (json_serializable quando o app tiver JSON próprio), `decimal`, drift (cache de leitura), fl_chart, local_auth, flutter_secure_storage, flutter_local_notifications.
 - **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator 7.26.0 via Docker, alvo `dart-dio`, serialização `built_value`, `decimal=String`) em `app/packages/api_client/`. O FastAPI publica operationId `<tag>_<função>` e o gerador corta a tag (`removeOperationIdPrefix`): `contas_listar` vira `ContasApi.listar()`. Por isso cada rota tem **uma tag só, sem `_`** (teste em `tests/unit/test_operation_ids.py`).
 - **Banco:** PostgreSQL 16.
 - **Ferramentas:** uv (dependências Python), ruff (lint/format), pytest + httpx + testcontainers.
@@ -93,8 +93,8 @@ cd app/packages/api_client
 dart pub get && dart run build_runner build                  # .g.dart do cliente gerado (1ª vez e após regerar)
 cd ../..                                                     # volta para app/
 flutter pub get
-dart run build_runner build                                  # freezed / json_serializable / drift (quando o app tiver)
-flutter run --dart-define=API_URL=http://10.0.2.2:8000      # emulador Android
+dart run build_runner build                                  # .freezed.dart dos modelos e estados do app
+flutter run --dart-define=API_URL=http://10.0.2.2:8000      # emulador Android (sem API_URL o app não abre)
 flutter build apk --release --dart-define=API_URL=<url de produção>
 ```
 
@@ -133,9 +133,10 @@ Organizado **por módulo de domínio**, não por camada: `backend/app/modulos/<m
 
 ### App — `features/` espelha `modulos/`
 
-- `lib/app/` — `router.dart` (go_router), `tema.dart`, `injecao.dart` (cria repositórios e cubits).
-- `lib/core/api/` — configura o dio: injeta o access token, faz refresh em 401 e repete a requisição. **É o único lugar que fala com a API.**
+- `lib/app/` — `app.dart` (MaterialApp, providers), `router.dart` (go_router: login + quatro abas em `StatefulShellRoute`, `redirect` pelo `SessaoCubit`), `tema.dart` (tokens do design system, claro e escuro, `CoresFinancas`), `injecao.dart` (`Dependencias`: repositórios e sessão), `widgets/` (peças comuns do design).
+- `lib/core/api/` — `cliente_api.dart` (dio e cliente gerado), `interceptor_auth.dart` (Bearer e refresh em 401, `QueuedInterceptor`), `erro_api.dart` (`ErroApi`: `detail` e `campos` em pt-BR). **É o único lugar que monta o cliente**; os repositórios das features o usam e convertem `DioException` em `ErroApi`.
 - `lib/core/auth/` — tokens no flutter_secure_storage, desbloqueio por biometria.
+- `lib/core/formatacao/` — dinheiro (`R$ 1.234,56`, leitura do valor digitado, sempre `Decimal`) e datas em pt-BR.
 - `lib/core/cache/` — drift, só leitura offline; o servidor é a fonte da verdade.
 - `lib/features/<feature>/` — `data/` (repositório que usa o cliente gerado e converte seus modelos `built_value` em modelos `freezed` do app, `String` monetária → `Decimal`), `cubit/` (estado), `ui/` (telas e widgets). Telas e cubits nunca importam tipos do cliente gerado.
 - Features: `login`, `inicio` (aporte, reserva, alerta), `revisao` (rascunhos para confirmar), `transacoes`, `contas`, `faturas`, `importacao`, `investimentos`, `configuracoes`.
@@ -204,9 +205,9 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
   - `tests/integration/` — endpoints via `TestClient` com banco real e transação revertida por teste.
   - `tests/fixtures/` — OFX/CSV **fictícios**. Nunca extratos reais.
   - Pluggy é mockado nos testes (respx ou cliente fake); nenhum teste chama a API real.
-- **App:** `flutter test` para cubits (bloc_test) e formatação de dinheiro; widget tests nas telas de início e revisão.
+- **App:** `flutter test` para cubits (bloc_test), formatação, interceptor e repositórios (adaptador HTTP falso do dio, `test/apoio/adaptador_falso.dart`) e widget tests das telas e do app inteiro (`test/app/app_test.dart`). Repositórios falsos escritos à mão em `test/apoio/`, sem mocktail.
 - **Testes herméticos:** não dependem de `.env` local nem de banco pré-populado.
-- **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`) e `app.yml` (Flutter 3.47.7: build_runner do cliente gerado + `flutter pub get --enforce-lockfile` + flutter analyze + flutter test); em tag `v*`, gera o APK assinado e anexa ao release (previsto, card S10).
+- **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`) e `app.yml` (Flutter 3.47.7: build_runner do cliente gerado + `flutter pub get --enforce-lockfile` + build_runner do app + flutter analyze + flutter test); em tag `v*`, gera o APK assinado e anexa ao release (previsto, card S10).
 - **Ruleset "main protegida":** mudança só via PR (sem exigir aprovação: projeto solo), sem force-push e sem apagar a `main`. **Push direto na `main` é bloqueado.** Os checks `backend` e `app` entram como obrigatórios no ruleset assim que cada workflow rodar pela primeira vez (o nome do check só existe depois disso).
 - **Repositório:** público; branch apagada após o merge; secret scanning e push protection ativos (push com segredo é bloqueado); alertas e PRs de segurança do Dependabot ativos (passam pelo CI como qualquer PR); `GITHUB_TOKEN` só leitura; workflows de PR vindos de fork exigem aprovação para qualquer colaborador externo.
 
@@ -258,7 +259,7 @@ Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e aler
 
 **Emulador Android não enxerga `localhost` do PC.** Use `http://10.0.2.2:8000`. Em aparelho físico, use o IP da máquina na rede ou o endereço da Tailscale. Android bloqueia HTTP sem TLS por padrão em release — só HTTPS fora do debug.
 
-**`build_runner` precisa rodar de novo** depois de mudar classes freezed, json_serializable ou tabelas drift, e depois de regerar o cliente da API; erro de "part file not found" quase sempre é isso. Os `.g.dart` não são commitados. A flag `--delete-conflicting-outputs` foi removida no `build_runner` atual (só gera aviso).
+**`build_runner` precisa rodar de novo** depois de mudar classes freezed, json_serializable ou tabelas drift, e depois de regerar o cliente da API; erro de "part file not found" quase sempre é isso. Os `.g.dart` e `.freezed.dart` não são commitados. A flag `--delete-conflicting-outputs` foi removida no `build_runner` atual (só gera aviso).
 
 **O `dart-dio` traduz `format: decimal` para `double`.** O contrato está certo (`string`/`decimal`), mas sem o `--type-mappings decimal=String` do script todo campo de dinheiro vira `double` no Dart, e a leitura de `"1234.56"` quebra em tempo de execução. Ao mexer no script, confira que `saldoAtual`/`valor` continuam `String` (o teste `app/test/core/api/cliente_api_test.dart` acusa).
 

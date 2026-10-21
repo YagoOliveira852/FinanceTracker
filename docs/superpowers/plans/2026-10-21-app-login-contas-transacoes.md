@@ -210,3 +210,10 @@ Valores copiados do `tokens.css` do design system (claro e escuro): `surface #f6
 - [ ] `flutter run --dart-define=API_URL=http://10.0.2.2:8000` (emulador) ou IP da máquina (aparelho): login → Mais → Contas → Nova conta → Transações → Lançar → lista; claro e escuro; derrubar a API e ver o erro; apagar o refresh no banco e ver "Sessão expirada".
 - [ ] Revisão do diff (engineering:code-review), `flutter analyze`, `flutter test`.
 - [ ] Push, PR para a `main`, checks `backend` e `app` verdes; card do Trello em "Em revisão (PR)" com o link.
+
+## Ajustes durante a execução
+
+- **`intl` saiu:** o design usa formas curtas ("Sex", "out") que o `DateFormat` pt_BR não gera ("sex.", "out."); as datas usam tabelas próprias em `core/formatacao/datas.dart`.
+- **Ordem:** Contas e Transações vieram antes da navegação, para o router ligar telas prontas em vez de placeholders provisórios.
+- **`ContasCubit` único no topo** (`app.dart`): Início, Contas e Lançamento mostram as mesmas contas; criar conta ou lançar recarrega um cubit só.
+- **Texto de ajuda da data do saldo:** o backend soma as transações a partir da data, inclusive, então a ajuda diz "saldo no começo do dia" em vez de "depois desta data" (texto do design).
