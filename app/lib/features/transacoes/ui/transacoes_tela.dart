@@ -8,6 +8,7 @@ import '../../../app/widgets/estados.dart';
 import '../../../app/widgets/lista.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../../core/formatacao/dinheiro.dart';
+import '../../contas/cubit/contas_cubit.dart';
 import '../cubit/transacoes_cubit.dart';
 import '../data/transacao.dart';
 
@@ -20,11 +21,15 @@ class TransacoesTela extends StatelessWidget {
 
   Future<void> _lancar(BuildContext context) async {
     final cubit = context.read<TransacoesCubit>();
+    final contas = context.read<ContasCubit>();
     final salvou = await context.push<bool>(
       rotaLancamento,
       extra: cubit.state.contaId,
     );
-    if (salvou == true) await cubit.carregar();
+    // O lançamento muda a lista e o saldo das contas (Início e Contas).
+    if (salvou == true) {
+      await Future.wait([cubit.carregar(), contas.carregar()]);
+    }
   }
 
   @override
