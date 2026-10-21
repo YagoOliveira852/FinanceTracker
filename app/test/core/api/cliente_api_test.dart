@@ -57,8 +57,10 @@ void main() {
 
     final resposta = await cliente.getContasApi().listar();
 
-    expect(adaptador.ultimaRequisicao!.uri.toString(),
-        'http://api.exemplo.test/contas');
+    expect(
+      adaptador.ultimaRequisicao!.uri.toString(),
+      'http://api.exemplo.test/contas',
+    );
     final resumo = resposta.data!;
     // Dinheiro continua String: a conversão para Decimal é do repositório,
     // nunca para double.
