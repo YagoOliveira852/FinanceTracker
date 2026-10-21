@@ -53,108 +53,115 @@ class _NovaContaTelaState extends State<NovaContaTela> {
         final livre = !estado.enviando;
         final corrente = estado.tipo == TipoConta.corrente;
 
-        return Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-              tooltip: 'Fechar',
-              icon: const Icon(Icons.close_rounded),
-              onPressed: () => context.pop(false),
+        // Enquanto salva, o voltar do Android fica bloqueado: fechar no meio
+        // perderia o aviso de que o registro foi criado.
+        return PopScope(
+          canPop: livre,
+          child: Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                tooltip: 'Fechar',
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => context.pop(false),
+              ),
+              title: const Text('Nova conta'),
             ),
-            title: const Text('Nova conta'),
-          ),
-          body: ListView(
-            padding: const EdgeInsets.all(Espaco.x4),
-            children: [
-              if (estado.erroGeral != null) ...[
-                Aviso.erro(context, estado.erroGeral!),
-                const SizedBox(height: Espaco.x6),
-              ],
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: Espaco.x1,
-                  bottom: Espaco.x2,
-                ),
-                child: Text('Tipo', style: context.textos.bodySmall),
-              ),
-              Wrap(
-                spacing: Espaco.x2,
-                children: [
-                  ChipOpcao(
-                    rotulo: 'Conta corrente',
-                    selecionado: corrente,
-                    aoTocar: livre
-                        ? () => cubit.escolherTipo(TipoConta.corrente)
-                        : null,
-                  ),
-                  ChipOpcao(
-                    rotulo: 'Carteira (dinheiro)',
-                    selecionado: !corrente,
-                    aoTocar: livre
-                        ? () => cubit.escolherTipo(TipoConta.carteira)
-                        : null,
-                  ),
+            body: ListView(
+              padding: const EdgeInsets.all(Espaco.x4),
+              children: [
+                if (estado.erroGeral != null) ...[
+                  Aviso.erro(context, estado.erroGeral!),
+                  const SizedBox(height: Espaco.x6),
                 ],
-              ),
-              const SizedBox(height: Espaco.x6),
-              TextField(
-                controller: _nome,
-                enabled: livre,
-                maxLength: 100,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  labelText: 'Nome da conta',
-                  hintText: corrente ? 'Ex.: Conta principal' : 'Ex.: Carteira',
-                  errorText: estado.erros['nome'],
-                  counterText: '',
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: Espaco.x1,
+                    bottom: Espaco.x2,
+                  ),
+                  child: Text('Tipo', style: context.textos.bodySmall),
                 ),
-              ),
-              if (corrente) ...[
+                Wrap(
+                  spacing: Espaco.x2,
+                  children: [
+                    ChipOpcao(
+                      rotulo: 'Conta corrente',
+                      selecionado: corrente,
+                      aoTocar: livre
+                          ? () => cubit.escolherTipo(TipoConta.corrente)
+                          : null,
+                    ),
+                    ChipOpcao(
+                      rotulo: 'Carteira (dinheiro)',
+                      selecionado: !corrente,
+                      aoTocar: livre
+                          ? () => cubit.escolherTipo(TipoConta.carteira)
+                          : null,
+                    ),
+                  ],
+                ),
                 const SizedBox(height: Espaco.x6),
                 TextField(
-                  controller: _instituicao,
+                  controller: _nome,
                   enabled: livre,
                   maxLength: 100,
-                  textCapitalization: TextCapitalization.words,
+                  textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                    labelText: 'Instituição',
-                    hintText: 'Ex.: Banco Exemplo',
-                    errorText: estado.erros['instituicao'],
+                    labelText: 'Nome da conta',
+                    hintText: corrente
+                        ? 'Ex.: Conta principal'
+                        : 'Ex.: Carteira',
+                    errorText: estado.erros['nome'],
                     counterText: '',
                   ),
                 ),
+                if (corrente) ...[
+                  const SizedBox(height: Espaco.x6),
+                  TextField(
+                    controller: _instituicao,
+                    enabled: livre,
+                    maxLength: 100,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: 'Instituição',
+                      hintText: 'Ex.: Banco Exemplo',
+                      errorText: estado.erros['instituicao'],
+                      counterText: '',
+                    ),
+                  ),
+                ],
+                const SizedBox(height: Espaco.x6),
+                CampoDinheiro(
+                  controller: _saldo,
+                  rotulo: 'Saldo inicial',
+                  aceitaNegativo: true,
+                  habilitado: livre,
+                  ajuda:
+                      'O saldo exato do extrato no começo do dia abaixo. '
+                      'Pode ser negativo.',
+                  erro: estado.erros['saldo_inicial'],
+                ),
+                const SizedBox(height: Espaco.x6),
+                CampoData(
+                  rotulo: 'Saldo em',
+                  data: _data,
+                  habilitado: livre,
+                  aoMudar: (data) => setState(() => _data = data),
+                  // O backend soma as transações a partir desta data,
+                  // inclusive: o saldo informado é o do começo do dia.
+                  ajuda:
+                      'Saldo no começo do dia: as transações a partir desta '
+                      'data mudam o saldo.',
+                  erro: estado.erros['data_saldo_inicial'],
+                ),
               ],
-              const SizedBox(height: Espaco.x6),
-              CampoDinheiro(
-                controller: _saldo,
-                rotulo: 'Saldo inicial',
-                aceitaNegativo: true,
-                habilitado: livre,
-                ajuda:
-                    'O saldo exato do extrato no começo do dia abaixo. '
-                    'Pode ser negativo.',
-                erro: estado.erros['saldo_inicial'],
-              ),
-              const SizedBox(height: Espaco.x6),
-              CampoData(
-                rotulo: 'Saldo em',
-                data: _data,
-                habilitado: livre,
-                aoMudar: (data) => setState(() => _data = data),
-                // O backend soma as transações a partir desta data,
-                // inclusive: o saldo informado é o do começo do dia.
-                ajuda:
-                    'Saldo no começo do dia: as transações a partir desta '
-                    'data mudam o saldo.',
-                erro: estado.erros['data_saldo_inicial'],
-              ),
-            ],
-          ),
-          bottomNavigationBar: RodapeFormulario(
-            botao: FilledButton(
-              onPressed: livre ? _salvar : null,
-              child: RotuloEnviando(
-                enviando: estado.enviando,
-                rotulo: 'Salvar conta',
+            ),
+            bottomNavigationBar: RodapeFormulario(
+              botao: FilledButton(
+                onPressed: livre ? _salvar : null,
+                child: RotuloEnviando(
+                  enviando: estado.enviando,
+                  rotulo: 'Salvar conta',
+                ),
               ),
             ),
           ),

@@ -81,6 +81,20 @@ void main() {
       expect(cubit.state.mes, DateTime(2026, 10));
     });
 
+    test('"hoje" é relido: a aba aberta desde o mês passado avança', () async {
+      var agora = DateTime(2026, 10, 31, 23);
+      final cubit = TransacoesCubit(transacoes, contas, hoje: () => agora);
+      await cubit.carregar();
+      expect(cubit.state.noMesAtual, isTrue);
+
+      agora = DateTime(2026, 11, 1, 8);
+      await cubit.proximoMes();
+
+      expect(cubit.state.mes, DateTime(2026, 11));
+      expect(cubit.state.hoje, DateTime(2026, 11, 1));
+      expect(cubit.state.noMesAtual, isTrue);
+    });
+
     test('filtro por conta vai para a API', () async {
       final cubit = criar();
 

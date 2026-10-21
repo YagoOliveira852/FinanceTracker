@@ -9,6 +9,7 @@ import 'package:financas/features/transacoes/ui/transacoes_tela.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../apoio/contas_falso.dart';
 import '../../apoio/transacoes_falso.dart';
@@ -137,5 +138,101 @@ void main() {
 
     expect(find.text('Escolha uma conta.'), findsOneWidget);
     expect(find.text('Informe um valor maior que zero.'), findsOneWidget);
+  });
+
+  testWidgets('Lançamento não envia a conta do filtro se ela não aceita '
+      'lançamento', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final transacoes = TransacoesRepositorioFalso();
+    await tester.pumpWidget(
+      _app(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => ContasCubit(
+                ContasRepositorioFalso(
+                  contas: [
+                    contaExemplo(),
+                    contaExemplo(
+                      id: 'cartao',
+                      nome: 'Cartão Exemplo',
+                      tipo: TipoConta.cartaoCredito,
+                    ),
+                  ],
+                ),
+              )..carregar(),
+            ),
+            BlocProvider(create: (_) => LancamentoCubit(transacoes)),
+          ],
+          child: const LancamentoTela(contaInicial: 'cartao'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Valor'), '10');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Descrição'),
+      'Mercado',
+    );
+    await tester.tap(find.text('Salvar'));
+    await tester.pump();
+
+    expect(find.text('Escolha uma conta.'), findsOneWidget);
+    expect(transacoes.lancados, isEmpty);
+  });
+
+  testWidgets('Lançamento usa a conta do filtro quando ela vale', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final transacoes = TransacoesRepositorioFalso();
+    // Router mínimo: ao salvar, a tela fecha com context.pop(true).
+    final router = GoRouter(
+      initialLocation: '/lancar',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const SizedBox(),
+          routes: [
+            GoRoute(
+              path: 'lancar',
+              builder: (_, _) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => ContasCubit(
+                      ContasRepositorioFalso(contas: [contaExemplo()]),
+                    )..carregar(),
+                  ),
+                  BlocProvider(create: (_) => LancamentoCubit(transacoes)),
+                ],
+                child: const LancamentoTela(contaInicial: 'c1'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(theme: temaClaro(), routerConfig: router),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Conta principal · Banco Exemplo'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Valor'), '10');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Descrição'),
+      'Mercado',
+    );
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(transacoes.lancados.single.contaId, 'c1');
+    expect(find.byType(LancamentoTela), findsNothing);
   });
 }

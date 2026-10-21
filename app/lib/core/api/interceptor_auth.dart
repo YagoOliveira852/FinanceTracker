@@ -60,7 +60,10 @@ class InterceptorAuth extends QueuedInterceptor {
     final tokenUsado = requisicao.headers['Authorization'];
     if (tokenUsado == 'Bearer ${tokens.access}') {
       try {
-        tokens = await _renovar(tokens.refresh);
+        final novos = await _renovar(tokens.refresh);
+        // A sessão foi encerrada (Sair) durante o refresh: não volta.
+        if (novos == null) return handler.next(err);
+        tokens = novos;
       } on DioException catch (erroRefresh) {
         if (erroRefresh.response?.statusCode == 401) {
           await armazenamento.apagar();
@@ -79,7 +82,8 @@ class InterceptorAuth extends QueuedInterceptor {
     }
   }
 
-  Future<TokensSessao> _renovar(String refresh) async {
+  /// Par novo, ou `null` se a sessão foi apagada enquanto o refresh rodava.
+  Future<TokensSessao?> _renovar(String refresh) async {
     final resposta = await AuthApi(
       dioSemAuth,
       standardSerializers,
@@ -88,6 +92,7 @@ class InterceptorAuth extends QueuedInterceptor {
       access: resposta.data!.accessToken,
       refresh: resposta.data!.refreshToken,
     );
+    if ((await armazenamento.ler())?.refresh != refresh) return null;
     await armazenamento.salvar(novos);
     return novos;
   }

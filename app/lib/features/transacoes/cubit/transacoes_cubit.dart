@@ -48,10 +48,14 @@ abstract class TransacoesEstado with _$TransacoesEstado {
 /// Transações do mês, agrupadas por dia, com filtro por conta.
 class TransacoesCubit extends Cubit<TransacoesEstado> {
   TransacoesCubit(this._transacoes, this._contas, {DateTime Function()? hoje})
-    : super(_inicial(somenteData((hoje ?? DateTime.now)())));
+    : _hoje = hoje ?? DateTime.now,
+      super(_inicial(somenteData((hoje ?? DateTime.now)())));
 
   final TransacoesRepositorio _transacoes;
   final ContasRepositorio _contas;
+
+  /// Relido a cada carga: a aba fica viva por dias, e "hoje" muda.
+  final DateTime Function() _hoje;
 
   /// Só a resposta da carga mais recente vale (troca rápida de mês/filtro).
   var _versao = 0;
@@ -61,7 +65,9 @@ class TransacoesCubit extends Cubit<TransacoesEstado> {
 
   Future<void> carregar() async {
     final versao = ++_versao;
-    emit(state.copyWith(carregando: true, erro: null));
+    emit(
+      state.copyWith(hoje: somenteData(_hoje()), carregando: true, erro: null),
+    );
     final mes = state.mes;
     try {
       final resumo = await _contas.listar();
@@ -70,7 +76,7 @@ class TransacoesCubit extends Cubit<TransacoesEstado> {
         de: mes,
         ate: DateTime(mes.year, mes.month + 1, 0),
       );
-      if (versao != _versao) return;
+      if (isClosed || versao != _versao) return;
       emit(
         state.copyWith(
           carregando: false,
@@ -79,7 +85,7 @@ class TransacoesCubit extends Cubit<TransacoesEstado> {
         ),
       );
     } on ErroApi catch (erro) {
-      if (versao != _versao) return;
+      if (isClosed || versao != _versao) return;
       emit(state.copyWith(carregando: false, erro: erro.mensagem));
     }
   }
@@ -91,7 +97,8 @@ class TransacoesCubit extends Cubit<TransacoesEstado> {
   }
 
   Future<void> proximoMes() async {
-    if (state.noMesAtual) return;
+    final hoje = somenteData(_hoje());
+    if (!state.mes.isBefore(DateTime(hoje.year, hoje.month))) return;
     final mes = state.mes;
     emit(state.copyWith(mes: DateTime(mes.year, mes.month + 1), dias: []));
     return carregar();

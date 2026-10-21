@@ -20,11 +20,19 @@ class ContasCubit extends Cubit<ContasEstado> {
 
   final ContasRepositorio _contas;
 
+  /// Só a resposta da carga mais recente vale (atualizar e lançar ao mesmo
+  /// tempo, por exemplo).
+  var _versao = 0;
+
   Future<void> carregar() async {
+    final versao = ++_versao;
     emit(const ContasEstado.carregando());
     try {
-      emit(ContasEstado.carregado(await _contas.listar()));
+      final resumo = await _contas.listar();
+      if (isClosed || versao != _versao) return;
+      emit(ContasEstado.carregado(resumo));
     } on ErroApi catch (erro) {
+      if (isClosed || versao != _versao) return;
       emit(ContasEstado.erro(erro.mensagem));
     }
   }

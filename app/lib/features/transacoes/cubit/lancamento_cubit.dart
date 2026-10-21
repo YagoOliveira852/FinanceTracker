@@ -66,8 +66,10 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
           descricao: descricao.trim(),
         ),
       );
+      if (isClosed) return;
       emit(state.copyWith(enviando: false, salva: transacao));
     } on ErroApi catch (erro) {
+      if (isClosed) return;
       final doFormulario = {
         for (final MapEntry(:key, :value) in erro.campos.entries)
           if (_camposDoFormulario.contains(key)) key: value,

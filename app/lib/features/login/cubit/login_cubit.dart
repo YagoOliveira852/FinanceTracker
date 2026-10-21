@@ -29,9 +29,11 @@ class LoginCubit extends Cubit<LoginEstado> {
     emit(const LoginEstado(enviando: true));
     try {
       await _auth.entrar(email: email, senha: senha);
+      if (isClosed) return;
       emit(const LoginEstado());
       _sessao.entrou();
     } on ErroApi catch (erro) {
+      if (isClosed) return;
       emit(LoginEstado(erro: erro.mensagem));
     }
   }

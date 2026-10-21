@@ -79,8 +79,10 @@ class NovaContaCubit extends Cubit<NovaContaEstado> {
           dataSaldoInicial: somenteData(dataSaldoInicial),
         ),
       );
+      if (isClosed) return;
       emit(state.copyWith(enviando: false, salva: conta));
     } on ErroApi catch (erro) {
+      if (isClosed) return;
       final doFormulario = {
         for (final MapEntry(:key, :value) in erro.campos.entries)
           if (_camposDoFormulario.contains(key)) key: value,

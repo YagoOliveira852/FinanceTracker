@@ -46,6 +46,9 @@ class _FinancasAppState extends State<FinancasApp> {
         providers: [
           BlocProvider.value(value: dependencias.sessao),
           BlocProvider(
+            // Criado já na abertura: o listener abaixo só recarrega nas
+            // trocas para "conectada", sem uma segunda carga na criação.
+            lazy: false,
             create: (_) {
               final contas = ContasCubit(dependencias.contas);
               if (dependencias.sessao.state is SessaoConectada) {

@@ -20,11 +20,13 @@ class _Cenario {
       refresh: 'refresh-1',
     ),
     bool refreshAceito = true,
+    void Function(ArmazenamentoTokensMemoria)? duranteRefresh,
   }) : armazenamento = ArmazenamentoTokensMemoria(tokens) {
     adaptador = AdaptadorFalso((options) async {
       // Atraso para requisições paralelas estarem todas em voo juntas.
       await Future<void>.delayed(const Duration(milliseconds: 5));
       if (options.path == '/auth/refresh') {
+        duranteRefresh?.call(armazenamento);
         if (!refreshAceito) return _naoAutenticado;
         return (
           status: 200,
@@ -146,6 +148,15 @@ void main() {
     expect(cenario.adaptador.chamadasA('/auth/refresh'), 1);
     expect(cenario.armazenamento.tokens, isNull);
     expect(cenario.expiracoes, 1);
+  });
+
+  test('sair durante o refresh não traz a sessão de volta', () async {
+    final cenario = _Cenario(duranteRefresh: (a) => a.tokens = null);
+
+    await expectLater(cenario.listarContas(), throwsA(isA<DioException>()));
+
+    expect(cenario.adaptador.chamadasA('/auth/refresh'), 1);
+    expect(cenario.armazenamento.tokens, isNull);
   });
 
   test('401 do login não tenta refresh', () async {
