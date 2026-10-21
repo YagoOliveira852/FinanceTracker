@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const FinancasApp());
-}
+import 'app/app.dart';
+import 'app/injecao.dart';
+import 'core/api/cliente_api.dart';
 
-/// Esqueleto do app: rotas, tema e telas chegam com a feature de login.
-class FinancasApp extends StatelessWidget {
-  const FinancasApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'Finanças',
-      home: Scaffold(body: Center(child: Text('Finanças'))),
+Future<void> main() async {
+  if (urlApi.isEmpty) {
+    throw StateError(
+      'API_URL não definida. Rode com '
+      '--dart-define=API_URL=http://10.0.2.2:8000 (emulador).',
     );
   }
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final dependencias = Dependencias.api();
+  // Lê os tokens guardados antes da primeira tela: assim o app abre direto
+  // no Início ou no login, sem piscar.
+  await dependencias.sessao.iniciar();
+
+  runApp(FinancasApp(dependencias));
 }

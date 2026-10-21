@@ -99,7 +99,7 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 
 **App — Flutter (Android)**
 - go_router; Bloc/Cubit.
-- dio + freezed/json_serializable nos modelos e estados do app; cliente Dart gerado do OpenAPI (openapi-generator via Docker, alvo `dart-dio`, `built_value`, `decimal=String` para dinheiro chegar como `String`) confinado em `packages/api_client/`. O repositório de cada feature converte um no outro (ver spec `2026-10-19-dinheiro-contrato-api`).
+- dio + freezed nos modelos e estados do app; cliente Dart gerado do OpenAPI (openapi-generator via Docker, alvo `dart-dio`, `built_value`, `decimal=String` para dinheiro chegar como `String`) confinado em `packages/api_client/`. O repositório de cada feature converte um no outro (ver spec `2026-10-19-dinheiro-contrato-api`).
 - drift (SQLite) como cache de leitura offline; servidor é a fonte da verdade.
 - fl_chart; local_auth (biometria); flutter_secure_storage (tokens); flutter_local_notifications (lembrete local nos dias de salário — não lê notificações de outros apps).
 
@@ -439,9 +439,11 @@ FinanceTracker/
     └── lib/
         ├── main.dart
         ├── app/
-        │   ├── router.dart       # go_router
-        │   ├── tema.dart
-        │   └── injecao.dart      # cria repositórios e cubits
+        │   ├── app.dart          # MaterialApp, providers
+        │   ├── router.dart       # go_router: login + abas, redirect pela sessão
+        │   ├── tema.dart         # tokens do design system (claro e escuro)
+        │   ├── injecao.dart      # cria repositórios e a sessão
+        │   └── widgets/          # peças comuns do design
         ├── core/
         │   ├── api/              # configura dio, token, refresh automático
         │   ├── auth/             # flutter_secure_storage, local_auth
