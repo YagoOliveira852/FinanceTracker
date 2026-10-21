@@ -49,3 +49,4 @@ app.*.map.json
 
 # Saída do build_runner: regerada localmente e no CI, nunca commitada
 *.g.dart
+*.freezed.dart

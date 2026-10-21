@@ -42,6 +42,9 @@ jobs:
       # --enforce-lockfile: falha se o pubspec.lock não bate com o pubspec.yaml.
       - run: flutter pub get --enforce-lockfile
 
+      # Modelos e estados freezed do app: o .freezed.dart também fica fora do git.
+      - run: dart run build_runner build
+
       - run: flutter analyze
 
       - run: flutter test
