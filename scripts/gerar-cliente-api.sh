@@ -33,6 +33,8 @@ echo "2/3 Gerando o cliente dart-dio (built_value)..."
 # decimal=String: dinheiro chega no contrato como {"type": "string", "format": "decimal"},
 # mas o dart-dio traduz o formato "decimal" para double. O repositório do app
 # converte a String em Decimal; double nunca aparece.
+# removeOperationIdPrefix: o FastAPI publica operationIds "<tag>_<função>"
+# (app/main.py); o gerador corta a tag, e contas_listar vira ContasApi.listar().
 opcoes_docker=(--rm)
 if command -v cygpath >/dev/null 2>&1; then
   # Git Bash no Windows: caminho no formato C:/... e sem conversão automática de /local.
@@ -47,7 +49,7 @@ docker run "${opcoes_docker[@]}" -v "${volume}" "${IMAGEM_GERADOR}" generate \
   --input-spec "/local/${DESTINO}/openapi.json" \
   --generator-name dart-dio \
   --output "/local/${DESTINO}" \
-  --additional-properties "pubName=api_client,pubVersion=0.1.0,serializationLibrary=built_value" \
+  --additional-properties "pubName=api_client,pubVersion=0.1.0,serializationLibrary=built_value,removeOperationIdPrefix=true" \
   --type-mappings "decimal=String" \
   --global-property "apiTests=false,modelTests=false,apiDocs=false,modelDocs=false"
 

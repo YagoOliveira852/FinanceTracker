@@ -32,7 +32,7 @@ class SaudeApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Saude] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Saude>> saudeSaudeGet({ 
+  Future<Response<Saude>> saude({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,

@@ -36,7 +36,7 @@ class AuthApi {
   ///
   /// Returns a [Future] containing a [Response] with a [UsuarioSaida] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<UsuarioSaida>> euAuthEuGet({ 
+  Future<Response<UsuarioSaida>> eu({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -116,7 +116,7 @@ class AuthApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Tokens] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Tokens>> loginAuthLoginPost({ 
+  Future<Response<Tokens>> login({ 
     required LoginEntrada loginEntrada,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -211,7 +211,7 @@ class AuthApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Tokens] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Tokens>> refreshAuthRefreshPost({ 
+  Future<Response<Tokens>> refresh({ 
     required RefreshEntrada refreshEntrada,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,

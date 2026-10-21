@@ -12,7 +12,7 @@
         ],
         "summary": "Login",
         "description": "Troca e-mail e senha por um access token (curto) e um refresh token (longo).",
-        "operationId": "login_auth_login_post",
+        "operationId": "auth_login",
         "requestBody": {
           "content": {
             "application/json": {
@@ -64,7 +64,7 @@
         ],
         "summary": "Refresh",
         "description": "Troca o refresh token por um par novo; o token enviado deixa de valer.",
-        "operationId": "refresh_auth_refresh_post",
+        "operationId": "auth_refresh",
         "requestBody": {
           "content": {
             "application/json": {
@@ -116,7 +116,7 @@
         ],
         "summary": "Eu",
         "description": "Usuário dono do access token enviado.",
-        "operationId": "eu_auth_eu_get",
+        "operationId": "auth_eu",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -153,7 +153,7 @@
         ],
         "summary": "Listar",
         "description": "Todas as contas com o saldo atual, e o total disponível (correntes e carteiras).",
-        "operationId": "listar_contas_get",
+        "operationId": "contas_listar",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -188,7 +188,7 @@
         ],
         "summary": "Criar",
         "description": "Cadastra uma conta corrente ou a carteira (dinheiro em espécie).",
-        "operationId": "criar_contas_post",
+        "operationId": "contas_criar",
         "requestBody": {
           "content": {
             "application/json": {
@@ -244,7 +244,7 @@
           "contas"
         ],
         "summary": "Obter",
-        "operationId": "obter_contas__conta_id__get",
+        "operationId": "contas_obter",
         "security": [
           {
             "HTTPBearer": []
@@ -313,7 +313,7 @@
         ],
         "summary": "Lancar",
         "description": "Lançamento manual de despesa ou receita, já confirmado.",
-        "operationId": "lancar_transacoes_post",
+        "operationId": "transacoes_lancar",
         "security": [
           {
             "HTTPBearer": []
@@ -368,7 +368,7 @@
         ],
         "summary": "Listar",
         "description": "Transações (todos os status), da mais recente para a mais antiga.\n\n`de` e `ate` são inclusivos; para um mês, use o primeiro e o último dia dele.",
-        "operationId": "listar_transacoes_get",
+        "operationId": "transacoes_listar",
         "security": [
           {
             "HTTPBearer": []
@@ -437,7 +437,7 @@
                   "items": {
                     "$ref": "#/components/schemas/TransacaoSaida"
                   },
-                  "title": "Response Listar Transacoes Get"
+                  "title": "Response Transacoes Listar"
                 }
               }
             }
@@ -471,7 +471,7 @@
           "transacoes"
         ],
         "summary": "Obter",
-        "operationId": "obter_transacoes__transacao_id__get",
+        "operationId": "transacoes_obter",
         "security": [
           {
             "HTTPBearer": []
@@ -540,7 +540,7 @@
         ],
         "summary": "Saude",
         "description": "Responde se a API está no ar e consegue falar com o banco.",
-        "operationId": "saude_saude_get",
+        "operationId": "saude_saude",
         "responses": {
           "200": {
             "description": "Successful Response",

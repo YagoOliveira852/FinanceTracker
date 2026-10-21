@@ -24,7 +24,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 
 - **Backend:** Python 3.12, FastAPI **síncrono** (rotas `def`, `Session`), Pydantic v2 (+ pydantic-settings), SQLAlchemy 2.0 (estilo tipado, `Mapped[]`), Alembic, psycopg 3, argon2 (senha), PyJWT, httpx (`httpx.Client` para Pluggy e BCB), holidays (feriados nacionais).
 - **App:** Flutter estável / Dart 3, go_router, flutter_bloc (Cubit), dio, freezed + json_serializable, `decimal`, drift (cache de leitura), fl_chart, local_auth, flutter_secure_storage, flutter_local_notifications.
-- **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator 7.26.0 via Docker, alvo `dart-dio`, serialização `built_value`, `decimal=String`) em `app/packages/api_client/`.
+- **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator 7.26.0 via Docker, alvo `dart-dio`, serialização `built_value`, `decimal=String`) em `app/packages/api_client/`. O FastAPI publica operationId `<tag>_<função>` e o gerador corta a tag (`removeOperationIdPrefix`): `contas_listar` vira `ContasApi.listar()`. Por isso cada rota tem **uma tag só, sem `_`** (teste em `tests/unit/test_operation_ids.py`).
 - **Banco:** PostgreSQL 16.
 - **Ferramentas:** uv (dependências Python), ruff (lint/format), pytest + httpx + testcontainers.
 - **Deploy:** VPS acessível só pela Tailscale, Docker Compose puro (`api`, `db`, `jobs`), GitHub Actions → Tailscale → ssh → `docker compose up -d`. Backup diário criptografado (restic → Backblaze B2). APK assinado gerado pelo CI em tag. Ver `docs/superpowers/specs/2026-10-19-hospedagem-deploy-design.md`.
