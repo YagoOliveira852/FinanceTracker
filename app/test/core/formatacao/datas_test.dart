@@ -4,6 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final hoje = DateTime(2026, 10, 20); // terça
 
+  test('nomeDoMes', () {
+    expect(nomeDoMes(DateTime(2026, 9, 1)), 'setembro');
+  });
+
   test('formatarMesAno', () {
     expect(formatarMesAno(DateTime(2026, 10, 1)), 'Outubro de 2026');
     expect(formatarMesAno(DateTime(2026, 3, 15)), 'Março de 2026');

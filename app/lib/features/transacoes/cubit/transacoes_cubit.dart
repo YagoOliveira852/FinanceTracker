@@ -1,0 +1,119 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+import '../../../core/api/erro_api.dart';
+import '../../../core/formatacao/datas.dart';
+import '../../contas/data/conta.dart';
+import '../../contas/data/contas_repositorio.dart';
+import '../data/transacao.dart';
+import '../data/transacoes_repositorio.dart';
+
+part 'transacoes_cubit.freezed.dart';
+
+/// Transações de um dia, para o cabeçalho "Hoje · 20 out".
+@freezed
+abstract class DiaDeTransacoes with _$DiaDeTransacoes {
+  const factory DiaDeTransacoes({
+    required DateTime data,
+    required List<Transacao> transacoes,
+  }) = _DiaDeTransacoes;
+}
+
+@freezed
+abstract class TransacoesEstado with _$TransacoesEstado {
+  const factory TransacoesEstado({
+    required DateTime hoje,
+
+    /// Primeiro dia do mês mostrado.
+    required DateTime mes,
+
+    /// Filtro por conta; `null` = todas.
+    String? contaId,
+
+    /// Contas ativas, para os chips de filtro e o nome em cada item.
+    @Default([]) List<Conta> contas,
+    @Default([]) List<DiaDeTransacoes> dias,
+    @Default(true) bool carregando,
+    String? erro,
+  }) = _TransacoesEstado;
+
+  const TransacoesEstado._();
+
+  bool get noMesAtual => mes.year == hoje.year && mes.month == hoje.month;
+
+  String? nomeDaConta(String id) =>
+      contas.where((c) => c.id == id).firstOrNull?.nome;
+}
+
+/// Transações do mês, agrupadas por dia, com filtro por conta.
+class TransacoesCubit extends Cubit<TransacoesEstado> {
+  TransacoesCubit(this._transacoes, this._contas, {DateTime Function()? hoje})
+    : super(_inicial(somenteData((hoje ?? DateTime.now)())));
+
+  final TransacoesRepositorio _transacoes;
+  final ContasRepositorio _contas;
+
+  /// Só a resposta da carga mais recente vale (troca rápida de mês/filtro).
+  var _versao = 0;
+
+  static TransacoesEstado _inicial(DateTime hoje) =>
+      TransacoesEstado(hoje: hoje, mes: DateTime(hoje.year, hoje.month));
+
+  Future<void> carregar() async {
+    final versao = ++_versao;
+    emit(state.copyWith(carregando: true, erro: null));
+    final mes = state.mes;
+    try {
+      final resumo = await _contas.listar();
+      final transacoes = await _transacoes.listar(
+        contaId: state.contaId,
+        de: mes,
+        ate: DateTime(mes.year, mes.month + 1, 0),
+      );
+      if (versao != _versao) return;
+      emit(
+        state.copyWith(
+          carregando: false,
+          contas: resumo.contas.where((c) => c.ativa).toList(),
+          dias: _agruparPorDia(transacoes),
+        ),
+      );
+    } on ErroApi catch (erro) {
+      if (versao != _versao) return;
+      emit(state.copyWith(carregando: false, erro: erro.mensagem));
+    }
+  }
+
+  Future<void> mesAnterior() {
+    final mes = state.mes;
+    emit(state.copyWith(mes: DateTime(mes.year, mes.month - 1), dias: []));
+    return carregar();
+  }
+
+  Future<void> proximoMes() async {
+    if (state.noMesAtual) return;
+    final mes = state.mes;
+    emit(state.copyWith(mes: DateTime(mes.year, mes.month + 1), dias: []));
+    return carregar();
+  }
+
+  Future<void> filtrar(String? contaId) {
+    emit(state.copyWith(contaId: contaId, dias: []));
+    return carregar();
+  }
+
+  /// Ignoradas não aparecem. A API já ordena da mais recente para a mais
+  /// antiga; o agrupamento mantém essa ordem.
+  static List<DiaDeTransacoes> _agruparPorDia(List<Transacao> transacoes) {
+    final porDia = <DateTime, List<Transacao>>{};
+    for (final t in transacoes) {
+      if (t.status == StatusTransacao.ignorada) continue;
+      porDia.putIfAbsent(somenteData(t.data), () => []).add(t);
+    }
+    final datas = porDia.keys.toList()..sort((a, b) => b.compareTo(a));
+    return [
+      for (final data in datas)
+        DiaDeTransacoes(data: data, transacoes: porDia[data]!),
+    ];
+  }
+}

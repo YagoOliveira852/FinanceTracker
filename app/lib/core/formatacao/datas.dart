@@ -16,6 +16,9 @@ const _diasDaSemana = [
 DateTime somenteData(DateTime momento) =>
     DateTime(momento.year, momento.month, momento.day);
 
+/// `outubro`, para frases como "Nenhuma transação em outubro".
+String nomeDoMes(DateTime data) => _meses[data.month - 1];
+
 /// `Outubro de 2026`.
 String formatarMesAno(DateTime data) =>
     '${_maiuscula(_meses[data.month - 1])} de ${data.year}';
