@@ -1,0 +1,15 @@
+# Lista do que pode entrar no contexto do build: tudo fica de fora, menos o
+# necessário para rodar. Assim .env, .venv, testes e caches nunca vão para a imagem.
+*
+!app/
+!alembic/
+!alembic.ini
+!pyproject.toml
+!uv.lock
+!.python-version
+
+# Mesmo dentro das pastas liberadas.
+**/__pycache__/
+**/*.py[cod]
+**/.env
+**/.env.*
