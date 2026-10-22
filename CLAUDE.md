@@ -106,6 +106,28 @@ cd backend && uv run ruff check . && uv run ruff format --check .
 cd app && flutter analyze && flutter test
 ```
 
+### Produção (Docker Compose)
+
+A imagem da API (`backend/Dockerfile`, amd64 e arm64) é publicada em `ghcr.io/yagooliveira852/financetracker-api` pelo workflow `imagem.yml` a cada push na `main`, com as tags `latest` e `sha-<7 caracteres>`. No servidor, uma pasta com `compose.prod.yml` (de `deploy/`) e `.env` (copiado de `deploy/.env.example`), lado a lado:
+
+```bash
+docker compose -f compose.prod.yml config                             # valida o arquivo e o .env
+docker compose -f compose.prod.yml pull                               # imagem da TAG do .env (padrão latest)
+docker compose -f compose.prod.yml run --rm api alembic upgrade head  # sobe o db e aplica as migrations
+docker compose -f compose.prod.yml up -d                              # sobe/atualiza a api
+docker compose -f compose.prod.yml ps                                 # estado e healthcheck
+curl http://127.0.0.1:8000/saude                                      # {"status":"ok"}
+docker compose -f compose.prod.yml logs -f api
+docker compose -f compose.prod.yml down                               # para (NUNCA use -v: apaga os dados)
+```
+
+Build local da imagem (para testar o compose com ela, `TAG=local` no `.env`; a porta 8000 é a mesma do `fastapi dev`):
+
+```bash
+docker buildx build --platform linux/amd64 --load -t ghcr.io/yagooliveira852/financetracker-api:local backend
+docker buildx build --platform linux/arm64 backend                    # só confere o arm64 (emulado, mais lento)
+```
+
 ## Conventions
 
 - **Idioma:** documentação, comentários, commits e textos de interface em **pt-BR**. Identificadores do domínio em português **sem acento** (`fatura`, `competencia`, `transacao`); código de infraestrutura pode seguir a convenção das bibliotecas (inglês).
@@ -207,7 +229,7 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
   - Pluggy é mockado nos testes (respx ou cliente fake); nenhum teste chama a API real.
 - **App:** `flutter test` para cubits (bloc_test), formatação, interceptor e repositórios (adaptador HTTP falso do dio, `test/apoio/adaptador_falso.dart`) e widget tests das telas e do app inteiro (`test/app/app_test.dart`). Repositórios falsos escritos à mão em `test/apoio/`, sem mocktail.
 - **Testes herméticos:** não dependem de `.env` local nem de banco pré-populado.
-- **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`) e `app.yml` (Flutter 3.47.7: build_runner do cliente gerado + `flutter pub get --enforce-lockfile` + build_runner do app + flutter analyze + flutter test); em tag `v*`, gera o APK assinado e anexa ao release (previsto, card S10).
+- **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`), `app.yml` (Flutter 3.47.7: build_runner do cliente gerado + `flutter pub get --enforce-lockfile` + build_runner do app + flutter analyze + flutter test) e `imagem.yml` (imagem da API para amd64 e arm64: em PR só builda; na `main` publica no GHCR); em tag `v*`, gera o APK assinado e anexa ao release (previsto, card S10).
 - **Ruleset "main protegida":** mudança só via PR (sem exigir aprovação: projeto solo), sem force-push e sem apagar a `main`. **Push direto na `main` é bloqueado.** Os checks `backend` e `app` entram como obrigatórios no ruleset assim que cada workflow rodar pela primeira vez (o nome do check só existe depois disso).
 - **Repositório:** público; branch apagada após o merge; secret scanning e push protection ativos (push com segredo é bloqueado); alertas e PRs de segurança do Dependabot ativos (passam pelo CI como qualquer PR); `GITHUB_TOKEN` só leitura; workflows de PR vindos de fork exigem aprovação para qualquer colaborador externo.
 

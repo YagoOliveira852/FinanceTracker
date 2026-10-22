@@ -1,0 +1,60 @@
+# Compose de produção (VPS). Fica numa pasta do servidor junto com o .env
+# (ver .env.example desta pasta); o docker-compose.yml da raiz é só o de dev.
+# Comandos em CLAUDE.md, "Produção (Docker Compose)". Para parar: `down`,
+# nunca com -v, que apaga o volume com os dados.
+
+# Nome fixo: os volumes viram financas_<nome> mesmo se a pasta mudar de nome.
+name: financas
+
+services:
+  api:
+    # Publicada pelo workflow imagem.yml. TAG fixa uma versão (ex.: sha-1a2b3c4).
+    image: ghcr.io/yagooliveira852/financetracker-api:${TAG:-latest}
+    env_file: .env
+    environment:
+      # Montada aqui para a senha do banco existir num lugar só (o .env).
+      DATABASE_URL: postgresql+psycopg://financas:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/financas
+    ports:
+      # Só no próprio servidor: o Docker publica portas por fora do firewall
+      # (ufw), então nada em 0.0.0.0. O `tailscale serve` faz o proxy HTTPS.
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # A imagem não tem curl; urlopen falha (sai com erro) em status >= 400.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/saude', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    logging: &logs
+      # Sem limite, o log do Docker cresce até encher o disco da VM.
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: financas
+      POSTGRES_USER: financas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    # Sem `ports`: só a api alcança o banco, pela rede interna do compose.
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U financas -d financas"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging: *logs
+
+volumes:
+  db_data:
