@@ -41,6 +41,10 @@ services:
 
   db:
     image: postgres:16-alpine
+    # Enxuto para a VPS de 1 GB: o padrão (128MB de cache, 100 conexões) é
+    # para servidor dedicado. Um worker da api usa até 15 conexões (pool do
+    # SQLAlchemy: 5 + 10 de folga), e o deploy abre mais uma para as migrations.
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=20"]
     environment:
       POSTGRES_DB: financas
       POSTGRES_USER: financas
