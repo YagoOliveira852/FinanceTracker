@@ -1,0 +1,103 @@
+# Deploy na VPS, que só existe na tailnet: o runner entra na Tailscale como nó
+# efêmero (tag:ci), copia o compose.prod.yml e o implantar.sh por scp e roda o
+# implantar.sh por ssh (Tailscale SSH, usuário deploy).
+#
+# Roda sozinho quando o workflow imagem termina com sucesso num push na main,
+# com a imagem daquele commit (sha-<7>). À mão, `gh workflow run deploy` sobe
+# o commit atual da main, ou `-f tag=sha-1a2b3c4` volta a uma versão anterior.
+#
+# Sem segredo de longa duração: o login na Tailscale é por OIDC (workload
+# identity federation), trocando o token que o GitHub emite para este job. O
+# environment `producao` só aceita a main, e a credencial da Tailscale só
+# aceita tokens desse environment. Os secrets dele (client id, audience e o
+# nome da VPS na tailnet) não dão acesso sozinhos; ficam em secrets para
+# aparecerem mascarados no log, que é público.
+name: deploy
+
+on:
+  workflow_run:
+    workflows: [imagem]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da imagem (sha-<7 caracteres>); vazio = commit atual da main"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Um deploy por vez, sem cancelar o que está no meio.
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: producao
+    permissions:
+      contents: read
+      id-token: write # token OIDC do GitHub, trocado por um acesso curto na Tailscale
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      # No workflow_run, o commit cuja imagem acabou de ser publicada.
+      COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
+      TAG_ESCOLHIDA: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.COMMIT }}
+
+      - name: Tag da imagem
+        run: |
+          tag="${TAG_ESCOLHIDA:-sha-${COMMIT::7}}"
+          # Validada aqui também porque vai na linha de comando remota do ssh.
+          if [[ ! "$tag" =~ ^sha-[0-9a-f]{7}$ ]]; then
+            echo "Tag inválida: $tag (esperado sha-<7 caracteres>)" >&2
+            exit 1
+          fi
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          echo "Implantando $tag"
+
+      - uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:ci
+          # Espera a VPS ficar alcançável antes do ssh.
+          ping: ${{ secrets.VPS_HOST }}
+
+      # A chave de host da VPS vem da coordenação da Tailscale (é o que o
+      # `tailscale ssh` faz), então o ssh pode recusar qualquer outra chave.
+      - name: Chave de host da VPS
+        run: |
+          mkdir -p ~/.ssh
+          tailscale status --json \
+            | jq -r --arg host "$VPS_HOST" \
+                '.Peer[] | select(.DNSName == $host + ".") | .sshHostKeys[]? | "\($host) \(.)"' \
+            > ~/.ssh/known_hosts
+          test -s ~/.ssh/known_hosts || { echo "A VPS não anunciou chave de host na tailnet." >&2; exit 1; }
+          printf 'Host %s\n  User deploy\n  BatchMode yes\n  StrictHostKeyChecking yes\n' "$VPS_HOST" > ~/.ssh/config
+
+      - name: Copiar compose e script
+        run: scp deploy/compose.prod.yml deploy/implantar.sh "$VPS_HOST:/opt/financas/"
+
+      - name: Implantar
+        run: |
+          # A TAG expande aqui, no runner, de propósito: já foi validada.
+          # shellcheck disable=SC2029
+          ssh "$VPS_HOST" bash /opt/financas/implantar.sh "$TAG"
+
+      - name: Teste de fumaça
+        run: |
+          resposta="$(curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "https://$VPS_HOST/saude")"
+          echo "$resposta"
+          test "$resposta" = '{"status":"ok"}'
