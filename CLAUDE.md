@@ -27,7 +27,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 - **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator 7.26.0 via Docker, alvo `dart-dio`, serialização `built_value`, `decimal=String`) em `app/packages/api_client/`. O FastAPI publica operationId `<tag>_<função>` e o gerador corta a tag (`removeOperationIdPrefix`): `contas_listar` vira `ContasApi.listar()`. Por isso cada rota tem **uma tag só, sem `_`** (teste em `tests/unit/test_operation_ids.py`).
 - **Banco:** PostgreSQL 16.
 - **Ferramentas:** uv (dependências Python), ruff (lint/format), pytest + httpx + testcontainers.
-- **Deploy:** VPS acessível só pela Tailscale, Docker Compose puro (`api`, `db`, `jobs`), GitHub Actions → Tailscale → ssh → `docker compose up -d`. Backup diário criptografado (restic → Backblaze B2). APK assinado gerado pelo CI em tag. Ver `docs/superpowers/specs/2026-10-19-hospedagem-deploy-design.md`.
+- **Deploy:** Locaweb VPS de 1 GB acessível só pela Tailscale, Docker Compose puro (`api`, `db`; `jobs` quando os jobs entrarem). A cada push na `main`: imagem no GHCR → `deploy.yml` entra na tailnet por OIDC → scp + Tailscale SSH → `deploy/implantar.sh` (pull da `sha-<7>`, migrations, `up -d --wait`). Backup diário criptografado (restic → Backblaze B2). APK assinado gerado pelo CI em tag. Ver `docs/superpowers/specs/2026-10-19-hospedagem-deploy-design.md`.
 
 ## Setup & commands
 
@@ -106,22 +106,51 @@ cd backend && uv run ruff check . && uv run ruff format --check .
 cd app && flutter analyze && flutter test
 ```
 
-### Produção (Docker Compose)
+### Produção (VPS)
 
-A imagem da API (`backend/Dockerfile`, amd64 e arm64) é publicada em `ghcr.io/yagooliveira852/financetracker-api` pelo workflow `imagem.yml` a cada push na `main`, com as tags `latest` e `sha-<7 caracteres>`. No servidor, uma pasta com `compose.prod.yml` (de `deploy/`) e `.env` (copiado de `deploy/.env.example`), lado a lado:
+A imagem da API (`backend/Dockerfile`, amd64 e arm64) é publicada em `ghcr.io/yagooliveira852/financetracker-api` pelo workflow `imagem.yml` a cada push na `main`, com as tags `latest` e `sha-<7 caracteres>`. Quando ele termina, o `deploy.yml` implanta essa versão sozinho. Decisões e motivos na spec `2026-10-19-hospedagem-deploy-design.md`; o fluxo explicado em `docs/explicacoes/08-deploy.md`.
+
+**Deploy** (do PC, com o `gh`):
 
 ```bash
-docker compose -f compose.prod.yml config                             # valida o arquivo e o .env
-docker compose -f compose.prod.yml pull                               # imagem da TAG do .env (padrão latest)
-docker compose -f compose.prod.yml run --rm api alembic upgrade head  # sobe o db e aplica as migrations
-docker compose -f compose.prod.yml up -d                              # sobe/atualiza a api
-docker compose -f compose.prod.yml ps                                 # estado e healthcheck
-curl http://127.0.0.1:8000/saude                                      # {"status":"ok"}
-docker compose -f compose.prod.yml logs -f api
-docker compose -f compose.prod.yml down                               # para (NUNCA use -v: apaga os dados)
+gh run list --workflow deploy --limit 5                 # últimos deploys (o automático roda após o imagem)
+gh workflow run deploy                                  # reimplanta o commit atual da main
+gh workflow run deploy -f tag=sha-1a2b3c4               # volta para uma versão anterior (rollback)
+gh run watch                                            # acompanha o deploy em andamento
 ```
 
-Build local da imagem (para testar o compose com ela, `TAG=local` no `.env`; a porta 8000 é a mesma do `fastapi dev`):
+**Acesso:** só com a Tailscale ligada no PC; o IP público não aceita conexão. O ssh passa pela Tailscale SSH (a política da tailnet autoriza o usuário `deploy`, em modo *check*: de vez em quando pede confirmação no navegador). Emergência: console web do painel da Locaweb.
+
+```bash
+ssh deploy@<maquina>.<tailnet>.ts.net                   # nome real em CLAUDE.local.md / memória
+curl https://<maquina>.<tailnet>.ts.net/saude           # {"status":"ok"}, do PC ou do celular na tailnet
+```
+
+**No servidor**, em `/opt/financas`: `compose.prod.yml` e `implantar.sh` (copiados pelo deploy), `.env` (segredos, permissão 600) e `versao.env` (`TAG=sha-<7>` da versão no ar, gravado pelo `implantar.sh`). Todo comando do compose leva os dois arquivos de ambiente; sem o `versao.env`, um `up -d` trocaria a imagem pela `latest`:
+
+```bash
+cd /opt/financas
+alias dc='docker compose -f compose.prod.yml --env-file .env --env-file versao.env'
+dc ps                                                   # estado e healthcheck
+dc logs -f api
+dc exec db psql -U financas -d financas                 # console do banco
+bash implantar.sh sha-1a2b3c4                           # o mesmo que o deploy faz (pull, migrations, up --wait)
+dc down                                                 # para (NUNCA use -v: apaga os dados)
+```
+
+**Preparação do servidor** (feita uma vez, à mão, em 23/10/2026; refazer só ao trocar de VPS). Ubuntu 24.04:
+
+1. Usuário `deploy` com sudo sem senha (`/etc/sudoers.d/deploy`) e no grupo `docker`; `/etc/ssh/sshd_config.d/00-financas.conf` com `PermitRootLogin no`, `PasswordAuthentication no` e `KbdInteractiveAuthentication no`.
+2. Docker Engine + Compose (repositório oficial da Docker); logs do Docker limitados em `/etc/docker/daemon.json` (`json-file`, `max-size 10m`, `max-file 3`) e do journald em 100 MB (`SystemMaxUse=100M`).
+3. Swap de 2 GB (a partição de 1 GB da imagem + `/swapfile` de 1 GB no `/etc/fstab`) com `vm.swappiness=10`.
+4. Tailscale: `tailscale up --ssh --hostname=<maquina>`; no painel, a máquina recebe `tag:server`. `tailscale serve --bg 8000` publica a api em HTTPS só na tailnet.
+5. Firewall: `ufw default deny incoming`, `ufw allow in on tailscale0 to any port 22 proto tcp`, `ufw enable`. A api escuta só em `127.0.0.1:8000` porque o Docker publica portas por fora do `ufw`.
+6. `/opt/financas` do usuário `deploy`; `.env` copiado de `deploy/.env.example` com os segredos gerados **ali mesmo** (`python3 -c "import secrets; ..."`, comandos no próprio arquivo) e `chmod 600 .env`.
+7. Primeiro deploy pelo `gh workflow run deploy` (aplica as migrations); depois `dc run --rm api python -m app.criar_usuario` para criar o usuário.
+
+**Tailscale e GitHub** (painel, uma vez): política da tailnet com `tagOwners` (`tag:ci`, `tag:server`), grant `tag:ci` → `tag:server` em `tcp:22` e `tcp:443`, regra de ssh `tag:ci` → `tag:server` como `deploy`, e `tests`/`sshTests` que conferem isso. Credencial OIDC em Settings → Trust credentials (issuer GitHub, subject `repo:<dono>@<id>/<repo>@<id>:environment:producao`, scope Auth Keys de escrita, `tag:ci`). No GitHub, environment `producao` restrito à `main`, com os secrets `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE` e `VPS_HOST`.
+
+Build local da imagem (para testar o compose com ela, `TAG=local` no ambiente do comando; a porta 8000 é a mesma do `fastapi dev`):
 
 ```bash
 docker buildx build --platform linux/amd64 --load -t ghcr.io/yagooliveira852/financetracker-api:local backend
@@ -216,7 +245,7 @@ TZ_NEGOCIO=America/Fortaleza
 
 **App:** só `--dart-define=API_URL=...` no build (em release, o endereço `https://...ts.net` da VPS). **Nenhum segredo no APK** — chave da Pluggy fica exclusivamente no backend.
 
-**Produção:** o `.env` real fica só na VPS. Segredos do deploy (OAuth client da Tailscale, chave ssh, keystore do APK, credenciais do B2/restic) ficam nos secrets do GitHub ou na VPS, nunca no repositório.
+**Produção:** o `.env` real fica só na VPS, gerado lá mesmo (`deploy/.env.example`: `POSTGRES_PASSWORD`, `JWT_SECRET` e os opcionais); a `TAG` da imagem fica em `versao.env`, gravado pelo `implantar.sh`. O deploy não guarda segredo de longa duração: o environment `producao` do GitHub tem só `TS_OAUTH_CLIENT_ID` e `TS_AUDIENCE` (da credencial OIDC da Tailscale) e `VPS_HOST` (`<maquina>.<tailnet>.ts.net`), que não dão acesso sozinhos e ficam em secrets para saírem mascarados no log público. Os segredos que vierem depois (keystore do APK, credenciais do B2/restic) ficam nos secrets do GitHub ou na VPS, nunca no repositório.
 
 Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 
@@ -229,7 +258,7 @@ Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
   - Pluggy é mockado nos testes (respx ou cliente fake); nenhum teste chama a API real.
 - **App:** `flutter test` para cubits (bloc_test), formatação, interceptor e repositórios (adaptador HTTP falso do dio, `test/apoio/adaptador_falso.dart`) e widget tests das telas e do app inteiro (`test/app/app_test.dart`). Repositórios falsos escritos à mão em `test/apoio/`, sem mocktail.
 - **Testes herméticos:** não dependem de `.env` local nem de banco pré-populado.
-- **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`), `app.yml` (Flutter 3.47.7: build_runner do cliente gerado + `flutter pub get --enforce-lockfile` + build_runner do app + flutter analyze + flutter test) e `imagem.yml` (imagem da API para amd64 e arm64: em PR só builda; na `main` publica no GHCR); em tag `v*`, gera o APK assinado e anexa ao release (previsto, card S10).
+- **CI** (`.github/workflows/`): `backend.yml` (ruff + pytest via uv `--locked`), `app.yml` (Flutter 3.47.7: build_runner do cliente gerado + `flutter pub get --enforce-lockfile` + build_runner do app + flutter analyze + flutter test), `imagem.yml` (imagem da API para amd64 e arm64: em PR só builda; na `main` publica no GHCR) e `deploy.yml` (depois do `imagem` na `main`, ou à mão: Tailscale por OIDC → scp + ssh → `implantar.sh` → teste de fumaça); em tag `v*`, gera o APK assinado e anexa ao release (previsto, card S10).
 - **Ruleset "main protegida":** mudança só via PR (sem exigir aprovação: projeto solo), sem force-push e sem apagar a `main`. **Push direto na `main` é bloqueado.** Os checks `backend` e `app` entram como obrigatórios no ruleset assim que cada workflow rodar pela primeira vez (o nome do check só existe depois disso).
 - **Repositório:** público; branch apagada após o merge; secret scanning e push protection ativos (push com segredo é bloqueado); alertas e PRs de segurança do Dependabot ativos (passam pelo CI como qualquer PR); `GITHUB_TOKEN` só leitura; workflows de PR vindos de fork exigem aprovação para qualquer colaborador externo.
 

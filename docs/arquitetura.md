@@ -105,8 +105,9 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 
 **Infra/portfólio**
 - Repositório público desde o início, com secret scanning e push protection; dados reais nunca: `.env`, seed fictício, modo demo **local** para prints do README.
-- Hospedagem: VPS acessível **só pela Tailscale** (HTTPS via `*.ts.net`), Docker Compose puro (`api`, `db`, `jobs`), deploy por GitHub Actions → Tailscale → ssh. Backup diário criptografado (restic) no Backblaze B2, com restauração testada. Detalhes na spec `2026-10-19-hospedagem-deploy`.
-- CI: ruff + pytest; flutter analyze + flutter test; deploy na `main`; APK assinado por tag.
+- Hospedagem: Locaweb VPS de 1 GB (Ubuntu 24.04, swap de 2 GB), acessível **só pela Tailscale** (`ufw` só aceita ssh na interface da tailnet; HTTPS via `tailscale serve` em `*.ts.net`). Docker Compose puro (`api`, `db` com Postgres enxuto; `jobs` quando os jobs entrarem). `.env` gerado no próprio servidor. Backup diário criptografado (restic) no Backblaze B2, com restauração testada. Detalhes na spec `2026-10-19-hospedagem-deploy`.
+- Deploy: a cada push na `main`, `imagem.yml` publica a api no GHCR e `deploy.yml` entra na tailnet como nó efêmero (`tag:ci`, OIDC, sem segredo de longa duração), copia `deploy/compose.prod.yml` e `deploy/implantar.sh` por scp e roda o script por Tailscale SSH: `pull` da tag `sha-<7>`, migrations, `up -d --wait`, teste de fumaça em `/saude`.
+- CI: ruff + pytest; flutter analyze + flutter test; imagem e deploy na `main`; APK assinado por tag.
 
 ---
 
@@ -383,10 +384,12 @@ FinanceTracker/
 ├── CLAUDE.local.md               # instruções pessoais (no .gitignore)
 ├── README.md                     # vitrine do portfólio: prints (modo demo), arquitetura, decisões
 ├── docker-compose.yml            # Postgres local
+├── deploy/                       # produção: compose.prod.yml, implantar.sh, .env.example
 ├── .github/workflows/
 │   ├── backend.yml               # ruff + pytest
 │   ├── app.yml                   # build_runner + flutter analyze + test; APK assinado em tag
-│   └── deploy.yml                # imagem no GHCR → Tailscale → ssh → docker compose up
+│   ├── imagem.yml                # imagem da api (amd64 + arm64) no GHCR
+│   └── deploy.yml                # Tailscale (OIDC) → scp + ssh → implantar.sh na VPS
 ├── docs/
 │   ├── arquitetura.md            # este documento
 │   ├── briefing.md               # dados e cronograma pessoais (local, fora do git)
