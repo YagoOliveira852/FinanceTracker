@@ -17,7 +17,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 
 1. **Passos pequenos**, um assunto por vez, sempre com teste.
 2. **Decisão de arquitetura** vira spec em `docs/superpowers/specs/` antes de implementar; plano derivado em `docs/superpowers/plans/`.
-3. **Conceito importante** vira nota curta em `docs/explicacoes/NN-tema.md`.
+3. **Conceito importante** vira nota curta em `docs/explicacoes/NN-tema.md`, pessoal e fora do git (`.gitignore`): o repositório é público.
 4. **Pergunte antes** de adicionar dependência nova ou de sair do escopo do passo.
 
 ## Stack
@@ -108,7 +108,7 @@ cd app && flutter analyze && flutter test
 
 ### Produção (VPS)
 
-A imagem da API (`backend/Dockerfile`, amd64 e arm64) é publicada em `ghcr.io/yagooliveira852/financetracker-api` pelo workflow `imagem.yml` a cada push na `main`, com as tags `latest` e `sha-<7 caracteres>`. Quando ele termina, o `deploy.yml` implanta essa versão sozinho. Decisões e motivos na spec `2026-10-19-hospedagem-deploy-design.md`; o fluxo explicado em `docs/explicacoes/08-deploy.md`.
+A imagem da API (`backend/Dockerfile`, amd64 e arm64) é publicada em `ghcr.io/yagooliveira852/financetracker-api` pelo workflow `imagem.yml` a cada push na `main`, com as tags `latest` e `sha-<7 caracteres>`. Quando ele termina, o `deploy.yml` implanta essa versão sozinho. Decisões e motivos na spec `2026-10-19-hospedagem-deploy-design.md`.
 
 **Deploy** (do PC, com o `gh`):
 
@@ -279,7 +279,7 @@ As telas são desenhadas no **Claude Design** antes de implementadas, sempre com
 | `docs/briefing.md` | **Local, fora do git:** renda, contas, regras de aporte com valores reais, cronograma |
 | `docs/superpowers/specs/` | Decisões e motivos, escritas antes de implementar |
 | `docs/superpowers/plans/` | Planos passo a passo derivados de uma spec |
-| `docs/explicacoes/` | Notas de aprendizado (FastAPI, Flutter, conceitos do domínio) |
+| `docs/explicacoes/` | **Local, fora do git:** notas de aprendizado (FastAPI, Flutter, conceitos do domínio) |
 | `docs/agents/` | Configuração dos skills de engenharia: issue tracker, labels de triagem, docs de domínio |
 | `README.md` | Vitrine do portfólio: prints do modo demo, arquitetura, como rodar |
 
