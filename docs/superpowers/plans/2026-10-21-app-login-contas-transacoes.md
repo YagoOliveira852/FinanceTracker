@@ -8,7 +8,7 @@
 
 **Stack:** Flutter 3.47.7 / Dart 3, go_router, flutter_bloc (Cubit), dio, freezed, flutter_secure_storage, decimal, intl + flutter_localizations, bloc_test.
 
-**Referências:** card S2 · App Flutter (Trello `qTNlGFwI`), `docs/arquitetura.md` §5 e §8, `docs/explicacoes/04-cliente-gerado-openapi.md`, spec `2026-10-19-dinheiro-contrato-api-design.md`, design aprovado no canvas do Claude Design (páginas Login, Início, Contas, Nova conta, Transações, Lançamento, Mais).
+**Referências:** card S2 · App Flutter (Trello `qTNlGFwI`), `docs/arquitetura.md` §5 e §8, spec `2026-10-19-dinheiro-contrato-api-design.md`, design aprovado no canvas do Claude Design (páginas Login, Início, Contas, Nova conta, Transações, Lançamento, Mais).
 
 ## Restrições globais
 
@@ -197,7 +197,7 @@ Valores copiados do `tokens.css` do design system (claro e escuro): `surface #f6
 
 ### Tarefa 10: documentação
 
-**Arquivos:** `docs/explicacoes/05-widgets-flutter.md`, `06-cubit-estado.md`, `07-build-runner-freezed.md`; `CLAUDE.md` (Setup do app: `dart run build_runner build` em `app/` agora é necessário; `.freezed.dart` fora do git; seção App), `docs/arquitetura.md` §8 se a estrutura mudar.
+**Arquivos:** `docs/explicacoes/05-widgets-flutter.md`, `06-cubit-estado.md`, `07-build-runner-freezed.md` (desde 23/10/2026, notas locais, fora do git); `CLAUDE.md` (Setup do app: `dart run build_runner build` em `app/` agora é necessário; `.freezed.dart` fora do git; seção App), `docs/arquitetura.md` §8 se a estrutura mudar.
 
 - 05: widget, `build`, Stateless × Stateful ↔ componentes do React Native; árvore e `BuildContext`.
 - 06: Cubit ↔ `useState` + Context; `BlocProvider`/`BlocBuilder`/`BlocListener`; por que estado imutável.

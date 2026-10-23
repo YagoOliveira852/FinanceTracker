@@ -1,6 +1,9 @@
 # Instruções pessoais para o Claude Code
 CLAUDE.local.md
 
+# Notas de aprendizado pessoais (o repositório é público)
+docs/explicacoes/
+
 # Segredos e configuração local
 .env
 .env.*
