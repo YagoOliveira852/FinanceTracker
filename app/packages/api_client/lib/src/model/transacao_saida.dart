@@ -5,6 +5,7 @@
 // ignore_for_file: unused_element
 import 'package:api_client/src/model/status_transacao.dart';
 import 'package:api_client/src/model/tipo_transacao.dart';
+import 'package:api_client/src/model/parcela_saida.dart';
 import 'package:api_client/src/model/fonte_transacao.dart';
 import 'package:api_client/src/model/date.dart';
 import 'package:built_value/built_value.dart';
@@ -25,6 +26,7 @@ part 'transacao_saida.g.dart';
 /// * [status] 
 /// * [fonte] 
 /// * [faturaId] - Fatura da transação, se a conta é cartão.
+/// * [parcela] - Número da parcela, se é compra parcelada.
 @BuiltValue()
 abstract class TransacaoSaida implements Built<TransacaoSaida, TransacaoSaidaBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -60,6 +62,10 @@ abstract class TransacaoSaida implements Built<TransacaoSaida, TransacaoSaidaBui
   /// Fatura da transação, se a conta é cartão.
   @BuiltValueField(wireName: r'fatura_id')
   String? get faturaId;
+
+  /// Número da parcela, se é compra parcelada.
+  @BuiltValueField(wireName: r'parcela')
+  ParcelaSaida? get parcela;
 
   TransacaoSaida._();
 
@@ -133,6 +139,11 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
     yield object.faturaId == null ? null : serializers.serialize(
       object.faturaId,
       specifiedType: const FullType.nullable(String),
+    );
+    yield r'parcela';
+    yield object.parcela == null ? null : serializers.serialize(
+      object.parcela,
+      specifiedType: const FullType.nullable(ParcelaSaida),
     );
   }
 
@@ -227,6 +238,14 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
           ) as String?;
           if (valueDes == null) continue;
           result.faturaId = valueDes;
+          break;
+        case r'parcela':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(ParcelaSaida),
+          ) as ParcelaSaida?;
+          if (valueDes == null) continue;
+          result.parcela.replace(valueDes);
           break;
         default:
           unhandled.add(key);

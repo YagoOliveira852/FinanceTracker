@@ -22,6 +22,8 @@ lib/src/model/ajuste_entrada.dart
 lib/src/model/cartao_edicao.dart
 lib/src/model/cartao_entrada.dart
 lib/src/model/cartao_saida.dart
+lib/src/model/compra_parcelada_entrada.dart
+lib/src/model/compra_parcelada_saida.dart
 lib/src/model/conta_entrada.dart
 lib/src/model/conta_saida.dart
 lib/src/model/contas_resumo.dart
@@ -38,6 +40,7 @@ lib/src/model/instituicao_saida.dart
 lib/src/model/lista_faturas_saida.dart
 lib/src/model/location_inner.dart
 lib/src/model/login_entrada.dart
+lib/src/model/parcela_saida.dart
 lib/src/model/refresh_entrada.dart
 lib/src/model/resposta_erro.dart
 lib/src/model/saude.dart

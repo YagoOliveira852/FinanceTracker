@@ -26,7 +26,7 @@ from app.modulos.cartoes.feriados import feriados_entre
 from app.modulos.cartoes.models import Cartao, Fatura
 from app.modulos.contas.models import Conta, TipoConta
 from app.modulos.contas.service import obter_ou_criar_instituicao
-from app.modulos.transacoes.models import TipoTransacao, Transacao
+from app.modulos.transacoes.models import CompraParcelada, TipoTransacao, Transacao
 
 # O ajuste da fatura pertence a ela por definição, não pela data: nunca muda de
 # fatura quando um fechamento muda.
@@ -191,22 +191,46 @@ def obter_ou_criar_fatura(sessao: Session, cartao: Cartao, competencia: date) ->
 
 
 def realocar_compras(sessao: Session, cartao: Cartao, de: date, ate: date | None) -> None:
-    """Põe cada transação do cartão com data em [`de`, `ate`) (ou a partir de
-    `de`, se `ate` é nulo) na fatura que a regra manda, gravando a fatura se
-    preciso. Usada quando um fechamento muda. Sem commit."""
-    consulta = select(Transacao).where(
+    """Põe cada compra do cartão feita em [`de`, `ate`) (ou a partir de `de`,
+    se `ate` é nulo) na fatura que a regra manda, gravando a fatura se
+    preciso. Usada quando um fechamento muda. Sem commit.
+
+    A compra parcelada se move inteira, pela data da compra: a parcela k vai
+    para a competência da compra mais k−1. A data de cada parcela não diz em
+    que fatura ela está, então parcela nunca é realocada pela própria data.
+    """
+    faturas: dict[date, Fatura] = {}
+
+    def fatura_de(competencia: date) -> Fatura:
+        if competencia not in faturas:
+            faturas[competencia] = obter_ou_criar_fatura(sessao, cartao, competencia)
+        return faturas[competencia]
+
+    avulsas = select(Transacao).where(
         Transacao.conta_id == cartao.conta_id,
+        Transacao.compra_parcelada_id.is_(None),
         Transacao.data >= de,
         Transacao.tipo.not_in([tipo.value for tipo in TIPOS_AJUSTE]),
     )
+    parceladas = (
+        select(CompraParcelada)
+        .join(Transacao, Transacao.compra_parcelada_id == CompraParcelada.id)
+        .where(Transacao.conta_id == cartao.conta_id, CompraParcelada.data_compra >= de)
+        .distinct()
+    )
     if ate is not None:
-        consulta = consulta.where(Transacao.data < ate)
-    faturas: dict[date, Fatura] = {}
-    for transacao in sessao.scalars(consulta):
-        competencia = competencia_para_data(sessao, cartao, transacao.data)
-        if competencia not in faturas:
-            faturas[competencia] = obter_ou_criar_fatura(sessao, cartao, competencia)
-        transacao.fatura_id = faturas[competencia].id
+        avulsas = avulsas.where(Transacao.data < ate)
+        parceladas = parceladas.where(CompraParcelada.data_compra < ate)
+
+    for transacao in sessao.scalars(avulsas):
+        transacao.fatura_id = fatura_de(competencia_para_data(sessao, cartao, transacao.data)).id
+    for compra in sessao.scalars(parceladas):
+        primeira = competencia_para_data(sessao, cartao, compra.data_compra)
+        for parcela in compra.parcelas:
+            competencia = primeira
+            for _ in range(parcela.parcela_numero - 1):
+                competencia = mes_seguinte(competencia)
+            parcela.fatura_id = fatura_de(competencia).id
     sessao.flush()
 
 

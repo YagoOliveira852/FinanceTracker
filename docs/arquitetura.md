@@ -118,7 +118,7 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 - **Importação idempotente:** importar o mesmo arquivo duas vezes, ou receber a sobreposição de 4 dias da Pluggy, não duplica.
 - **Mesma transação por duas fontes** (CSV e Pluggy): não fundir automaticamente; marcar como possível duplicata e pedir confirmação na revisão.
 - **Pagamento de fatura e transferência entre contas próprias** não são gasto.
-- **Compra parcelada:** uma compra gera N parcelas, cada uma numa fatura.
+- **Compra parcelada:** uma compra gera N parcelas, cada uma numa fatura. No lançamento manual, a parcela k tem a data da compra + (k−1) meses e entra na fatura da compra + (k−1) competências (nunca na fatura da própria data, que pode pular uma competência); o centavo que sobra da divisão vai para a 1ª. Fechamento que muda leva a compra inteira, pela data da compra. Spec `2026-10-24-compra-parcelada`.
 - **Vencimento e fechamento em feriado/fim de semana:** calcular pela tabela `feriado` + regra do cartão, nunca assumir o dia fixo. Os dois passam para o próximo dia útil, e compra feita no dia do fechamento (já ajustado) entra na fatura seguinte ("melhor dia de compra").
 - **Rentabilidade com aportes em datas diferentes:** XIRR (pyxirr) comparado ao CDI — opcional.
 
@@ -227,7 +227,7 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 | status | text | `ok` \| `erro` |
 | erro | text null | |
 
-**compra_parcelada** — `id`, `descricao`, `valor_total`, `qtd_parcelas`, `data_compra`, `data_compra_estimada` (bool). Agrupa as parcelas. A Pluggy traz a data real da compra (`creditCardMetadata.purchaseDate`); o OFX só traz a data de cobrança, e aí a data da compra é estimada (parcela N recuada N−1 meses), marcada como estimada e editável na revisão. O app não projeta parcelas futuras a partir das fontes (a Pluggy já as envia como `PENDING`; o OFX traz a do mês); só o lançamento manual de compra parcelada gera as N parcelas.
+**compra_parcelada** — `id`, `descricao`, `valor_total` (`CHECK > 0`), `qtd_parcelas` (`CHECK >= 2`; o máximo de 24 do lançamento manual fica na API), `data_compra`, `data_compra_estimada` (bool, padrão `false`). Agrupa as parcelas. Lançamento manual: `POST /transacoes/parceladas`. A Pluggy traz a data real da compra (`creditCardMetadata.purchaseDate`); o OFX só traz a data de cobrança, e aí a data da compra é estimada (parcela N recuada N−1 meses), marcada como estimada e editável na revisão. O app não projeta parcelas futuras a partir das fontes (a Pluggy já as envia como `PENDING`; o OFX traz a do mês); só o lançamento manual de compra parcelada gera as N parcelas.
 
 **transacao**
 | coluna | tipo | nota |
@@ -245,8 +245,8 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 | id_externo | text null | FITID, id da Pluggy ou hash gerado |
 | importacao_id | uuid FK null | |
 | fatura_id | uuid FK null | obrigatório se a conta é cartão (regra no service); lançamento manual em cartão só aceita `despesa` |
-| compra_parcelada_id | uuid FK null | |
-| parcela_numero | smallint null | |
+| compra_parcelada_id | uuid FK null | indexado; com `parcela_numero`, os dois juntos ou nenhum (`CHECK`) |
+| parcela_numero | smallint null | `CHECK >= 1`; até `qtd_parcelas` (regra no service). Sem unique com a compra: a mesma parcela pode chegar por duas fontes até a revisão decidir |
 | transferencia_par_id | uuid FK null | liga saída e entrada entre contas próprias |
 | investimento_id | uuid FK null | para `aporte`/`resgate` |
 | possivel_duplicata_de | uuid FK null | marcada quando outra fonte trouxe algo igual |
