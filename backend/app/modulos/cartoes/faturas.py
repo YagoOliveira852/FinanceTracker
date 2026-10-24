@@ -28,6 +28,7 @@ from app.modulos.cartoes.feriados import feriados_entre
 from app.modulos.cartoes.models import Cartao, Fatura
 from app.modulos.transacoes.models import (
     TIPOS_ENTRADA,
+    FonteTransacao,
     StatusTransacao,
     TipoTransacao,
     Transacao,
@@ -43,6 +44,7 @@ _FORA_DO_CALCULADO = frozenset(
 )
 _STATUS_QUE_CONTAM = frozenset({StatusTransacao.confirmada, StatusTransacao.rascunho})
 _ZERO = Decimal("0.00")
+DESCRICAO_AJUSTE = "Ajuste da fatura"
 
 
 @dataclass(frozen=True)
@@ -202,6 +204,59 @@ def editar(
         service.realocar_compras(
             sessao, cartao, min(antigo, data_fechamento), max(antigo, data_fechamento)
         )
+    sessao.commit()
+    return detalhe(sessao, cartao, competencia, hoje)
+
+
+def ajustar(
+    sessao: Session,
+    cartao: Cartao,
+    competencia: date,
+    *,
+    valor_real: Decimal,
+    descricao: str | None,
+    hoje: date,
+) -> DetalheFatura:
+    """Ajusta a fatura para o valor real que o banco cobra.
+
+    Grava o valor real como informado e deixa na fatura uma transação de ajuste
+    com a diferença para o calculado (sem o ajuste anterior): `ajuste_saida` se
+    faltava lançamento, `ajuste_entrada` se sobrava. A fatura tem no máximo um
+    ajuste: ajustar de novo o substitui, e sem diferença ele é removido. Assim
+    a diferença não some sem rastro, e a descrição registra a causa.
+    """
+    if valor_real < 0:
+        raise CampoInvalido("valor_real", "O valor real não pode ser negativo.")
+    fatura = service.obter_ou_criar_fatura(sessao, cartao, competencia)
+    ajuste = sessao.scalar(
+        select(Transacao).where(
+            Transacao.fatura_id == fatura.id,
+            Transacao.tipo.in_([tipo.value for tipo in service.TIPOS_AJUSTE]),
+        )
+    )
+    calculado = valores_calculados(sessao, [fatura.id]).get(fatura.id, _ZERO)
+    if ajuste is not None:
+        efeito = -ajuste.valor if ajuste.tipo == TipoTransacao.ajuste_entrada else ajuste.valor
+        calculado -= efeito
+    diferenca = valor_real - calculado
+
+    fatura.valor_informado = valor_real
+    if diferenca == 0:
+        if ajuste is not None:
+            sessao.delete(ajuste)
+    else:
+        if ajuste is None:
+            ajuste = Transacao(
+                conta_id=cartao.conta_id,
+                fatura_id=fatura.id,
+                status=StatusTransacao.confirmada,
+                fonte=FonteTransacao.manual,
+            )
+            sessao.add(ajuste)
+        ajuste.tipo = TipoTransacao.ajuste_saida if diferenca > 0 else TipoTransacao.ajuste_entrada
+        ajuste.valor = abs(diferenca)
+        ajuste.data = hoje
+        ajuste.descricao = ajuste.descricao_original = descricao or DESCRICAO_AJUSTE
     sessao.commit()
     return detalhe(sessao, cartao, competencia, hoje)
 
