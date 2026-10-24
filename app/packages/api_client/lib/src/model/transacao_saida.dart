@@ -24,6 +24,7 @@ part 'transacao_saida.g.dart';
 /// * [descricaoOriginal] 
 /// * [status] 
 /// * [fonte] 
+/// * [faturaId] - Fatura da transação, se a conta é cartão.
 @BuiltValue()
 abstract class TransacaoSaida implements Built<TransacaoSaida, TransacaoSaidaBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -55,6 +56,10 @@ abstract class TransacaoSaida implements Built<TransacaoSaida, TransacaoSaidaBui
   @BuiltValueField(wireName: r'fonte')
   FonteTransacao get fonte;
   // enum fonteEnum {  manual,  ofx,  csv_mercadopago,  pluggy,  };
+
+  /// Fatura da transação, se a conta é cartão.
+  @BuiltValueField(wireName: r'fatura_id')
+  String? get faturaId;
 
   TransacaoSaida._();
 
@@ -123,6 +128,11 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
     yield serializers.serialize(
       object.fonte,
       specifiedType: const FullType(FonteTransacao),
+    );
+    yield r'fatura_id';
+    yield object.faturaId == null ? null : serializers.serialize(
+      object.faturaId,
+      specifiedType: const FullType.nullable(String),
     );
   }
 
@@ -209,6 +219,14 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
             specifiedType: const FullType(FonteTransacao),
           ) as FonteTransacao;
           result.fonte = valueDes;
+          break;
+        case r'fatura_id':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.faturaId = valueDes;
           break;
         default:
           unhandled.add(key);

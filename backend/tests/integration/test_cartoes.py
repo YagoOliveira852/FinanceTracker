@@ -6,12 +6,14 @@ hoje = 2026-10-20, fatura atual = novembro.
 
 import uuid
 from datetime import date
+from decimal import Decimal
 
 import pytest
 
 from app.modulos.cartoes import service
 from app.modulos.cartoes.models import Cartao, Fatura
 from app.modulos.contas.models import Conta
+from app.modulos.transacoes.models import Transacao
 
 
 def _criar_conta(api, **mudancas) -> dict:
@@ -120,6 +122,64 @@ def test_post_contas_continua_recusando_cartao(api):
     )
 
     assert "body.tipo" in _campos(resposta)
+
+
+def test_cria_cartao_devolve_fatura_atual(api, corrente):
+    corpo = api.post("/cartoes", json=_dados_cartao(corrente["id"])).json()
+
+    assert corpo["cartao"] == {
+        "conta_pagamento_id": corrente["id"],
+        "dia_fechamento": 3,
+        "dia_vencimento": 10,
+        "limite": "3000.00",
+        "fatura_atual": {
+            "competencia": "2026-11-01",
+            "data_fechamento": "2026-11-03",
+            "data_vencimento": "2026-11-10",
+            "status": "aberta",
+            "valor": "0.00",
+            "valor_calculado": "0.00",
+            "valor_informado": None,
+        },
+    }
+
+
+def test_contas_mostra_fatura_atual_do_cartao(api, sessao, corrente):
+    cartao = api.post("/cartoes", json=_dados_cartao(corrente["id"])).json()
+    compra = api.post(
+        "/transacoes",
+        json={
+            "conta_id": cartao["id"],
+            "tipo": "despesa",
+            "valor": "120.00",
+            "data": "2026-10-20",
+            "descricao": "Mercado do bairro",
+        },
+    ).json()
+    for valor, status_ in [("30.00", "rascunho"), ("50.00", "ignorada")]:
+        sessao.add(
+            Transacao(
+                conta_id=uuid.UUID(cartao["id"]),
+                tipo="despesa",
+                valor=Decimal(valor),
+                data=date(2026, 10, 21),
+                descricao_original="Exemplo",
+                descricao="Exemplo",
+                status=status_,
+                fonte="ofx",
+                fatura_id=uuid.UUID(compra["fatura_id"]),
+            )
+        )
+    sessao.flush()
+
+    contas = {c["nome"]: c for c in api.get("/contas").json()["contas"]}
+
+    fatura = contas["Cartão Exemplo"]["cartao"]["fatura_atual"]
+    assert fatura["valor"] == "150.00"
+    assert fatura["status"] == "aberta"
+    assert fatura["data_vencimento"] == "2026-11-10"
+    assert contas["Conta principal"]["cartao"] is None
+    assert api.get(f"/contas/{cartao['id']}").json()["cartao"]["fatura_atual"] == fatura
 
 
 # --- prévia ------------------------------------------------------------------

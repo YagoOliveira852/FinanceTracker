@@ -7,6 +7,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from app.modulos.cartoes.models import Fatura
 from app.modulos.contas.models import Conta
 from app.modulos.transacoes.models import Transacao
 from tests.utils import HOJE
@@ -251,3 +252,47 @@ def test_rotas_exigem_token(client, metodo, caminho):
 
     assert resposta.status_code == 401
     assert resposta.json() == {"detail": "Não autenticado."}
+
+
+# --- cartão de crédito -------------------------------------------------------
+
+
+@pytest.fixture
+def cartao(api, conta) -> dict:
+    """Fecha dia 3 e vence dia 10: outubro fecha em 05/10 (03/10 é sábado)."""
+    resposta = api.post(
+        "/cartoes",
+        json={
+            "nome": "Cartão Exemplo",
+            "instituicao": "Banco Exemplo",
+            "conta_pagamento_id": conta["id"],
+            "dia_fechamento": 3,
+            "dia_vencimento": 10,
+        },
+    )
+    assert resposta.status_code == 201, resposta.json()
+    return resposta.json()
+
+
+def _competencia(sessao, fatura_id) -> date:
+    return sessao.get(Fatura, uuid.UUID(fatura_id)).competencia
+
+
+def test_compra_no_cartao_entra_na_fatura_da_data(api, sessao, cartao):
+    antes = _lancar(api, cartao["id"], data="2026-10-04")
+    no_fechamento = _lancar(api, cartao["id"], data="2026-10-05")
+    depois = _lancar(api, cartao["id"], data="2026-10-20")
+
+    assert _competencia(sessao, antes["fatura_id"]) == date(2026, 10, 1)
+    assert _competencia(sessao, no_fechamento["fatura_id"]) == date(2026, 11, 1)
+    assert depois["fatura_id"] == no_fechamento["fatura_id"]
+
+
+def test_transacao_de_conta_comum_nao_tem_fatura(api, conta):
+    assert _lancar(api, conta["id"])["fatura_id"] is None
+
+
+def test_receita_no_cartao_e_recusada(api, cartao):
+    campos = _campos(api.post("/transacoes", json=_dados(cartao["id"], tipo="receita")))
+
+    assert campos == {"body.conta_id": "Num cartão de crédito, lance só despesas."}

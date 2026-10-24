@@ -187,20 +187,22 @@ def test_total_disponivel_ignora_conta_desativada_e_cartao(api, sessao):
     _criar(api, _carteira(saldo_inicial="100.00"))
     desativada = _criar(api, _corrente(saldo_inicial="500.00"))
     sessao.get(Conta, uuid.UUID(desativada["id"])).ativa = False
-    sessao.add(
-        Conta(
-            nome="Cartão Exemplo",
-            tipo="cartao_credito",
-            instituicao=sessao.query(Instituicao).one(),
-            saldo_inicial=Decimal("-300.00"),
-            data_saldo_inicial=ONTEM,
-        )
-    )
-    sessao.flush()
+    corrente = _criar(api, _corrente(nome="Conta que paga", saldo_inicial="0.00"))
+    cartao = api.post(
+        "/cartoes",
+        json={
+            "nome": "Cartão Exemplo",
+            "instituicao": "Banco Exemplo",
+            "conta_pagamento_id": corrente["id"],
+            "dia_fechamento": 3,
+            "dia_vencimento": 10,
+        },
+    ).json()
+    _transacao(sessao, cartao["id"], "despesa", "300.00", HOJE)
 
     corpo = api.get("/contas").json()
 
-    assert len(corpo["contas"]) == 3
+    assert len(corpo["contas"]) == 4
     assert corpo["total_disponivel"] == "100.00"
 
 

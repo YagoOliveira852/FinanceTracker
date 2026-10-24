@@ -36,3 +36,4 @@ class TransacaoSaida(BaseModel):
     descricao_original: str
     status: StatusTransacao
     fonte: FonteTransacao
+    fatura_id: uuid.UUID | None = Field(description="Fatura da transação, se a conta é cartão.")
