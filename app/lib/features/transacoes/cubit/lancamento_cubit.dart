@@ -4,6 +4,9 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../../core/api/erro_api.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../../core/formatacao/dinheiro.dart';
+import '../../contas/data/conta.dart';
+import '../../faturas/data/fatura.dart';
+import '../../faturas/data/faturas_repositorio.dart';
 import '../data/transacao.dart';
 import '../data/transacoes_repositorio.dart';
 
@@ -20,16 +23,26 @@ abstract class LancamentoEstado with _$LancamentoEstado {
     @Default({}) Map<String, String> erros,
     String? erroGeral,
 
+    /// Compra no cartão: em que fatura ela entra ("Entra na fatura de …").
+    /// Nula em conta comum ou enquanto a API não respondeu.
+    DatasFatura? faturaDaCompra,
+
     /// Preenchida quando o lançamento foi salvo: a tela fecha.
     Transacao? salva,
   }) = _LancamentoEstado;
 }
 
-/// Formulário de lançamento manual (despesa ou receita).
+/// Formulário de lançamento manual (despesa ou receita; no cartão, compra).
 class LancamentoCubit extends Cubit<LancamentoEstado> {
-  LancamentoCubit(this._transacoes) : super(const LancamentoEstado());
+  LancamentoCubit(this._transacoes, this._faturas)
+    : super(const LancamentoEstado());
 
   final TransacoesRepositorio _transacoes;
+  final FaturasRepositorio _faturas;
+
+  /// Conta e data da última consulta de fatura: a tela pede de novo a cada
+  /// quadro, e só uma mudança de verdade chama a API.
+  ({String? contaId, DateTime data})? _consultada;
 
   static const _camposDoFormulario = {'conta_id', 'valor', 'data', 'descricao'};
 
@@ -42,6 +55,30 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
   void escolherTipo(TipoTransacao tipo) {
     assert(tipo == TipoTransacao.despesa || tipo == TipoTransacao.receita);
     emit(state.copyWith(tipo: tipo));
+  }
+
+  /// Atualiza "Entra na fatura de …" para a conta e a data escolhidas. Conta
+  /// que não é cartão (ou nenhuma) limpa a fatura sem chamar a API; erro da
+  /// API só deixa sem a informação.
+  Future<void> consultarFatura(Conta? conta, DateTime data) async {
+    final cartao = conta?.tipo == TipoConta.cartaoCredito ? conta : null;
+    final chave = (contaId: cartao?.id, data: somenteData(data));
+    if (chave == _consultada) return;
+    _consultada = chave;
+    if (cartao == null) {
+      if (state.faturaDaCompra != null) {
+        emit(state.copyWith(faturaDaCompra: null));
+      }
+      return;
+    }
+    DatasFatura? fatura;
+    try {
+      fatura = await _faturas.paraCompra(cartao.id, chave.data);
+    } on ErroApi {
+      fatura = null;
+    }
+    if (isClosed || chave != _consultada) return;
+    emit(state.copyWith(faturaDaCompra: fatura));
   }
 
   Future<void> salvar({

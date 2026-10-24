@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../apoio/contas_falso.dart';
+import '../../apoio/faturas_falso.dart';
 import '../../apoio/transacoes_falso.dart';
 
 final _hoje = DateTime(2026, 10, 20);
@@ -124,7 +125,10 @@ void main() {
                     ..carregar(),
             ),
             BlocProvider(
-              create: (_) => LancamentoCubit(TransacoesRepositorioFalso()),
+              create: (_) => LancamentoCubit(
+                TransacoesRepositorioFalso(),
+                FaturasRepositorioFalso(),
+              ),
             ),
           ],
           child: const LancamentoTela(),
@@ -148,8 +152,8 @@ void main() {
     expect(find.text('Informe um valor maior que zero.'), findsOneWidget);
   });
 
-  testWidgets('Lançamento não envia a conta do filtro se ela não aceita '
-      'lançamento', (tester) async {
+  testWidgets('Lançamento não envia a conta do filtro se ela está '
+      'desativada', (tester) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -164,17 +168,20 @@ void main() {
                   contas: [
                     contaExemplo(),
                     contaExemplo(
-                      id: 'cartao',
-                      nome: 'Cartão Exemplo',
-                      tipo: TipoConta.cartaoCredito,
+                      id: 'antiga',
+                      nome: 'Conta antiga',
+                      ativa: false,
                     ),
                   ],
                 ),
               )..carregar(),
             ),
-            BlocProvider(create: (_) => LancamentoCubit(transacoes)),
+            BlocProvider(
+              create: (_) =>
+                  LancamentoCubit(transacoes, FaturasRepositorioFalso()),
+            ),
           ],
-          child: const LancamentoTela(contaInicial: 'cartao'),
+          child: const LancamentoTela(contaInicial: 'antiga'),
         ),
       ),
     );
@@ -216,7 +223,10 @@ void main() {
                       ContasRepositorioFalso(contas: [contaExemplo()]),
                     )..carregar(),
                   ),
-                  BlocProvider(create: (_) => LancamentoCubit(transacoes)),
+                  BlocProvider(
+                    create: (_) =>
+                        LancamentoCubit(transacoes, FaturasRepositorioFalso()),
+                  ),
                 ],
                 child: const LancamentoTela(contaInicial: 'c1'),
               ),
@@ -275,5 +285,95 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(FilterChip, 'Carteira'), findsOneWidget);
+  });
+
+  Widget lancamento({
+    required List<Conta> contas,
+    String? contaInicial,
+    FaturasRepositorioFalso? faturas,
+  }) => _app(
+    MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) =>
+              ContasCubit(ContasRepositorioFalso(contas: contas))..carregar(),
+        ),
+        BlocProvider(
+          create: (_) => LancamentoCubit(
+            TransacoesRepositorioFalso(),
+            faturas ?? FaturasRepositorioFalso(),
+          ),
+        ),
+      ],
+      child: LancamentoTela(contaInicial: contaInicial),
+    ),
+  );
+
+  testWidgets('Lançamento: despesa lista o cartão e receita não', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      lancamento(contas: [contaExemplo(), cartaoExemplo()]),
+    );
+    await tester.pumpAndSettle();
+
+    // O tipo vem antes da conta.
+    expect(
+      tester.getTopLeft(find.text('Despesa')).dy,
+      lessThan(tester.getTopLeft(find.text('Conta')).dy),
+    );
+
+    await tester.tap(find.text('Selecione uma conta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cartão Exemplo · Banco Exemplo'), findsWidgets);
+    await tester.tap(find.text('Conta principal · Banco Exemplo').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Receita'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Conta principal · Banco Exemplo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cartão Exemplo · Banco Exemplo'), findsNothing);
+  });
+
+  testWidgets('Lançamento no cartão: entra na fatura e parcelas em breve', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final faturas = FaturasRepositorioFalso();
+    await tester.pumpWidget(
+      lancamento(
+        contas: [contaExemplo(), cartaoExemplo()],
+        contaInicial: 'k1',
+        faturas: faturas,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entra na fatura de novembro'), findsOneWidget);
+    expect(find.text('Fecha ter, 3 nov · vence ter, 10 nov'), findsOneWidget);
+    expect(find.text('Parcelas: em breve.'), findsOneWidget);
+    expect(faturas.consultasParaCompra.single.contaId, 'k1');
+  });
+
+  testWidgets('Lançamento em conta comum não mostra fatura', (tester) async {
+    final faturas = FaturasRepositorioFalso();
+    await tester.pumpWidget(
+      lancamento(
+        contas: [contaExemplo()],
+        contaInicial: 'c1',
+        faturas: faturas,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Entra na fatura'), findsNothing);
+    expect(find.text('Parcelas: em breve.'), findsNothing);
+    expect(faturas.consultasParaCompra, isEmpty);
   });
 }

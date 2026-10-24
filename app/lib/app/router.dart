@@ -9,6 +9,7 @@ import '../features/contas/cubit/nova_conta_cubit.dart';
 import '../features/contas/data/contas_repositorio.dart';
 import '../features/contas/ui/contas_tela.dart';
 import '../features/contas/ui/nova_conta_tela.dart';
+import '../features/faturas/data/faturas_repositorio.dart';
 import '../features/inicio/ui/inicio_tela.dart';
 import '../features/login/cubit/login_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
@@ -91,6 +92,7 @@ GoRouter criarRouter(SessaoCubit sessao) {
                     builder: (context, state) => BlocProvider(
                       create: (context) => LancamentoCubit(
                         context.read<TransacoesRepositorio>(),
+                        context.read<FaturasRepositorio>(),
                       ),
                       child: LancamentoTela(
                         contaInicial: state.extra as String?,

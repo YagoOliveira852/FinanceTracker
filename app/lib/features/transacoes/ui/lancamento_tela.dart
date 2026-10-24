@@ -9,11 +9,13 @@ import '../../../app/widgets/chip_opcao.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
+import '../../faturas/data/fatura.dart';
 import '../cubit/lancamento_cubit.dart';
 import '../data/transacao.dart';
 
-/// Lançamento manual de despesa ou receita. Transferência, pagamento de
-/// fatura e categoria aparecem desabilitados ("em breve"). Fecha devolvendo
+/// Lançamento manual de despesa ou receita; despesa num cartão é uma compra
+/// e mostra em que fatura entra. Transferência, pagamento de fatura,
+/// parcelas e categoria aparecem desabilitados ("em breve"). Fecha devolvendo
 /// `true` quando salvou.
 class LancamentoTela extends StatefulWidget {
   const LancamentoTela({super.key, this.contaInicial});
@@ -40,16 +42,17 @@ class _LancamentoTelaState extends State<LancamentoTela> {
     super.dispose();
   }
 
-  /// Só conta da lista vale: a do filtro pode ser um cartão, que ainda não
-  /// recebe lançamento, ou as contas podem não ter carregado.
-  String? _contaSelecionada(List<Conta> contas) {
+  /// Só conta da lista vale: a do filtro pode estar desativada, não receber
+  /// o tipo escolhido (receita em cartão) ou as contas podem não ter
+  /// carregado.
+  Conta? _contaSelecionada(List<Conta> contas) {
     final id = _contaEscolhida ?? widget.contaInicial;
-    return contas.any((c) => c.id == id) ? id : null;
+    return contas.where((c) => c.id == id).firstOrNull;
   }
 
   void _salvar(List<Conta> contas) {
     context.read<LancamentoCubit>().salvar(
-      contaId: _contaSelecionada(contas),
+      contaId: _contaSelecionada(contas)?.id,
       valor: _valor.text,
       data: _data,
       descricao: _descricao.text,
@@ -58,10 +61,17 @@ class _LancamentoTelaState extends State<LancamentoTela> {
 
   @override
   Widget build(BuildContext context) {
+    final tipo = context.select((LancamentoCubit c) => c.state.tipo);
     final estadoContas = context.watch<ContasCubit>().state;
     final contas = switch (estadoContas) {
       ContasCarregado(:final resumo) =>
-        resumo.contas.where((c) => c.recebeReceita).toList(),
+        resumo.contas
+            .where(
+              (c) => tipo == TipoTransacao.receita
+                  ? c.recebeReceita
+                  : c.recebeDespesa,
+            )
+            .toList(),
       _ => const <Conta>[],
     };
     final ajudaConta = switch (estadoContas) {
@@ -72,6 +82,17 @@ class _LancamentoTelaState extends State<LancamentoTela> {
       ContasCarregado() => null,
     };
     final contaSelecionada = _contaSelecionada(contas);
+    final noCartao = contaSelecionada?.tipo == TipoConta.cartaoCredito;
+    // A consulta repete a cada quadro, mas o cubit só chama a API quando a
+    // conta ou a data mudam (inclusive quando as contas terminam de carregar).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<LancamentoCubit>().consultarFatura(
+          contaSelecionada,
+          _data,
+        );
+      }
+    });
 
     return BlocConsumer<LancamentoCubit, LancamentoEstado>(
       listenWhen: (antes, depois) =>
@@ -102,38 +123,6 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                   Aviso.erro(context, estado.erroGeral!),
                   const SizedBox(height: Espaco.x6),
                 ],
-                DropdownButtonFormField<String>(
-                  // initialValue só é lido na criação: a chave recria o campo
-                  // quando as contas terminam de carregar.
-                  key: ValueKey(estadoContas.runtimeType),
-                  initialValue: contaSelecionada,
-                  isExpanded: true,
-                  hint: const Text('Selecione uma conta'),
-                  decoration: InputDecoration(
-                    labelText: 'Conta',
-                    errorText: estado.erros['conta_id'],
-                    helperText: ajudaConta,
-                  ),
-                  items: [
-                    for (final conta in contas)
-                      DropdownMenuItem(
-                        value: conta.id,
-                        child: Text(
-                          conta.instituicao == null
-                              ? conta.nome
-                              : '${conta.nome} · ${conta.instituicao}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: livre
-                      ? (id) {
-                          setState(() => _contaEscolhida = id);
-                          cubit.limparErro('conta_id');
-                        }
-                      : null,
-                ),
-                const SizedBox(height: Espaco.x6),
                 Padding(
                   padding: const EdgeInsets.only(
                     left: Espaco.x1,
@@ -186,6 +175,38 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                   ),
                 ),
                 const SizedBox(height: Espaco.x6),
+                DropdownButtonFormField<String>(
+                  // initialValue só é lido na criação: a chave recria o campo
+                  // quando as contas carregam ou o tipo muda a lista.
+                  key: ValueKey((estadoContas.runtimeType, tipo)),
+                  initialValue: contaSelecionada?.id,
+                  isExpanded: true,
+                  hint: const Text('Selecione uma conta'),
+                  decoration: InputDecoration(
+                    labelText: 'Conta',
+                    errorText: estado.erros['conta_id'],
+                    helperText: ajudaConta,
+                  ),
+                  items: [
+                    for (final conta in contas)
+                      DropdownMenuItem(
+                        value: conta.id,
+                        child: Text(
+                          conta.instituicao == null
+                              ? conta.nome
+                              : '${conta.nome} · ${conta.instituicao}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: livre
+                      ? (id) {
+                          setState(() => _contaEscolhida = id);
+                          cubit.limparErro('conta_id');
+                        }
+                      : null,
+                ),
+                const SizedBox(height: Espaco.x6),
                 CampoDinheiro(
                   controller: _valor,
                   aoMudar: (_) => cubit.limparErro('valor'),
@@ -196,7 +217,7 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                 ),
                 const SizedBox(height: Espaco.x6),
                 CampoData(
-                  rotulo: 'Data',
+                  rotulo: noCartao ? 'Data da compra' : 'Data',
                   data: _data,
                   habilitado: livre,
                   aoMudar: (data) {
@@ -205,6 +226,22 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                   },
                   erro: estado.erros['data'],
                 ),
+                if (noCartao) ...[
+                  const SizedBox(height: Espaco.x6),
+                  const TextField(
+                    enabled: false,
+                    decoration: InputDecoration(
+                      labelText: 'Parcelas',
+                      hintText: 'À vista',
+                      helperText: 'Parcelas: em breve.',
+                      suffixIcon: Icon(Icons.arrow_drop_down_rounded),
+                    ),
+                  ),
+                  if (estado.faturaDaCompra case final fatura?) ...[
+                    const SizedBox(height: Espaco.x6),
+                    _FaturaDaCompra(fatura),
+                  ],
+                ],
                 const SizedBox(height: Espaco.x6),
                 TextField(
                   controller: _descricao,
@@ -242,6 +279,55 @@ class _LancamentoTelaState extends State<LancamentoTela> {
           ),
         );
       },
+    );
+  }
+}
+
+/// "Entra na fatura de novembro · Fecha ter, 3 nov · vence ter, 10 nov".
+class _FaturaDaCompra extends StatelessWidget {
+  const _FaturaDaCompra(this.fatura);
+
+  final DatasFatura fatura;
+
+  @override
+  Widget build(BuildContext context) {
+    final esquema = context.esquema;
+    final textos = context.textos;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Espaco.x4,
+        vertical: Espaco.x3,
+      ),
+      decoration: BoxDecoration(
+        color: esquema.surfaceContainer,
+        borderRadius: BorderRadius.circular(Raio.md),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.credit_card_rounded, color: esquema.primary),
+          const SizedBox(width: Espaco.x3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Entra na fatura de ${nomeDoMes(fatura.competencia)}',
+                  style: textos.titleSmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Fecha ${formatarDiaCurto(fatura.dataFechamento)} · '
+                  'vence ${formatarDiaCurto(fatura.dataVencimento)}',
+                  style: textos.bodyMedium?.copyWith(
+                    color: esquema.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
