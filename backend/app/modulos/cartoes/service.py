@@ -81,6 +81,63 @@ def criar_cartao(
     return cartao
 
 
+def editar_cartao(
+    sessao: Session,
+    conta_id: uuid.UUID,
+    *,
+    nome: str,
+    nome_instituicao: str,
+    conta_pagamento_id: uuid.UUID,
+    dia_fechamento: int,
+    dia_vencimento: int,
+    limite: Decimal | None,
+    ativa: bool,
+    hoje: date,
+) -> Cartao:
+    """Edita o cartão; `ativa=False` desativa (nada é excluído).
+
+    Dias novos valem a partir da fatura seguinte à atual, como nos bancos: a
+    atual é gravada (para manter as datas que tinha), as seguintes gravadas são
+    recalculadas, e as compras a partir do fechamento da atual são realocadas.
+    """
+    cartao = obter_cartao(sessao, conta_id)
+    _validar_dias(dia_fechamento, dia_vencimento)
+    _validar_conta_pagamento(sessao, conta_pagamento_id)
+    dias_mudaram = (dia_fechamento, dia_vencimento) != (
+        cartao.dia_fechamento,
+        cartao.dia_vencimento,
+    )
+    if dias_mudaram:
+        atual = competencia_para_data(sessao, cartao, hoje)
+        fechamento_atual = fechamento_efetivo(sessao, cartao, atual)
+        seguinte = _datas(sessao, mes_seguinte(atual), dia_fechamento, dia_vencimento)
+        if seguinte.fechamento <= fechamento_atual:
+            raise CampoInvalido(
+                "dia_fechamento", "Com esses dias, a próxima fatura fecharia antes da atual."
+            )
+        obter_ou_criar_fatura(sessao, cartao, atual)
+
+    cartao.conta.nome = nome
+    cartao.conta.instituicao = obter_ou_criar_instituicao(sessao, nome_instituicao)
+    cartao.conta.ativa = ativa
+    cartao.conta_pagamento_id = conta_pagamento_id
+    cartao.limite = limite
+    if dias_mudaram:
+        cartao.dia_fechamento = dia_fechamento
+        cartao.dia_vencimento = dia_vencimento
+        futuras = sessao.scalars(
+            select(Fatura).where(Fatura.cartao_id == cartao.conta_id, Fatura.competencia > atual)
+        )
+        for fatura in futuras:
+            datas = datas_calculadas(sessao, cartao, fatura.competencia)
+            fatura.data_fechamento = datas.fechamento
+            fatura.data_vencimento = datas.vencimento
+        sessao.flush()
+        realocar_compras(sessao, cartao, fechamento_atual, None)
+    sessao.commit()
+    return cartao
+
+
 def previa(sessao: Session, *, dia_fechamento: int, dia_vencimento: int, hoje: date) -> DatasFatura:
     """A fatura em que entraria uma compra feita hoje, para dias ainda não salvos."""
 
