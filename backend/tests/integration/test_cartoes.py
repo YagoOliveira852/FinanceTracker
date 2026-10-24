@@ -251,3 +251,127 @@ def test_obter_cartao_de_conta_que_nao_e_cartao(sessao, corrente):
 def test_rotas_exigem_token(client):
     assert client.post("/cartoes", json={}).status_code == 401
     assert client.get("/cartoes/previa").status_code == 401
+
+
+# --- editar e desativar ---------------------------------------------------------
+
+
+def _edicao(cartao: dict, **mudancas) -> dict:
+    return {
+        "nome": cartao["nome"],
+        "instituicao": cartao["instituicao"]["nome"],
+        "conta_pagamento_id": cartao["cartao"]["conta_pagamento_id"],
+        "dia_fechamento": cartao["cartao"]["dia_fechamento"],
+        "dia_vencimento": cartao["cartao"]["dia_vencimento"],
+        "limite": cartao["cartao"]["limite"],
+        "ativa": cartao["ativa"],
+        **mudancas,
+    }
+
+
+@pytest.fixture
+def cartao_api(api, corrente) -> dict:
+    return api.post("/cartoes", json=_dados_cartao(corrente["id"])).json()
+
+
+def _compra(api, cartao, data) -> dict:
+    resposta = api.post(
+        "/transacoes",
+        json={
+            "conta_id": cartao["id"],
+            "tipo": "despesa",
+            "valor": "100.00",
+            "data": data,
+            "descricao": "Loja Exemplo",
+        },
+    )
+    assert resposta.status_code == 201, resposta.json()
+    return resposta.json()
+
+
+def test_editar_nome_instituicao_e_limite(api, cartao_api):
+    resposta = api.put(
+        f"/cartoes/{cartao_api['id']}",
+        json=_edicao(
+            cartao_api, nome="Cartão do dia a dia", instituicao="Banco Fictício", limite=None
+        ),
+    )
+
+    assert resposta.status_code == 200, resposta.json()
+    corpo = resposta.json()
+    assert corpo["nome"] == "Cartão do dia a dia"
+    assert corpo["instituicao"]["nome"] == "Banco Fictício"
+    assert corpo["cartao"]["limite"] is None
+
+
+def test_dias_novos_valem_a_partir_da_proxima_fatura(api, sessao, cartao_api):
+    compra = _compra(api, cartao_api, "2026-11-25")
+
+    resposta = api.put(
+        f"/cartoes/{cartao_api['id']}",
+        json=_edicao(cartao_api, dia_fechamento=20, dia_vencimento=27),
+    )
+
+    assert resposta.status_code == 200, resposta.json()
+    faturas = api.get(f"/cartoes/{cartao_api['id']}/faturas").json()
+    assert (faturas["atual"]["data_fechamento"], faturas["atual"]["data_vencimento"]) == (
+        "2026-11-03",
+        "2026-11-10",
+    )
+    dezembro = faturas["proximas"][0]
+    assert (dezembro["competencia"], dezembro["data_fechamento"], dezembro["data_vencimento"]) == (
+        "2026-12-01",
+        "2026-12-21",
+        "2026-12-28",
+    )
+    transacao = sessao.get(Transacao, uuid.UUID(compra["id"]))
+    sessao.refresh(transacao)
+    assert sessao.get(Fatura, transacao.fatura_id).competencia == date(2026, 12, 1)
+
+
+def test_dias_que_inverteriam_a_ordem_sao_recusados(api, sessao, cartao_api):
+    resposta = api.put(
+        f"/cartoes/{cartao_api['id']}", json=_edicao(cartao_api, dia_fechamento=2, dia_vencimento=1)
+    )
+
+    assert _campos(resposta) == {
+        "body.dia_fechamento": "Com esses dias, a próxima fatura fecharia antes da atual."
+    }
+    cartao = sessao.get(Cartao, uuid.UUID(cartao_api["id"]))
+    assert (cartao.dia_fechamento, cartao.dia_vencimento) == (3, 10)
+
+
+def test_editar_valida_como_o_cadastro(api, cartao_api):
+    resposta = api.put(f"/cartoes/{cartao_api['id']}", json=_edicao(cartao_api, dia_vencimento=3))
+
+    assert "body.dia_vencimento" in _campos(resposta)
+
+
+def test_desativar_e_reativar(api, cartao_api):
+    url = f"/cartoes/{cartao_api['id']}"
+
+    assert api.put(url, json=_edicao(cartao_api, ativa=False)).json()["ativa"] is False
+    contas = {c["nome"]: c for c in api.get("/contas").json()["contas"]}
+    assert contas["Cartão Exemplo"]["ativa"] is False
+    recusada = api.post(
+        "/transacoes",
+        json={
+            "conta_id": cartao_api["id"],
+            "tipo": "despesa",
+            "valor": "10.00",
+            "data": "2026-10-20",
+            "descricao": "Loja Exemplo",
+        },
+    )
+    assert _campos(recusada) == {"body.conta_id": "Esta conta está desativada."}
+    assert api.get(f"{url}/faturas").status_code == 200
+
+    assert api.put(url, json=_edicao(cartao_api, ativa=True)).json()["ativa"] is True
+    _compra(api, cartao_api, "2026-10-20")
+
+
+def test_editar_conta_que_nao_e_cartao_e_404(api, corrente, cartao_api):
+    resposta = api.put(f"/cartoes/{corrente['id']}", json=_edicao(cartao_api))
+
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "Cartão não encontrado."}

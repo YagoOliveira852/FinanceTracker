@@ -31,6 +31,12 @@ class CartaoEntrada(BaseModel):
     limite: DinheiroPositivo | None = None
 
 
+class CartaoEdicao(CartaoEntrada):
+    """Os mesmos campos do cadastro, mais `ativa` (desativar ou reativar)."""
+
+    ativa: bool
+
+
 class DatasFaturaSaida(BaseModel):
     """Competência e datas efetivas de uma fatura (ajustadas para dia útil)."""
 
