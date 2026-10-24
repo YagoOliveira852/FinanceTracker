@@ -27,7 +27,7 @@ def listar(sessao: SessaoDep) -> ContasResumo:
     resumo = service.listar_contas(sessao)
     return ContasResumo(
         total_disponivel=resumo.total_disponivel,
-        contas=[_saida(conta) for conta in resumo.contas],
+        contas=[conta_saida(conta) for conta in resumo.contas],
     )
 
 
@@ -43,7 +43,7 @@ def criar(dados: ContaEntrada, sessao: SessaoDep, hoje: HojeDep) -> ContaSaida:
         data_saldo_inicial=dados.data_saldo_inicial,
         hoje=hoje,
     )
-    return _saida(conta)
+    return conta_saida(conta)
 
 
 @router.get("/{conta_id}", responses=_NAO_ENCONTRADA)
@@ -52,10 +52,10 @@ def obter(conta_id: uuid.UUID, sessao: SessaoDep) -> ContaSaida:
         conta = service.obter_conta(sessao, conta_id)
     except service.ContaNaoEncontrada as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Conta não encontrada.") from exc
-    return _saida(conta)
+    return conta_saida(conta)
 
 
-def _saida(item: service.ContaComSaldo) -> ContaSaida:
+def conta_saida(item: service.ContaComSaldo) -> ContaSaida:
     conta = item.conta
     instituicao = conta.instituicao
     return ContaSaida(
