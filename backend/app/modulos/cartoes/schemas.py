@@ -79,6 +79,18 @@ class FaturaEdicao(BaseModel):
     valor_informado: Dinheiro | None
 
 
+class AjusteEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    valor_real: Dinheiro = Field(description="O total que o banco cobra; não negativo.")
+    descricao: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+        description='A causa da diferença; sem ela, "Ajuste da fatura".',
+    )
+
+
 class FeriadoSaida(BaseModel):
     data: date
     descricao: str

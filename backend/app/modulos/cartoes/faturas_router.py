@@ -16,6 +16,7 @@ from app.core.erros import RespostaErro
 from app.modulos.cartoes import faturas, service
 from app.modulos.cartoes.models import Cartao
 from app.modulos.cartoes.schemas import (
+    AjusteEntrada,
     DatasFaturaSaida,
     FaturaDetalheSaida,
     FaturaEdicao,
@@ -101,6 +102,26 @@ def editar(
         data_fechamento=dados.data_fechamento,
         data_vencimento=dados.data_vencimento,
         valor_informado=dados.valor_informado,
+        hoje=hoje,
+    )
+    return detalhe_saida(detalhe)
+
+
+@router.post("/{competencia}/ajuste")
+def ajustar(
+    competencia: Competencia,
+    dados: AjusteEntrada,
+    cartao: CartaoDep,
+    sessao: SessaoDep,
+    hoje: HojeDep,
+) -> FaturaDetalheSaida:
+    """Ajusta a fatura para o valor real: cria, substitui ou remove o ajuste."""
+    detalhe = faturas.ajustar(
+        sessao,
+        cartao,
+        _competencia(competencia),
+        valor_real=dados.valor_real,
+        descricao=dados.descricao,
         hoje=hoje,
     )
     return detalhe_saida(detalhe)

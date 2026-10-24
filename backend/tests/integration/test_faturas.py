@@ -312,3 +312,99 @@ def test_valor_da_fatura_e_o_maior(api, cartao, informado, valor):
     corpo = _editar(api, cartao, "2026-11", "2026-11-03", "2026-11-10", informado).json()
 
     assert (corpo["valor"], corpo["valor_calculado"]) == (valor, "150.00")
+
+
+# --- ajuste para o valor real --------------------------------------------------
+
+
+def _ajustar(api, cartao, competencia, valor_real, descricao=None):
+    corpo = {"valor_real": valor_real}
+    if descricao is not None:
+        corpo["descricao"] = descricao
+    return api.post(_url(cartao, f"/{competencia}/ajuste"), json=corpo)
+
+
+def _ajustes(corpo) -> list[tuple[str, str, str]]:
+    return [
+        (t["tipo"], t["valor"], t["descricao"])
+        for t in corpo["transacoes"]
+        if t["tipo"] in {"ajuste_entrada", "ajuste_saida"}
+    ]
+
+
+def test_ajuste_cobre_o_que_falta(api, cartao):
+    _comprar(api, cartao, "2026-10-20", "500.00")
+    _comprar(api, cartao, "2026-10-21", "486.25")
+
+    resposta = _ajustar(api, cartao, "2026-11", "1032.15")
+
+    assert resposta.status_code == 200, resposta.json()
+    corpo = resposta.json()
+    assert corpo["valor_calculado"] == corpo["valor_informado"] == corpo["valor"] == "1032.15"
+    assert _ajustes(corpo) == [("ajuste_saida", "45.90", "Ajuste da fatura")]
+    ajuste = next(t for t in corpo["transacoes"] if t["tipo"] == "ajuste_saida")
+    assert (ajuste["data"], ajuste["status"], ajuste["fonte"]) == (
+        "2026-10-20",
+        "confirmada",
+        "manual",
+    )
+
+
+def test_ajuste_de_lancamento_a_mais(api, cartao):
+    _comprar(api, cartao, "2026-10-20", "150.00")
+
+    corpo = _ajustar(api, cartao, "2026-11", "138.00").json()
+
+    assert corpo["valor_calculado"] == "138.00"
+    assert _ajustes(corpo) == [("ajuste_entrada", "12.00", "Ajuste da fatura")]
+
+
+def test_ajustar_de_novo_substitui_o_ajuste(api, cartao):
+    _comprar(api, cartao, "2026-10-20", "986.25")
+    _ajustar(api, cartao, "2026-11", "1032.15")
+
+    corpo = _ajustar(api, cartao, "2026-11", "1040.00").json()
+
+    assert _ajustes(corpo) == [("ajuste_saida", "53.75", "Ajuste da fatura")]
+    assert corpo["valor_calculado"] == "1040.00"
+
+
+def test_ajuste_sem_diferenca_remove_o_ajuste(api, cartao):
+    _comprar(api, cartao, "2026-10-20", "986.25")
+    _ajustar(api, cartao, "2026-11", "1032.15")
+    _comprar(api, cartao, "2026-10-22", "45.90", "IOF de compra internacional")
+
+    corpo = _ajustar(api, cartao, "2026-11", "1032.15").json()
+
+    assert _ajustes(corpo) == []
+    assert corpo["valor_calculado"] == corpo["valor_informado"] == "1032.15"
+
+
+def test_descricao_do_ajuste(api, cartao):
+    _comprar(api, cartao, "2026-10-20", "100.00")
+
+    corpo = _ajustar(api, cartao, "2026-11", "102.98", "IOF não veio no extrato").json()
+
+    assert _ajustes(corpo) == [("ajuste_saida", "2.98", "IOF não veio no extrato")]
+
+
+def test_ajuste_em_fatura_sem_compras_grava_a_fatura(api, sessao, cartao):
+    corpo = _ajustar(api, cartao, "2026-12", "49.90").json()
+
+    assert _ajustes(corpo) == [("ajuste_saida", "49.90", "Ajuste da fatura")]
+    assert sessao.query(Fatura).filter_by(competencia=date(2026, 12, 1)).count() == 1
+
+
+@pytest.mark.parametrize(
+    ("corpo", "campo"),
+    [
+        ({"valor_real": "-1.00"}, "body.valor_real"),
+        ({"valor_real": 10.5}, "body.valor_real"),
+        ({"valor_real": "10.00", "descricao": " "}, "body.descricao"),
+        ({}, "body.valor_real"),
+    ],
+)
+def test_validacao_do_ajuste(api, cartao, corpo, campo):
+    resposta = api.post(_url(cartao, "/2026-11/ajuste"), json=corpo)
+
+    assert campo in _campos(resposta)
