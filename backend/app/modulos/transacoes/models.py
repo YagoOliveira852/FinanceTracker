@@ -5,8 +5,17 @@ from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, Date, ForeignKey, Numeric, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    ForeignKey,
+    Numeric,
+    SmallInteger,
+    Text,
+    UniqueConstraint,
+    false,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, ComTimestamps, check_enum
 
@@ -60,6 +69,34 @@ class FonteTransacao(StrEnum):
     pluggy = "pluggy"
 
 
+class CompraParcelada(ComTimestamps, Base):
+    """Agrupa as parcelas de uma compra: uma transação por parcela, cada uma na
+    sua fatura.
+
+    No lançamento manual, `data_compra` é a data digitada; das fontes, vem da
+    Pluggy (`purchaseDate`) ou é estimada a partir do OFX
+    (`data_compra_estimada`).
+    """
+
+    __tablename__ = "compra_parcelada"
+    __table_args__ = (
+        CheckConstraint("valor_total > 0", name="valor_total_positivo"),
+        # O máximo (24 no lançamento manual) fica na API: as fontes podem trazer mais.
+        CheckConstraint("qtd_parcelas >= 2", name="qtd_parcelas_valida"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    descricao: Mapped[str] = mapped_column(Text)
+    valor_total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    qtd_parcelas: Mapped[int] = mapped_column(SmallInteger)
+    data_compra: Mapped[date] = mapped_column(Date)
+    data_compra_estimada: Mapped[bool] = mapped_column(default=False, server_default=false())
+
+    parcelas: Mapped[list["Transacao"]] = relationship(
+        back_populates="compra_parcelada", order_by="Transacao.parcela_numero"
+    )
+
+
 class Transacao(ComTimestamps, Base):
     __tablename__ = "transacao"
     __table_args__ = (
@@ -67,6 +104,11 @@ class Transacao(ComTimestamps, Base):
         check_enum("status", StatusTransacao),
         check_enum("fonte", FonteTransacao),
         CheckConstraint("valor > 0", name="valor_positivo"),
+        CheckConstraint("parcela_numero >= 1", name="parcela_numero_valido"),
+        # Parcela tem compra e número, ou nenhum dos dois.
+        CheckConstraint(
+            "(compra_parcelada_id IS NULL) = (parcela_numero IS NULL)", name="parcela_completa"
+        ),
         # Coração da idempotência: a mesma transação da mesma fonte não entra
         # duas vezes. Lançamento manual tem id_externo nulo e não colide.
         UniqueConstraint(
@@ -90,3 +132,12 @@ class Transacao(ComTimestamps, Base):
     # Obrigatório em transação de conta `cartao_credito` (regra no service: um
     # CHECK não enxerga o tipo da conta).
     fatura_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("fatura.id"), index=True)
+    compra_parcelada_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("compra_parcelada.id"), index=True
+    )
+    # Até `compra_parcelada.qtd_parcelas` (regra no service).
+    parcela_numero: Mapped[int | None] = mapped_column(SmallInteger)
+
+    compra_parcelada: Mapped[CompraParcelada | None] = relationship(
+        back_populates="parcelas", lazy="joined"
+    )
