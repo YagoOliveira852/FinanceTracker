@@ -46,4 +46,9 @@ void main() {
   test('somenteData tira o horário', () {
     expect(somenteData(DateTime(2026, 10, 20, 13, 45)), DateTime(2026, 10, 20));
   });
+
+  test('formatarDiaCurto: dia da semana minúsculo e mês curto', () {
+    expect(formatarDiaCurto(DateTime(2026, 11, 3)), 'ter, 3 nov');
+    expect(formatarDiaCurto(DateTime(2026, 10, 10)), 'sáb, 10 out');
+  });
 }

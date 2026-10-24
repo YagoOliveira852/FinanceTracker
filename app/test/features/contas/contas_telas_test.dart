@@ -125,4 +125,76 @@ void main() {
     // Os outros campos continuam com erro até o próximo envio.
     expect(find.text('Informe a instituição da conta.'), findsOneWidget);
   });
+
+  Widget novaConta(ContasRepositorioFalso repositorio) => _app(
+    MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => ContasCubit(repositorio)..carregar()),
+        BlocProvider(create: (_) => NovaContaCubit(repositorio)),
+      ],
+      child: const NovaContaTela(),
+    ),
+  );
+
+  testWidgets('Nova conta: cartão de crédito pede dias e mostra a prévia', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      novaConta(ContasRepositorioFalso(contas: [contaExemplo()])),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cartão de crédito'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(TextField, 'Nome do cartão'), findsOneWidget);
+    expect(find.text('Conta principal · Banco Exemplo'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Saldo inicial'), findsNothing);
+    expect(find.text('Próxima fatura: novembro'), findsNothing);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Dia de fechamento'),
+      '3',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Dia de vencimento'),
+      '10',
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Próxima fatura: novembro'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('Próxima fatura: novembro'), findsOneWidget);
+    expect(find.text('Fecha ter, 3 nov · vence ter, 10 nov'), findsOneWidget);
+  });
+
+  testWidgets('Nova conta: cartão sem conta corrente avisa e não salva', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      novaConta(
+        ContasRepositorioFalso(
+          contas: [contaExemplo(tipo: TipoConta.carteira, nome: 'Carteira')],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cartão de crédito'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Falta a conta que paga a fatura'), findsOneWidget);
+    final salvar = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Salvar cartão'),
+    );
+    expect(salvar.onPressed, isNull);
+
+    await tester.tap(find.text('Cadastrar conta corrente'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(TextField, 'Saldo inicial'), findsOneWidget);
+  });
 }
