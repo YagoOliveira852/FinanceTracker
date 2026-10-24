@@ -13,7 +13,7 @@ import '../../apoio/contas_falso.dart';
 Widget _app(Widget tela) => MaterialApp(theme: temaClaro(), home: tela);
 
 void main() {
-  testWidgets('Contas mostra total, saldos e cartões em breve', (tester) async {
+  testWidgets('Contas mostra total, saldos e os cartões', (tester) async {
     final repositorio = ContasRepositorioFalso(
       contas: [
         contaExemplo(),
@@ -29,6 +29,8 @@ void main() {
           tipo: TipoConta.carteira,
           saldo: '950.50',
         ),
+        cartaoExemplo(),
+        cartaoExemplo(id: 'k2', ativa: false).copyWith(nome: 'Cartão antigo'),
       ],
     );
     await tester.pumpWidget(
@@ -46,7 +48,12 @@ void main() {
     expect(find.text('− R\$ 120,40'), findsOneWidget);
     expect(find.text('Saldo negativo'), findsOneWidget);
     expect(find.text('Dinheiro em espécie'), findsOneWidget);
-    expect(find.text('Em breve'), findsOneWidget);
+    expect(find.text('Cartão Exemplo'), findsOneWidget);
+    expect(find.text('Fecha 3 nov · vence 10 nov'), findsOneWidget);
+    expect(find.text('Fatura atual'), findsOneWidget);
+    expect(find.text('R\$ 544,80'), findsOneWidget);
+    expect(find.text('Cartão antigo'), findsNothing);
+    expect(find.text('Em breve'), findsNothing);
   });
 
   testWidgets('Contas sem contas mostra o estado vazio', (tester) async {
