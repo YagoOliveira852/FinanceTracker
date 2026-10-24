@@ -3,12 +3,22 @@ import 'package:decimal/decimal.dart';
 
 import '../../../core/api/erro_api.dart';
 import '../../../core/formatacao/dinheiro.dart';
+import '../../faturas/data/fatura.dart';
+import '../../faturas/data/faturas_repositorio.dart';
 import 'conta.dart';
 
 /// Contas do usuário. Erros da API chegam como [ErroApi].
 abstract interface class ContasRepositorio {
   Future<ResumoContas> listar();
   Future<Conta> criar(NovaConta dados);
+  Future<Conta> criarCartao(NovoCartao dados);
+
+  /// A fatura em que entraria uma compra feita hoje, para dias ainda não
+  /// salvos (prévia da Nova conta).
+  Future<DatasFatura> previaFatura({
+    required int diaFechamento,
+    required int diaVencimento,
+  });
 }
 
 /// Usa o cliente gerado e converte os modelos `built_value` nos do app:
@@ -57,6 +67,43 @@ class ContasRepositorioApi implements ContasRepositorio {
     }
   }
 
+  @override
+  Future<Conta> criarCartao(NovoCartao dados) async {
+    final entrada = api.CartaoEntrada(
+      (b) => b
+        ..nome = dados.nome
+        ..instituicao = dados.instituicao
+        ..contaPagamentoId = dados.contaPagamentoId
+        ..diaFechamento = dados.diaFechamento
+        ..diaVencimento = dados.diaVencimento
+        ..limite = dados.limite == null ? null : dinheiroParaApi(dados.limite!),
+    );
+    try {
+      final resposta = await _cliente.getCartoesApi().criar(
+        cartaoEntrada: entrada,
+      );
+      return _conta(resposta.data!);
+    } catch (erro) {
+      throw ErroApi.de(erro);
+    }
+  }
+
+  @override
+  Future<DatasFatura> previaFatura({
+    required int diaFechamento,
+    required int diaVencimento,
+  }) async {
+    try {
+      final resposta = await _cliente.getCartoesApi().previa(
+        diaFechamento: diaFechamento,
+        diaVencimento: diaVencimento,
+      );
+      return datasFaturaDaApi(resposta.data!);
+    } catch (erro) {
+      throw ErroApi.de(erro);
+    }
+  }
+
   static Conta _conta(api.ContaSaida conta) => Conta(
     id: conta.id,
     nome: conta.nome,
@@ -66,5 +113,14 @@ class ContasRepositorioApi implements ContasRepositorio {
     dataSaldoInicial: conta.dataSaldoInicial.toDateTime(),
     saldoAtual: Decimal.parse(conta.saldoAtual),
     ativa: conta.ativa,
+    cartao: conta.cartao == null ? null : _cartao(conta.cartao!),
+  );
+
+  static Cartao _cartao(api.CartaoSaida cartao) => Cartao(
+    contaPagamentoId: cartao.contaPagamentoId,
+    diaFechamento: cartao.diaFechamento,
+    diaVencimento: cartao.diaVencimento,
+    limite: cartao.limite == null ? null : Decimal.parse(cartao.limite!),
+    faturaAtual: resumoFaturaDaApi(cartao.faturaAtual),
   );
 }
