@@ -15,8 +15,15 @@ from decimal import Decimal
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
+from app.core.erros import CampoInvalido
 from app.modulos.cartoes import service
-from app.modulos.cartoes.datas import DatasFatura, StatusFatura, status_da_fatura
+from app.modulos.cartoes.datas import (
+    DatasFatura,
+    StatusFatura,
+    mes_anterior,
+    mes_seguinte,
+    status_da_fatura,
+)
 from app.modulos.cartoes.feriados import feriados_entre
 from app.modulos.cartoes.models import Cartao, Fatura
 from app.modulos.transacoes.models import (
@@ -155,6 +162,48 @@ def detalhe(sessao: Session, cartao: Cartao, competencia: date, hoje: date) -> D
         ajuste_vencimento=_ajuste(sessao, datas.vencimento_previsto, datas.vencimento),
         transacoes=transacoes,
     )
+
+
+def editar(
+    sessao: Session,
+    cartao: Cartao,
+    competencia: date,
+    *,
+    data_fechamento: date,
+    data_vencimento: date,
+    valor_informado: Decimal | None,
+    hoje: date,
+) -> DetalheFatura:
+    """Edita datas e valor informado, gravando a fatura se ainda não existe.
+
+    Mudar o fechamento realoca as compras com data entre o antigo e o novo:
+    antecipar manda para a fatura seguinte as feitas a partir da nova data;
+    adiar traz de volta as feitas antes dela.
+    """
+    anterior = service.fechamento_efetivo(sessao, cartao, mes_anterior(competencia))
+    seguinte = service.fechamento_efetivo(sessao, cartao, mes_seguinte(competencia))
+    if not anterior < data_fechamento < seguinte:
+        raise CampoInvalido(
+            "data_fechamento",
+            "O fechamento precisa ficar depois do da fatura anterior e antes do da seguinte.",
+        )
+    if data_vencimento <= data_fechamento:
+        raise CampoInvalido("data_vencimento", "O vencimento precisa ser depois do fechamento.")
+    if valor_informado is not None and valor_informado < 0:
+        raise CampoInvalido("valor_informado", "O valor informado não pode ser negativo.")
+
+    fatura = service.obter_ou_criar_fatura(sessao, cartao, competencia)
+    antigo = fatura.data_fechamento
+    fatura.data_fechamento = data_fechamento
+    fatura.data_vencimento = data_vencimento
+    fatura.valor_informado = valor_informado
+    sessao.flush()
+    if antigo != data_fechamento:
+        service.realocar_compras(
+            sessao, cartao, min(antigo, data_fechamento), max(antigo, data_fechamento)
+        )
+    sessao.commit()
+    return detalhe(sessao, cartao, competencia, hoje)
 
 
 def _ajuste(sessao: Session, prevista: date, efetiva: date) -> AjusteData | None:

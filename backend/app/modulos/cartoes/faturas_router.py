@@ -18,6 +18,7 @@ from app.modulos.cartoes.models import Cartao
 from app.modulos.cartoes.schemas import (
     DatasFaturaSaida,
     FaturaDetalheSaida,
+    FaturaEdicao,
     ListaFaturasSaida,
     detalhe_saida,
     lista_saida,
@@ -82,3 +83,24 @@ def obter(
 ) -> FaturaDetalheSaida:
     """Detalhe da fatura: datas efetivas e calculadas, valores e transações."""
     return detalhe_saida(faturas.detalhe(sessao, cartao, _competencia(competencia), hoje))
+
+
+@router.put("/{competencia}")
+def editar(
+    competencia: Competencia,
+    dados: FaturaEdicao,
+    cartao: CartaoDep,
+    sessao: SessaoDep,
+    hoje: HojeDep,
+) -> FaturaDetalheSaida:
+    """Edita datas e valor informado; mudar o fechamento realoca compras."""
+    detalhe = faturas.editar(
+        sessao,
+        cartao,
+        _competencia(competencia),
+        data_fechamento=dados.data_fechamento,
+        data_vencimento=dados.data_vencimento,
+        valor_informado=dados.valor_informado,
+        hoje=hoje,
+    )
+    return detalhe_saida(detalhe)
