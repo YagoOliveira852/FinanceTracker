@@ -7,6 +7,7 @@ import '../../../core/formatacao/dinheiro.dart';
 import '../../faturas/data/fatura.dart';
 import '../data/conta.dart';
 import '../data/contas_repositorio.dart';
+import 'validacao_cartao.dart';
 
 part 'nova_conta_cubit.freezed.dart';
 
@@ -104,8 +105,8 @@ class NovaContaCubit extends Cubit<NovaContaEstado> {
     String diaVencimento,
   ) async {
     final consulta = ++_consultaPrevia;
-    final fechamento = _lerDia(diaFechamento);
-    final vencimento = _lerDia(diaVencimento);
+    final fechamento = lerDiaDoMes(diaFechamento);
+    final vencimento = lerDiaDoMes(diaVencimento);
     if (fechamento == null || vencimento == null || fechamento == vencimento) {
       if (state.previa != null) emit(state.copyWith(previa: null));
       return;
@@ -131,24 +132,14 @@ class NovaContaCubit extends Cubit<NovaContaEstado> {
     required String diaVencimento,
     required String limite,
   }) async {
-    final fechamento = _lerDia(diaFechamento);
-    final vencimento = _lerDia(diaVencimento);
-    final semLimite = limite.trim().isEmpty;
-    final erros = <String, String>{
-      if (nome.trim().isEmpty)
-        'nome': 'Dê um nome ao cartão, por exemplo: Cartão principal.',
-      if (instituicao.trim().isEmpty)
-        'instituicao': 'Informe a instituição do cartão.',
-      if (contaPagamentoId == null)
-        'conta_pagamento_id': 'Escolha a conta que paga a fatura.',
-      if (fechamento == null) 'dia_fechamento': 'Informe um dia de 1 a 31.',
-      if (vencimento == null)
-        'dia_vencimento': 'Informe um dia de 1 a 31.'
-      else if (vencimento == fechamento)
-        'dia_vencimento':
-            'O vencimento precisa ser num dia diferente do fechamento.',
-      if (!semLimite) 'limite': ?validarDinheiro(limite, exigePositivo: true),
-    };
+    final erros = validarCartao(
+      nome: nome,
+      instituicao: instituicao,
+      contaPagamentoId: contaPagamentoId,
+      diaFechamento: diaFechamento,
+      diaVencimento: diaVencimento,
+      limite: limite,
+    );
     await _enviar(
       erros,
       () => _contas.criarCartao(
@@ -156,9 +147,9 @@ class NovaContaCubit extends Cubit<NovaContaEstado> {
           nome: nome.trim(),
           instituicao: instituicao.trim(),
           contaPagamentoId: contaPagamentoId!,
-          diaFechamento: fechamento!,
-          diaVencimento: vencimento!,
-          limite: semLimite ? null : lerDinheiro(limite),
+          diaFechamento: lerDiaDoMes(diaFechamento)!,
+          diaVencimento: lerDiaDoMes(diaVencimento)!,
+          limite: lerDinheiro(limite),
         ),
       ),
     );
@@ -193,10 +184,5 @@ class NovaContaCubit extends Cubit<NovaContaEstado> {
         ),
       );
     }
-  }
-
-  static int? _lerDia(String texto) {
-    final dia = int.tryParse(texto.trim());
-    return dia != null && dia >= 1 && dia <= 31 ? dia : null;
   }
 }

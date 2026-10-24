@@ -9,6 +9,7 @@ import '../../../core/formatacao/datas.dart';
 import '../../../core/formatacao/dinheiro.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
+import '../../contas/ui/editar_cartao_tela.dart';
 import '../cubit/faturas_cubit.dart';
 import '../data/fatura.dart';
 import 'chip_status.dart';
@@ -40,6 +41,21 @@ class FaturasTela extends StatelessWidget {
     if (context.mounted) await context.read<FaturasCubit>().carregar();
   }
 
+  /// Depois de editar, recarrega as contas (nome, dias, ativo) e as faturas
+  /// (dias novos mudam as datas das próximas).
+  Future<void> _editarCartao(BuildContext context, Conta conta) async {
+    final salvou = await context.push<bool>(
+      rotaEditarCartao(contaId),
+      extra: conta,
+    );
+    if (salvou == true && context.mounted) {
+      await Future.wait([
+        context.read<ContasCubit>().carregar(),
+        context.read<FaturasCubit>().carregar(),
+      ]);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final conta = switch (context.watch<ContasCubit>().state) {
@@ -53,6 +69,14 @@ class FaturasTela extends StatelessWidget {
       appBar: AppBar(
         titleSpacing: Espaco.x1,
         title: Text(conta?.nome ?? 'Cartão'),
+        actions: [
+          if (conta?.cartao != null)
+            IconButton(
+              tooltip: 'Editar cartão',
+              icon: const Icon(Icons.edit_rounded),
+              onPressed: () => _editarCartao(context, conta!),
+            ),
+        ],
       ),
       body: switch (estado) {
         FaturasCarregando() => const Carregando(),

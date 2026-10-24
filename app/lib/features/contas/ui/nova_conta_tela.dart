@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -278,7 +277,7 @@ class _NovaContaTelaState extends State<NovaContaTela> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: _CampoDia(
+            child: CampoDiaDoMes(
               controller: _diaFechamento,
               rotulo: 'Dia de fechamento',
               erro: estado.erros['dia_fechamento'],
@@ -288,7 +287,7 @@ class _NovaContaTelaState extends State<NovaContaTela> {
           ),
           const SizedBox(width: Espaco.x4),
           Expanded(
-            child: _CampoDia(
+            child: CampoDiaDoMes(
               controller: _diaVencimento,
               rotulo: 'Dia de vencimento',
               erro: estado.erros['dia_vencimento'],
@@ -321,42 +320,6 @@ class _NovaContaTelaState extends State<NovaContaTela> {
         _PreviaFatura(previa),
       ],
     ];
-  }
-}
-
-class _CampoDia extends StatelessWidget {
-  const _CampoDia({
-    required this.controller,
-    required this.rotulo,
-    required this.erro,
-    required this.habilitado,
-    required this.aoMudar,
-  });
-
-  final TextEditingController controller;
-  final String rotulo;
-  final String? erro;
-  final bool habilitado;
-  final VoidCallback aoMudar;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      enabled: habilitado,
-      onChanged: (_) => aoMudar(),
-      keyboardType: TextInputType.number,
-      inputFormatters: [
-        FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(2),
-      ],
-      decoration: InputDecoration(
-        labelText: rotulo,
-        hintText: '1 a 31',
-        errorText: erro,
-        errorMaxLines: 2,
-      ),
-    );
   }
 }
 

@@ -13,6 +13,9 @@ abstract interface class ContasRepositorio {
   Future<Conta> criar(NovaConta dados);
   Future<Conta> criarCartao(NovoCartao dados);
 
+  /// Edita o cartão ou o desativa/reativa ([EdicaoCartao.ativa]).
+  Future<Conta> editarCartao(String contaId, EdicaoCartao dados);
+
   /// A fatura em que entraria uma compra feita hoje, para dias ainda não
   /// salvos (prévia da Nova conta).
   Future<DatasFatura> previaFatura({
@@ -81,6 +84,29 @@ class ContasRepositorioApi implements ContasRepositorio {
     try {
       final resposta = await _cliente.getCartoesApi().criar(
         cartaoEntrada: entrada,
+      );
+      return _conta(resposta.data!);
+    } catch (erro) {
+      throw ErroApi.de(erro);
+    }
+  }
+
+  @override
+  Future<Conta> editarCartao(String contaId, EdicaoCartao dados) async {
+    final edicao = api.CartaoEdicao(
+      (b) => b
+        ..nome = dados.nome
+        ..instituicao = dados.instituicao
+        ..contaPagamentoId = dados.contaPagamentoId
+        ..diaFechamento = dados.diaFechamento
+        ..diaVencimento = dados.diaVencimento
+        ..limite = dados.limite == null ? null : dinheiroParaApi(dados.limite!)
+        ..ativa = dados.ativa,
+    );
+    try {
+      final resposta = await _cliente.getCartoesApi().editar(
+        contaId: contaId,
+        cartaoEdicao: edicao,
       );
       return _conta(resposta.data!);
     } catch (erro) {

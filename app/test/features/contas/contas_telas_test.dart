@@ -52,7 +52,8 @@ void main() {
     expect(find.text('Fecha 3 nov · vence 10 nov'), findsOneWidget);
     expect(find.text('Fatura atual'), findsOneWidget);
     expect(find.text('R\$ 544,80'), findsOneWidget);
-    expect(find.text('Cartão antigo'), findsNothing);
+    expect(find.text('Cartão antigo'), findsOneWidget);
+    expect(find.text('Desativado'), findsOneWidget);
     expect(find.text('Em breve'), findsNothing);
   });
 

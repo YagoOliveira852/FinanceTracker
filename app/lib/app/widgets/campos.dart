@@ -165,3 +165,41 @@ class RotuloEnviando extends StatelessWidget {
     );
   }
 }
+
+/// Dia do mês (1 a 31) do cartão: fechamento ou vencimento.
+class CampoDiaDoMes extends StatelessWidget {
+  const CampoDiaDoMes({
+    super.key,
+    required this.controller,
+    required this.rotulo,
+    required this.erro,
+    required this.habilitado,
+    required this.aoMudar,
+  });
+
+  final TextEditingController controller;
+  final String rotulo;
+  final String? erro;
+  final bool habilitado;
+  final VoidCallback aoMudar;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      enabled: habilitado,
+      onChanged: (_) => aoMudar(),
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(2),
+      ],
+      decoration: InputDecoration(
+        labelText: rotulo,
+        hintText: '1 a 31',
+        errorText: erro,
+        errorMaxLines: 2,
+      ),
+    );
+  }
+}

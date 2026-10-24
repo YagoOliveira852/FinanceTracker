@@ -69,6 +69,7 @@ class ContasRepositorioFalso implements ContasRepositorio {
   final criadas = <NovaConta>[];
   final cartoesCriados = <NovoCartao>[];
   final previas = <({int diaFechamento, int diaVencimento})>[];
+  final cartoesEditados = <({String contaId, EdicaoCartao dados})>[];
   ErroApi? erro;
 
   @override
@@ -116,5 +117,19 @@ class ContasRepositorioFalso implements ContasRepositorio {
     previas.add((diaFechamento: diaFechamento, diaVencimento: diaVencimento));
     if (erro case final e?) throw e;
     return previaExemplo;
+  }
+
+  @override
+  Future<Conta> editarCartao(String contaId, EdicaoCartao dados) async {
+    if (erro case final e?) throw e;
+    cartoesEditados.add((contaId: contaId, dados: dados));
+    final indice = contas.indexWhere((c) => c.id == contaId);
+    final conta = contas[indice].copyWith(
+      nome: dados.nome,
+      instituicao: dados.instituicao,
+      ativa: dados.ativa,
+    );
+    contas[indice] = conta;
+    return conta;
   }
 }
