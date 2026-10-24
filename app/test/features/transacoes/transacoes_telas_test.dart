@@ -339,7 +339,7 @@ void main() {
     expect(find.text('Cartão Exemplo · Banco Exemplo'), findsNothing);
   });
 
-  testWidgets('Lançamento no cartão: entra na fatura e parcelas em breve', (
+  testWidgets('Lançamento no cartão: entra na fatura e tem parcelas', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1170, 2532);
@@ -357,7 +357,10 @@ void main() {
 
     expect(find.text('Entra na fatura de novembro'), findsOneWidget);
     expect(find.text('Fecha ter, 3 nov · vence ter, 10 nov'), findsOneWidget);
-    expect(find.text('Parcelas: em breve.'), findsOneWidget);
+    expect(find.text('Parcelas'), findsOneWidget);
+    expect(find.text('À vista'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Valor total'), findsOneWidget);
+    expect(find.textContaining('A última parcela'), findsNothing);
     expect(faturas.consultasParaCompra.single.contaId, 'k1');
   });
 
@@ -373,7 +376,157 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Entra na fatura'), findsNothing);
-    expect(find.text('Parcelas: em breve.'), findsNothing);
+    expect(find.text('Parcelas'), findsNothing);
     expect(faturas.consultasParaCompra, isEmpty);
+  });
+
+  /// Lançamento dentro de um router mínimo: ao salvar, a tela fecha com
+  /// context.pop(true).
+  Future<void> abrirLancamento(
+    WidgetTester tester, {
+    required TransacoesRepositorioFalso transacoes,
+    required String contaInicial,
+  }) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final router = GoRouter(
+      initialLocation: '/lancar',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const SizedBox(),
+          routes: [
+            GoRoute(
+              path: 'lancar',
+              builder: (_, _) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => ContasCubit(
+                      ContasRepositorioFalso(
+                        contas: [contaExemplo(), cartaoExemplo()],
+                      ),
+                    )..carregar(),
+                  ),
+                  BlocProvider(
+                    create: (_) =>
+                        LancamentoCubit(transacoes, FaturasRepositorioFalso()),
+                  ),
+                ],
+                child: LancamentoTela(contaInicial: contaInicial),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(theme: temaClaro(), routerConfig: router),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> escolherParcelas(WidgetTester tester, String opcao) async {
+    await tester.tap(find.text('À vista'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(opcao).last);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('Lançamento parcelado: divisão, última fatura e salvar', (
+    tester,
+  ) async {
+    final transacoes = TransacoesRepositorioFalso();
+    await abrirLancamento(tester, transacoes: transacoes, contaInicial: 'k1');
+
+    await escolherParcelas(tester, '3x');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Valor total'),
+      '1.000,00',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('3x de R\$ 333,33; a 1ª parcela fica com R\$ 333,34.'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('A última parcela cai na fatura de janeiro de 2027.'),
+      findsOneWidget,
+    );
+
+    final descricao = find.widgetWithText(TextField, 'Descrição');
+    await tester.scrollUntilVisible(
+      descricao,
+      100,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.enterText(descricao, 'Fone de ouvido');
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(transacoes.lancados, isEmpty);
+    final compra = transacoes.parceladas.single;
+    expect(compra.qtdParcelas, 3);
+    expect(compra.contaId, 'k1');
+    expect(find.byType(LancamentoTela), findsNothing);
+  });
+
+  testWidgets('Lançamento: trocar o cartão por conta comum volta a à vista', (
+    tester,
+  ) async {
+    final transacoes = TransacoesRepositorioFalso();
+    await abrirLancamento(tester, transacoes: transacoes, contaInicial: 'k1');
+
+    await escolherParcelas(tester, '3x');
+    await tester.tap(find.text('Cartão Exemplo · Banco Exemplo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Conta principal · Banco Exemplo').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Parcelas'), findsNothing);
+    await tester.enterText(find.widgetWithText(TextField, 'Valor'), '90');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Descrição'),
+      'Mercado',
+    );
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(transacoes.parceladas, isEmpty);
+    expect(transacoes.lancados.single.contaId, 'c1');
+  });
+
+  testWidgets('Transações mostra a parcela ao lado da conta', (tester) async {
+    final transacoes = TransacoesRepositorioFalso(
+      transacoes: [
+        transacaoExemplo(
+          contaId: 'k1',
+          descricao: 'Notebook Loja Exemplo',
+          parcela: const Parcela(numero: 3, total: 10),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      _app(
+        BlocProvider(
+          create: (_) => TransacoesCubit(
+            transacoes,
+            ContasRepositorioFalso(contas: [contaExemplo(), cartaoExemplo()]),
+            hoje: () => _hoje,
+          )..carregar(),
+          child: const TransacoesTela(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cartão Exemplo · Parcela 3/10'), findsOneWidget);
   });
 }

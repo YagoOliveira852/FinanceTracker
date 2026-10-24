@@ -16,7 +16,8 @@ class ItemTransacao extends StatelessWidget {
 
   final Transacao transacao;
 
-  /// Texto da segunda linha: a conta, em Transações; a data, na fatura.
+  /// Texto da segunda linha: a conta, em Transações; a data, na fatura. A
+  /// parcela, se houver, vem depois: "15 out · Parcela 3/10".
   final String subtitulo;
 
   @override
@@ -60,7 +61,12 @@ class ItemTransacao extends StatelessWidget {
       subtitulo: Row(
         children: [
           if (rascunho) ...[const _SeloRascunho(), const SizedBox(width: 8)],
-          Flexible(child: Text(subtitulo, overflow: TextOverflow.ellipsis)),
+          Flexible(
+            child: Text(switch (transacao.parcela) {
+              final p? => '$subtitulo · Parcela ${p.numero}/${p.total}',
+              null => subtitulo,
+            }, overflow: TextOverflow.ellipsis),
+          ),
         ],
       ),
       direita: Text(
