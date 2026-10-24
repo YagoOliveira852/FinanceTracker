@@ -16,6 +16,9 @@ abstract interface class TransacoesRepositorio {
   });
 
   Future<Transacao> lancar(NovoLancamento dados);
+
+  /// Lança a compra parcelada e devolve as parcelas, da 1ª à última.
+  Future<List<Transacao>> lancarParcelada(NovaCompraParcelada dados);
 }
 
 class TransacoesRepositorioApi implements TransacoesRepositorio {
@@ -64,6 +67,26 @@ class TransacoesRepositorioApi implements TransacoesRepositorio {
       throw ErroApi.de(erro);
     }
   }
+
+  @override
+  Future<List<Transacao>> lancarParcelada(NovaCompraParcelada dados) async {
+    final entrada = api.CompraParceladaEntrada(
+      (b) => b
+        ..contaId = dados.contaId
+        ..valorTotal = dinheiroParaApi(dados.valorTotal)
+        ..qtdParcelas = dados.qtdParcelas
+        ..dataCompra = dados.dataCompra.toDate()
+        ..descricao = dados.descricao,
+    );
+    try {
+      final resposta = await _cliente.getTransacoesApi().lancarParcelada(
+        compraParceladaEntrada: entrada,
+      );
+      return resposta.data!.parcelas.map(transacaoDaApi).toList();
+    } catch (erro) {
+      throw ErroApi.de(erro);
+    }
+  }
 }
 
 /// Transação do cliente gerado no modelo do app; também usada pelo
@@ -77,4 +100,8 @@ Transacao transacaoDaApi(api.TransacaoSaida t) => Transacao(
   descricao: t.descricao,
   status: StatusTransacao.values.byName(t.status.name),
   faturaId: t.faturaId,
+  parcela: switch (t.parcela) {
+    final p? => Parcela(numero: p.numero, total: p.total),
+    null => null,
+  },
 );

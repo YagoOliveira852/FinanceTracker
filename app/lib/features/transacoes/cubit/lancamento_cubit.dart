@@ -18,8 +18,9 @@ abstract class LancamentoEstado with _$LancamentoEstado {
     @Default(TipoTransacao.despesa) TipoTransacao tipo,
     @Default(false) bool enviando,
 
-    /// Erro por campo, com os nomes da API: `conta_id`, `valor`, `data`,
-    /// `descricao`.
+    /// Erro por campo, com os nomes do formulário: `conta_id`, `valor`,
+    /// `data`, `parcelas`, `descricao` (os da compra parcelada na API,
+    /// `valor_total`, `data_compra` e `qtd_parcelas`, viram os do formulário).
     @Default({}) Map<String, String> erros,
     String? erroGeral,
 
@@ -27,7 +28,8 @@ abstract class LancamentoEstado with _$LancamentoEstado {
     /// Nula em conta comum ou enquanto a API não respondeu.
     DatasFatura? faturaDaCompra,
 
-    /// Preenchida quando o lançamento foi salvo: a tela fecha.
+    /// Preenchida quando o lançamento foi salvo (na parcelada, a 1ª
+    /// parcela): a tela fecha.
     Transacao? salva,
   }) = _LancamentoEstado;
 }
@@ -44,7 +46,16 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
   /// quadro, e só uma mudança de verdade chama a API.
   ({String? contaId, DateTime data})? _consultada;
 
-  static const _camposDoFormulario = {'conta_id', 'valor', 'data', 'descricao'};
+  /// Campo da API → campo do formulário.
+  static const _camposDoFormulario = {
+    'conta_id': 'conta_id',
+    'valor': 'valor',
+    'valor_total': 'valor',
+    'data': 'data',
+    'data_compra': 'data',
+    'qtd_parcelas': 'parcelas',
+    'descricao': 'descricao',
+  };
 
   /// O usuário mexeu no campo: o erro dele some até o próximo envio.
   void limparErro(String campo) {
@@ -86,6 +97,9 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
     required String valor,
     required DateTime data,
     required String descricao,
+
+    /// 2 ou mais: compra parcelada (só em cartão, a tela garante).
+    int parcelas = 1,
   }) async {
     final erros = <String, String>{
       if (contaId == null) 'conta_id': 'Escolha uma conta.',
@@ -100,22 +114,32 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
 
     emit(state.copyWith(enviando: true, erros: {}, erroGeral: null));
     try {
-      final transacao = await _transacoes.lancar(
-        NovoLancamento(
-          contaId: contaId!,
-          tipo: state.tipo,
-          valor: lerDinheiro(valor)!,
-          data: somenteData(data),
-          descricao: descricao.trim(),
-        ),
-      );
+      final transacao = parcelas > 1
+          ? (await _transacoes.lancarParcelada(
+              NovaCompraParcelada(
+                contaId: contaId!,
+                valorTotal: lerDinheiro(valor)!,
+                qtdParcelas: parcelas,
+                dataCompra: somenteData(data),
+                descricao: descricao.trim(),
+              ),
+            )).first
+          : await _transacoes.lancar(
+              NovoLancamento(
+                contaId: contaId!,
+                tipo: state.tipo,
+                valor: lerDinheiro(valor)!,
+                data: somenteData(data),
+                descricao: descricao.trim(),
+              ),
+            );
       if (isClosed) return;
       emit(state.copyWith(enviando: false, salva: transacao));
     } on ErroApi catch (erro) {
       if (isClosed) return;
       final doFormulario = {
         for (final MapEntry(:key, :value) in erro.campos.entries)
-          if (_camposDoFormulario.contains(key)) key: value,
+          ?_camposDoFormulario[key]: value,
       };
       emit(
         state.copyWith(

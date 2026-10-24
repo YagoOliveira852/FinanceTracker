@@ -201,6 +201,94 @@ void main() {
     );
   });
 
+  group('LancamentoCubit · compra parcelada', () {
+    late TransacoesRepositorioFalso transacoes;
+
+    setUp(() => transacoes = TransacoesRepositorioFalso());
+
+    blocTest<LancamentoCubit, LancamentoEstado>(
+      'com 2x ou mais lança a compra parcelada',
+      build: () => LancamentoCubit(transacoes, FaturasRepositorioFalso()),
+      act: (cubit) => cubit.salvar(
+        contaId: 'cartao',
+        valor: '1.000,00',
+        data: hoje,
+        descricao: ' Fone de ouvido ',
+        parcelas: 3,
+      ),
+      skip: 1,
+      expect: () => [
+        isA<LancamentoEstado>().having(
+          (e) => e.salva?.parcela,
+          'parcela',
+          const Parcela(numero: 1, total: 3),
+        ),
+      ],
+      verify: (_) {
+        expect(transacoes.lancados, isEmpty);
+        expect(
+          transacoes.parceladas.single,
+          NovaCompraParcelada(
+            contaId: 'cartao',
+            valorTotal: Decimal.parse('1000'),
+            qtdParcelas: 3,
+            dataCompra: DateTime(2026, 10, 20),
+            descricao: 'Fone de ouvido',
+          ),
+        );
+      },
+    );
+
+    blocTest<LancamentoCubit, LancamentoEstado>(
+      'à vista continua sendo o lançamento comum',
+      build: () => LancamentoCubit(transacoes, FaturasRepositorioFalso()),
+      act: (cubit) => cubit.salvar(
+        contaId: 'cartao',
+        valor: '50',
+        data: hoje,
+        descricao: 'Mercado',
+        parcelas: 1,
+      ),
+      verify: (_) {
+        expect(transacoes.lancados, hasLength(1));
+        expect(transacoes.parceladas, isEmpty);
+      },
+    );
+
+    blocTest<LancamentoCubit, LancamentoEstado>(
+      'erros da API da parcelada aparecem nos campos do formulário',
+      build: () {
+        transacoes.erro = const ErroApi(
+          'Dados inválidos.',
+          status: 422,
+          campos: {
+            'valor_total': 'Cada parcela precisa ser de pelo menos R\$ 0,01.',
+            'data_compra': 'Deve ser uma data no formato AAAA-MM-DD.',
+            'qtd_parcelas': 'Escolha de 2 a 24 parcelas.',
+          },
+        );
+        return LancamentoCubit(transacoes, FaturasRepositorioFalso());
+      },
+      act: (cubit) => cubit.salvar(
+        contaId: 'cartao',
+        valor: '0,02',
+        data: hoje,
+        descricao: 'Fone de ouvido',
+        parcelas: 3,
+      ),
+      expect: () => [
+        const LancamentoEstado(enviando: true),
+        const LancamentoEstado(
+          erros: {
+            'valor': 'Cada parcela precisa ser de pelo menos R\$ 0,01.',
+            'data': 'Deve ser uma data no formato AAAA-MM-DD.',
+            'parcelas': 'Escolha de 2 a 24 parcelas.',
+          },
+        ),
+      ],
+    );
+  });
+
   group('LancamentoCubit · fatura da compra', () {
     late FaturasRepositorioFalso faturas;
 
