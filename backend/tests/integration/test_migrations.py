@@ -8,6 +8,7 @@ from alembic import command
 from sqlalchemy import CheckConstraint, create_engine, text
 from sqlalchemy.engine import make_url
 
+import app.modulos.cartoes.models  # noqa: F401
 import app.modulos.contas.models  # noqa: F401
 import app.modulos.transacoes.models  # noqa: F401
 from app.core.db import Base
