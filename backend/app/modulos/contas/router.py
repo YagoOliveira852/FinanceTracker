@@ -10,16 +10,10 @@ from app.core.deps import HojeDep, SessaoDep, get_usuario_atual
 from app.core.erros import RespostaErro
 from app.modulos.cartoes import faturas
 from app.modulos.cartoes import service as cartoes_service
+from app.modulos.cartoes.schemas import CartaoSaida, resumo_saida
 from app.modulos.contas import service
 from app.modulos.contas.models import TipoConta
-from app.modulos.contas.schemas import (
-    CartaoSaida,
-    ContaEntrada,
-    ContaSaida,
-    ContasResumo,
-    FaturaResumo,
-    InstituicaoSaida,
-)
+from app.modulos.contas.schemas import ContaEntrada, ContaSaida, ContasResumo, InstituicaoSaida
 
 # `dependencies` no router: toda rota daqui exige o access token, sem repetir
 # `UsuarioDep` em cada uma (as rotas não precisam do usuário em si).
@@ -89,19 +83,10 @@ def conta_saida(sessao: Session, item: service.ContaComSaldo, hoje: date) -> Con
 
 def _cartao_saida(sessao: Session, conta_id: uuid.UUID, hoje: date) -> CartaoSaida:
     cartao = cartoes_service.obter_cartao(sessao, conta_id)
-    atual = faturas.resumo_atual(sessao, cartao, hoje)
     return CartaoSaida(
         conta_pagamento_id=cartao.conta_pagamento_id,
         dia_fechamento=cartao.dia_fechamento,
         dia_vencimento=cartao.dia_vencimento,
         limite=cartao.limite,
-        fatura_atual=FaturaResumo(
-            competencia=atual.competencia,
-            data_fechamento=atual.data_fechamento,
-            data_vencimento=atual.data_vencimento,
-            status=atual.status,
-            valor=atual.valor,
-            valor_calculado=atual.valor_calculado,
-            valor_informado=atual.valor_informado,
-        ),
+        fatura_atual=resumo_saida(faturas.resumo_atual(sessao, cartao, hoje)),
     )

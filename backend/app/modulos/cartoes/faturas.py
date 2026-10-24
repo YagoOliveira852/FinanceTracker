@@ -1,4 +1,4 @@
-"""Regras de faturas: valor, status e resumo de uma competência.
+"""Regras de faturas: valor, status, lista e detalhe.
 
 O valor calculado é a soma das compras menos a dos estornos da fatura,
 contando rascunhos (como o cálculo do aporte) e sem as ignoradas. O valor da
@@ -16,7 +16,8 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.modulos.cartoes import service
-from app.modulos.cartoes.datas import StatusFatura, status_da_fatura
+from app.modulos.cartoes.datas import DatasFatura, StatusFatura, status_da_fatura
+from app.modulos.cartoes.feriados import feriados_entre
 from app.modulos.cartoes.models import Cartao, Fatura
 from app.modulos.transacoes.models import (
     TIPOS_ENTRADA,
@@ -50,6 +51,34 @@ class ResumoFatura:
     fatura: Fatura | None
 
 
+@dataclass(frozen=True)
+class ListaFaturas:
+    atual: ResumoFatura
+    # Gravadas depois da atual, da mais próxima para a mais distante.
+    proximas: list[ResumoFatura]
+    # Gravadas antes da atual, da mais recente para a mais antiga.
+    anteriores: list[ResumoFatura]
+
+
+@dataclass(frozen=True)
+class AjusteData:
+    """Por que a data efetiva não é a prevista: fim de semana e/ou feriados."""
+
+    data_prevista: date
+    # Feriados entre a data prevista e a efetiva (exclusive).
+    feriados: dict[date, str]
+
+
+@dataclass(frozen=True)
+class DetalheFatura:
+    resumo: ResumoFatura
+    datas_calculadas: DatasFatura
+    ajuste_fechamento: AjusteData | None
+    ajuste_vencimento: AjusteData | None
+    # Sem as ignoradas, da mais recente para a mais antiga.
+    transacoes: list[Transacao]
+
+
 def valores_calculados(
     sessao: Session, fatura_ids: Collection[uuid.UUID]
 ) -> dict[uuid.UUID, Decimal]:
@@ -80,8 +109,67 @@ def resumo(sessao: Session, cartao: Cartao, competencia: date, hoje: date) -> Re
         datas = service.datas_calculadas(sessao, cartao, competencia)
         return _resumo(competencia, datas.fechamento, datas.vencimento, _ZERO, None, hoje, None)
     calculado = valores_calculados(sessao, [fatura.id]).get(fatura.id, _ZERO)
+    return _resumo_da_gravada(fatura, calculado, hoje)
+
+
+def resumo_atual(sessao: Session, cartao: Cartao, hoje: date) -> ResumoFatura:
+    """A fatura em que entraria uma compra feita hoje."""
+    return resumo(sessao, cartao, service.competencia_para_data(sessao, cartao, hoje), hoje)
+
+
+def listar(sessao: Session, cartao: Cartao, hoje: date) -> ListaFaturas:
+    atual = resumo_atual(sessao, cartao, hoje)
+    gravadas = list(
+        sessao.scalars(
+            select(Fatura).where(Fatura.cartao_id == cartao.conta_id).order_by(Fatura.competencia)
+        )
+    )
+    valores = valores_calculados(sessao, [fatura.id for fatura in gravadas])
+    resumos = [_resumo_da_gravada(f, valores.get(f.id, _ZERO), hoje) for f in gravadas]
+    return ListaFaturas(
+        atual=atual,
+        proximas=[r for r in resumos if r.competencia > atual.competencia],
+        anteriores=[r for r in reversed(resumos) if r.competencia < atual.competencia],
+    )
+
+
+def detalhe(sessao: Session, cartao: Cartao, competencia: date, hoje: date) -> DetalheFatura:
+    resumo_ = resumo(sessao, cartao, competencia, hoje)
+    datas = service.datas_calculadas(sessao, cartao, competencia)
+    transacoes = []
+    if resumo_.fatura is not None:
+        transacoes = list(
+            sessao.scalars(
+                select(Transacao)
+                .where(
+                    Transacao.fatura_id == resumo_.fatura.id,
+                    Transacao.status != StatusTransacao.ignorada.value,
+                )
+                .order_by(Transacao.data.desc(), Transacao.criado_em.desc(), Transacao.id)
+            )
+        )
+    return DetalheFatura(
+        resumo=resumo_,
+        datas_calculadas=datas,
+        ajuste_fechamento=_ajuste(sessao, datas.fechamento_previsto, datas.fechamento),
+        ajuste_vencimento=_ajuste(sessao, datas.vencimento_previsto, datas.vencimento),
+        transacoes=transacoes,
+    )
+
+
+def _ajuste(sessao: Session, prevista: date, efetiva: date) -> AjusteData | None:
+    if prevista == efetiva:
+        return None
+    feriados = feriados_entre(sessao, prevista, efetiva)
+    return AjusteData(
+        data_prevista=prevista,
+        feriados={dia: nome for dia, nome in sorted(feriados.items()) if dia < efetiva},
+    )
+
+
+def _resumo_da_gravada(fatura: Fatura, calculado: Decimal, hoje: date) -> ResumoFatura:
     return _resumo(
-        competencia,
+        fatura.competencia,
         fatura.data_fechamento,
         fatura.data_vencimento,
         calculado,
@@ -89,11 +177,6 @@ def resumo(sessao: Session, cartao: Cartao, competencia: date, hoje: date) -> Re
         hoje,
         fatura,
     )
-
-
-def resumo_atual(sessao: Session, cartao: Cartao, hoje: date) -> ResumoFatura:
-    """A fatura em que entraria uma compra feita hoje."""
-    return resumo(sessao, cartao, service.competencia_para_data(sessao, cartao, hoje), hoje)
 
 
 def _resumo(

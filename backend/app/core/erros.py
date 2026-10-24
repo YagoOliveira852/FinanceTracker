@@ -48,6 +48,7 @@ MENSAGENS_VALIDACAO = {
     "string_type": "Deve ser um texto.",
     "string_too_short": "Texto curto demais.",
     "string_too_long": "Texto longo demais.",
+    "string_pattern_mismatch": "Formato inválido.",
     "literal_error": "Opção inválida.",
     "enum": "Opção inválida.",
     "int_type": "Deve ser um número inteiro.",
