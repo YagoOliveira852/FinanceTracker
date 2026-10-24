@@ -67,6 +67,8 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**eu**](doc/AuthApi.md#eu) | **GET** /auth/eu | Eu
 [*AuthApi*](doc/AuthApi.md) | [**login**](doc/AuthApi.md#login) | **POST** /auth/login | Login
 [*AuthApi*](doc/AuthApi.md) | [**refresh**](doc/AuthApi.md#refresh) | **POST** /auth/refresh | Refresh
+[*CartoesApi*](doc/CartoesApi.md) | [**criar**](doc/CartoesApi.md#criar) | **POST** /cartoes | Criar
+[*CartoesApi*](doc/CartoesApi.md) | [**previa**](doc/CartoesApi.md#previa) | **GET** /cartoes/previa | Previa
 [*ContasApi*](doc/ContasApi.md) | [**criar**](doc/ContasApi.md#criar) | **POST** /contas | Criar
 [*ContasApi*](doc/ContasApi.md) | [**listar**](doc/ContasApi.md#listar) | **GET** /contas | Listar
 [*ContasApi*](doc/ContasApi.md) | [**obter**](doc/ContasApi.md#obter) | **GET** /contas/{conta_id} | Obter
@@ -78,10 +80,14 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [CartaoEntrada](doc/CartaoEntrada.md)
+ - [CartaoSaida](doc/CartaoSaida.md)
  - [ContaEntrada](doc/ContaEntrada.md)
  - [ContaSaida](doc/ContaSaida.md)
  - [ContasResumo](doc/ContasResumo.md)
+ - [DatasFaturaSaida](doc/DatasFaturaSaida.md)
  - [ErroCampo](doc/ErroCampo.md)
+ - [FaturaResumo](doc/FaturaResumo.md)
  - [FonteTransacao](doc/FonteTransacao.md)
  - [HTTPValidationError](doc/HTTPValidationError.md)
  - [InstituicaoSaida](doc/InstituicaoSaida.md)
@@ -90,6 +96,7 @@ Class | Method | HTTP request | Description
  - [RefreshEntrada](doc/RefreshEntrada.md)
  - [RespostaErro](doc/RespostaErro.md)
  - [Saude](doc/Saude.md)
+ - [StatusFatura](doc/StatusFatura.md)
  - [StatusTransacao](doc/StatusTransacao.md)
  - [TipoConta](doc/TipoConta.md)
  - [TipoTransacao](doc/TipoTransacao.md)

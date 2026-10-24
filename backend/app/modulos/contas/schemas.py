@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.dinheiro import Dinheiro
+from app.modulos.cartoes.datas import StatusFatura
 from app.modulos.contas.models import TipoConta
 
 
@@ -38,6 +39,29 @@ class InstituicaoSaida(BaseModel):
     nome: str
 
 
+class FaturaResumo(BaseModel):
+    """Uma fatura: gravada ou, enquanto não recebeu transação nem foi editada,
+    calculada pela regra do cartão."""
+
+    competencia: date = Field(description="Primeiro dia do mês do vencimento.")
+    data_fechamento: date
+    data_vencimento: date
+    status: StatusFatura = Field(description="Aberta antes do fechamento; fechada a partir dele.")
+    valor: Dinheiro = Field(description="O maior entre o informado e o calculado.")
+    valor_calculado: Dinheiro = Field(
+        description="Compras menos estornos da fatura, com rascunhos e sem as ignoradas."
+    )
+    valor_informado: Dinheiro | None = Field(description="O total que o banco mostra.")
+
+
+class CartaoSaida(BaseModel):
+    conta_pagamento_id: uuid.UUID
+    dia_fechamento: int
+    dia_vencimento: int
+    limite: Dinheiro | None
+    fatura_atual: FaturaResumo = Field(description="A fatura de uma compra feita hoje.")
+
+
 class ContaSaida(BaseModel):
     id: uuid.UUID
     nome: str
@@ -52,6 +76,7 @@ class ContaSaida(BaseModel):
         )
     )
     ativa: bool
+    cartao: CartaoSaida | None = Field(description="Dados do cartão; nulo se não for cartão.")
 
 
 class ContasResumo(BaseModel):

@@ -152,7 +152,7 @@
           "contas"
         ],
         "summary": "Listar",
-        "description": "Todas as contas com o saldo atual, e o total disponível (correntes e carteiras).",
+        "description": "Todas as contas com o saldo atual, e o total disponível (correntes e carteiras).\nCartões trazem também a fatura atual.",
         "operationId": "contas_listar",
         "responses": {
           "200": {
@@ -533,6 +533,134 @@
         }
       }
     },
+    "/cartoes": {
+      "post": {
+        "tags": [
+          "cartoes"
+        ],
+        "summary": "Criar",
+        "description": "Cadastra um cartão de crédito: a conta e os dados do cartão.",
+        "operationId": "cartoes_criar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CartaoEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/cartoes/previa": {
+      "get": {
+        "tags": [
+          "cartoes"
+        ],
+        "summary": "Previa",
+        "description": "Próxima fatura (a de uma compra feita hoje) para dias ainda não salvos.",
+        "operationId": "cartoes_previa",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dia_fechamento",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 31,
+              "minimum": 1,
+              "title": "Dia Fechamento"
+            }
+          },
+          {
+            "name": "dia_vencimento",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 31,
+              "minimum": 1,
+              "title": "Dia Vencimento"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasFaturaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -568,6 +696,107 @@
   },
   "components": {
     "schemas": {
+      "CartaoEntrada": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Nome"
+          },
+          "instituicao": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Instituicao",
+            "description": "Nome da instituição. Se nenhuma tiver esse nome (sem diferenciar maiúsculas), uma nova é criada."
+          },
+          "conta_pagamento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Pagamento Id",
+            "description": "Conta corrente ativa que paga a fatura."
+          },
+          "dia_fechamento": {
+            "type": "integer",
+            "maximum": 31.0,
+            "minimum": 1.0,
+            "title": "Dia Fechamento",
+            "description": "31 vira o último dia do mês."
+          },
+          "dia_vencimento": {
+            "type": "integer",
+            "maximum": 31.0,
+            "minimum": 1.0,
+            "title": "Dia Vencimento",
+            "description": "Diferente do fechamento; 31 vira o último dia do mês."
+          },
+          "limite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limite"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nome",
+          "instituicao",
+          "conta_pagamento_id",
+          "dia_fechamento",
+          "dia_vencimento"
+        ],
+        "title": "CartaoEntrada"
+      },
+      "CartaoSaida": {
+        "properties": {
+          "conta_pagamento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Pagamento Id"
+          },
+          "dia_fechamento": {
+            "type": "integer",
+            "title": "Dia Fechamento"
+          },
+          "dia_vencimento": {
+            "type": "integer",
+            "title": "Dia Vencimento"
+          },
+          "limite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limite"
+          },
+          "fatura_atual": {
+            "$ref": "#/components/schemas/FaturaResumo",
+            "description": "A fatura de uma compra feita hoje."
+          }
+        },
+        "type": "object",
+        "required": [
+          "conta_pagamento_id",
+          "dia_fechamento",
+          "dia_vencimento",
+          "limite",
+          "fatura_atual"
+        ],
+        "title": "CartaoSaida"
+      },
       "ContaEntrada": {
         "properties": {
           "nome": {
@@ -664,6 +893,17 @@
           "ativa": {
             "type": "boolean",
             "title": "Ativa"
+          },
+          "cartao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CartaoSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dados do cartão; nulo se não for cartão."
           }
         },
         "type": "object",
@@ -675,7 +915,8 @@
           "saldo_inicial",
           "data_saldo_inicial",
           "saldo_atual",
-          "ativa"
+          "ativa",
+          "cartao"
         ],
         "title": "ContaSaida"
       },
@@ -702,6 +943,34 @@
         ],
         "title": "ContasResumo"
       },
+      "DatasFaturaSaida": {
+        "properties": {
+          "competencia": {
+            "type": "string",
+            "format": "date",
+            "title": "Competencia",
+            "description": "Primeiro dia do mês do vencimento."
+          },
+          "data_fechamento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Fechamento"
+          },
+          "data_vencimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Vencimento"
+          }
+        },
+        "type": "object",
+        "required": [
+          "competencia",
+          "data_fechamento",
+          "data_vencimento"
+        ],
+        "title": "DatasFaturaSaida",
+        "description": "Competência e datas efetivas de uma fatura (ajustadas para dia útil)."
+      },
       "ErroCampo": {
         "properties": {
           "campo": {
@@ -719,6 +988,67 @@
           "mensagem"
         ],
         "title": "ErroCampo"
+      },
+      "FaturaResumo": {
+        "properties": {
+          "competencia": {
+            "type": "string",
+            "format": "date",
+            "title": "Competencia",
+            "description": "Primeiro dia do mês do vencimento."
+          },
+          "data_fechamento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Fechamento"
+          },
+          "data_vencimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Vencimento"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusFatura",
+            "description": "Aberta antes do fechamento; fechada a partir dele."
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor",
+            "description": "O maior entre o informado e o calculado."
+          },
+          "valor_calculado": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor Calculado",
+            "description": "Compras menos estornos da fatura, com rascunhos e sem as ignoradas."
+          },
+          "valor_informado": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Informado",
+            "description": "O total que o banco mostra."
+          }
+        },
+        "type": "object",
+        "required": [
+          "competencia",
+          "data_fechamento",
+          "data_vencimento",
+          "status",
+          "valor",
+          "valor_calculado",
+          "valor_informado"
+        ],
+        "title": "FaturaResumo",
+        "description": "Uma fatura: gravada ou, enquanto não recebeu transação nem foi editada,\ncalculada pela regra do cartão."
       },
       "FonteTransacao": {
         "type": "string",
@@ -837,6 +1167,14 @@
           "status"
         ],
         "title": "Saude"
+      },
+      "StatusFatura": {
+        "type": "string",
+        "enum": [
+          "aberta",
+          "fechada"
+        ],
+        "title": "StatusFatura"
       },
       "StatusTransacao": {
         "type": "string",
@@ -985,6 +1323,19 @@
           },
           "fonte": {
             "$ref": "#/components/schemas/FonteTransacao"
+          },
+          "fatura_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fatura Id",
+            "description": "Fatura da transação, se a conta é cartão."
           }
         },
         "type": "object",
@@ -997,7 +1348,8 @@
           "descricao",
           "descricao_original",
           "status",
-          "fonte"
+          "fonte",
+          "fatura_id"
         ],
         "title": "TransacaoSaida"
       },

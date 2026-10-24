@@ -87,3 +87,6 @@ class Transacao(ComTimestamps, Base):
     fonte: Mapped[str] = mapped_column(Text)
     # FITID do OFX, id da Pluggy ou hash do CSV; nulo no lançamento manual.
     id_externo: Mapped[str | None] = mapped_column(Text)
+    # Obrigatório em transação de conta `cartao_credito` (regra no service: um
+    # CHECK não enxerga o tipo da conta).
+    fatura_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("fatura.id"), index=True)

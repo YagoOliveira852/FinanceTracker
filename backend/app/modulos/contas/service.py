@@ -56,7 +56,7 @@ def criar_conta(
     else:
         if nome_instituicao is None:
             raise CampoInvalido("instituicao", "Informe a instituição da conta.")
-        instituicao = _obter_ou_criar_instituicao(sessao, nome_instituicao)
+        instituicao = obter_ou_criar_instituicao(sessao, nome_instituicao)
 
     conta = Conta(
         nome=nome,
@@ -91,7 +91,7 @@ def listar_contas(sessao: Session) -> ResumoContas:
     return ResumoContas(contas=contas, total_disponivel=total)
 
 
-def _obter_ou_criar_instituicao(sessao: Session, nome: str) -> Instituicao:
+def obter_ou_criar_instituicao(sessao: Session, nome: str) -> Instituicao:
     existente = sessao.scalar(
         select(Instituicao).where(func.lower(Instituicao.nome) == nome.lower())
     )
