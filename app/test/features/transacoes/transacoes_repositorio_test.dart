@@ -74,4 +74,74 @@ void main() {
       'descricao': 'Freela de design',
     });
   });
+
+  test('transação sem compra parcelada não tem parcela', () async {
+    responder((status: 200, corpo: [_transacaoJson()]));
+
+    final transacoes = await repositorio.listar(
+      de: DateTime(2026, 10, 1),
+      ate: DateTime(2026, 10, 31),
+    );
+
+    expect(transacoes.single.parcela, isNull);
+  });
+
+  test('lançar parcelada manda o total e devolve as parcelas', () async {
+    const compraId = '6f1c2b3a-0000-4000-8000-0000000000cc';
+    Map<String, Object?> parcela(int numero, String valor, String data) => {
+      ..._transacaoJson(),
+      'id': '6f1c2b3a-0000-4000-8000-00000000000$numero',
+      'tipo': 'despesa',
+      'valor': valor,
+      'data': data,
+      'status': 'confirmada',
+      'fonte': 'manual',
+      'parcela': {
+        'compra_parcelada_id': compraId,
+        'numero': numero,
+        'total': 2,
+      },
+    };
+    responder((
+      status: 201,
+      corpo: {
+        'id': compraId,
+        'descricao': 'Fone de ouvido',
+        'valor_total': '100.01',
+        'qtd_parcelas': 2,
+        'data_compra': '2026-10-20',
+        'data_compra_estimada': false,
+        'parcelas': [
+          parcela(1, '50.01', '2026-10-20'),
+          parcela(2, '50.00', '2026-11-20'),
+        ],
+      },
+    ));
+
+    final parcelas = await repositorio.lancarParcelada(
+      NovaCompraParcelada(
+        contaId: _contaId,
+        valorTotal: Decimal.parse('100.01'),
+        qtdParcelas: 2,
+        dataCompra: DateTime(2026, 10, 20),
+        descricao: 'Fone de ouvido',
+      ),
+    );
+
+    final requisicao = adaptador.requisicoes.single;
+    expect(requisicao.uri.path, '/transacoes/parceladas');
+    expect(corpoDe(requisicao), {
+      'conta_id': _contaId,
+      'valor_total': '100.01',
+      'qtd_parcelas': 2,
+      'data_compra': '2026-10-20',
+      'descricao': 'Fone de ouvido',
+    });
+    expect(parcelas.map((p) => p.parcela), const [
+      Parcela(numero: 1, total: 2),
+      Parcela(numero: 2, total: 2),
+    ]);
+    expect(parcelas.last.valor, Decimal.parse('50.00'));
+    expect(parcelas.last.data, DateTime(2026, 11, 20));
+  });
 }

@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -7,16 +8,21 @@ import '../../../app/widgets/aviso.dart';
 import '../../../app/widgets/campos.dart';
 import '../../../app/widgets/chip_opcao.dart';
 import '../../../core/formatacao/datas.dart';
+import '../../../core/formatacao/dinheiro.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
 import '../../faturas/data/fatura.dart';
 import '../cubit/lancamento_cubit.dart';
 import '../data/transacao.dart';
+import 'textos.dart';
 
-/// Lançamento manual de despesa ou receita; despesa num cartão é uma compra
-/// e mostra em que fatura entra. Transferência, pagamento de fatura,
-/// parcelas e categoria aparecem desabilitados ("em breve"). Fecha devolvendo
-/// `true` quando salvou.
+/// Opções do campo Parcelas: 1 é à vista.
+const _maximoDeParcelas = 24;
+
+/// Lançamento manual de despesa ou receita; despesa num cartão é uma compra,
+/// à vista ou parcelada, e mostra em que fatura entra. Transferência,
+/// pagamento de fatura e categoria aparecem desabilitados ("em breve"). Fecha
+/// devolvendo `true` quando salvou.
 class LancamentoTela extends StatefulWidget {
   const LancamentoTela({super.key, this.contaInicial});
 
@@ -35,6 +41,9 @@ class _LancamentoTelaState extends State<LancamentoTela> {
   String? _contaEscolhida;
   var _data = somenteData(DateTime.now());
 
+  /// Escolha do campo Parcelas; só vale com cartão (ver [_parcelasDa]).
+  var _parcelas = 1;
+
   @override
   void dispose() {
     _valor.dispose();
@@ -50,13 +59,29 @@ class _LancamentoTelaState extends State<LancamentoTela> {
     return contas.where((c) => c.id == id).firstOrNull;
   }
 
+  /// Parcelas que valem para a conta: fora do cartão, sempre à vista.
+  int _parcelasDa(Conta? conta) =>
+      conta?.tipo == TipoConta.cartaoCredito ? _parcelas : 1;
+
   void _salvar(List<Conta> contas) {
+    final conta = _contaSelecionada(contas);
     context.read<LancamentoCubit>().salvar(
-      contaId: _contaSelecionada(contas)?.id,
+      contaId: conta?.id,
       valor: _valor.text,
       data: _data,
       descricao: _descricao.text,
+      parcelas: _parcelasDa(conta),
     );
+  }
+
+  /// "3x de R$ 333,33; …" quando o valor digitado dá pelo menos um centavo
+  /// por parcela; senão, nada.
+  String? _textoDaDivisao(int parcelas) {
+    if (parcelas < 2) return null;
+    if (validarDinheiro(_valor.text, exigePositivo: true) != null) return null;
+    final total = lerDinheiro(_valor.text)!;
+    if (total * Decimal.fromInt(100) < Decimal.fromInt(parcelas)) return null;
+    return textoDaDivisao(total, parcelas);
   }
 
   @override
@@ -83,6 +108,7 @@ class _LancamentoTelaState extends State<LancamentoTela> {
     };
     final contaSelecionada = _contaSelecionada(contas);
     final noCartao = contaSelecionada?.tipo == TipoConta.cartaoCredito;
+    final parcelas = _parcelasDa(contaSelecionada);
     // A consulta repete a cada quadro, mas o cubit só chama a API quando a
     // conta ou a data mudam (inclusive quando as contas terminam de carregar).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -201,7 +227,17 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                   ],
                   onChanged: livre
                       ? (id) {
-                          setState(() => _contaEscolhida = id);
+                          setState(() {
+                            _contaEscolhida = id;
+                            // Parcelas são só do cartão: outra conta volta a
+                            // à vista.
+                            final conta = contas
+                                .where((c) => c.id == id)
+                                .firstOrNull;
+                            if (conta?.tipo != TipoConta.cartaoCredito) {
+                              _parcelas = 1;
+                            }
+                          });
                           cubit.limparErro('conta_id');
                         }
                       : null,
@@ -209,37 +245,80 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                 const SizedBox(height: Espaco.x6),
                 CampoDinheiro(
                   controller: _valor,
-                  aoMudar: (_) => cubit.limparErro('valor'),
-                  rotulo: 'Valor',
+                  aoMudar: (_) {
+                    // O texto da divisão acompanha a digitação.
+                    setState(() {});
+                    cubit.limparErro('valor');
+                  },
+                  rotulo: noCartao ? 'Valor total' : 'Valor',
                   habilitado: livre,
                   ajuda: 'Sempre positivo; o tipo define se entra ou sai.',
                   erro: estado.erros['valor'],
                 ),
                 const SizedBox(height: Espaco.x6),
-                CampoData(
-                  rotulo: noCartao ? 'Data da compra' : 'Data',
-                  data: _data,
-                  habilitado: livre,
-                  aoMudar: (data) {
-                    setState(() => _data = data);
-                    cubit.limparErro('data');
-                  },
-                  erro: estado.erros['data'],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: CampoData(
+                        rotulo: noCartao ? 'Data da compra' : 'Data',
+                        data: _data,
+                        habilitado: livre,
+                        aoMudar: (data) {
+                          setState(() => _data = data);
+                          cubit.limparErro('data');
+                        },
+                        erro: estado.erros['data'],
+                      ),
+                    ),
+                    if (noCartao) ...[
+                      const SizedBox(width: Espaco.x4),
+                      SizedBox(
+                        width: 128,
+                        child: DropdownButtonFormField<int>(
+                          initialValue: _parcelas,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: 'Parcelas',
+                            errorText: estado.erros['parcelas'],
+                          ),
+                          items: [
+                            for (var n = 1; n <= _maximoDeParcelas; n++)
+                              DropdownMenuItem(
+                                value: n,
+                                child: Text(n == 1 ? 'À vista' : '${n}x'),
+                              ),
+                          ],
+                          onChanged: livre
+                              ? (n) {
+                                  setState(() => _parcelas = n ?? 1);
+                                  cubit.limparErro('parcelas');
+                                }
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 if (noCartao) ...[
-                  const SizedBox(height: Espaco.x6),
-                  const TextField(
-                    enabled: false,
-                    decoration: InputDecoration(
-                      labelText: 'Parcelas',
-                      hintText: 'À vista',
-                      helperText: 'Parcelas: em breve.',
-                      suffixIcon: Icon(Icons.arrow_drop_down_rounded),
+                  if (_textoDaDivisao(parcelas) case final divisao?)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        Espaco.x4,
+                        Espaco.x1,
+                        Espaco.x4,
+                        0,
+                      ),
+                      child: Text(
+                        divisao,
+                        style: context.textos.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
                     ),
-                  ),
                   if (estado.faturaDaCompra case final fatura?) ...[
                     const SizedBox(height: Espaco.x6),
-                    _FaturaDaCompra(fatura),
+                    _FaturaDaCompra(fatura, parcelas: parcelas),
                   ],
                 ],
                 const SizedBox(height: Espaco.x6),
@@ -283,16 +362,21 @@ class _LancamentoTelaState extends State<LancamentoTela> {
   }
 }
 
-/// "Entra na fatura de novembro · Fecha ter, 3 nov · vence ter, 10 nov".
+/// "Entra na fatura de novembro · Fecha ter, 3 nov · vence ter, 10 nov";
+/// parcelada, acrescenta em que fatura cai a última parcela.
 class _FaturaDaCompra extends StatelessWidget {
-  const _FaturaDaCompra(this.fatura);
+  const _FaturaDaCompra(this.fatura, {required this.parcelas});
 
   final DatasFatura fatura;
+  final int parcelas;
 
   @override
   Widget build(BuildContext context) {
     final esquema = context.esquema;
     final textos = context.textos;
+    final datas =
+        'Fecha ${formatarDiaCurto(fatura.dataFechamento)} · '
+        'vence ${formatarDiaCurto(fatura.dataVencimento)}';
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: Espaco.x4,
@@ -317,8 +401,10 @@ class _FaturaDaCompra extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Fecha ${formatarDiaCurto(fatura.dataFechamento)} · '
-                  'vence ${formatarDiaCurto(fatura.dataVencimento)}',
+                  parcelas > 1
+                      ? '$datas. '
+                            '${textoDaUltimaParcela(fatura.competencia, parcelas)}'
+                      : datas,
                   style: textos.bodyMedium?.copyWith(
                     color: esquema.onSurfaceVariant,
                   ),

@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/faturas/data/fatura.dart';
 import 'package:financas/features/faturas/data/faturas_repositorio.dart';
+import 'package:financas/features/transacoes/data/transacao.dart';
 
 import 'transacoes_falso.dart';
 
@@ -64,6 +65,9 @@ DetalheFatura detalheExemplo(ResumoFatura resumo) {
         valor: '150.00',
         data: resumo.dataFechamento.subtract(const Duration(days: 3)),
         descricao: 'Posto Fictício',
+        parcela: resumo.competencia == DateTime(2026, 12)
+            ? const Parcela(numero: 3, total: 10)
+            : null,
       ),
     ],
   );

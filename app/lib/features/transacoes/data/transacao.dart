@@ -41,7 +41,16 @@ abstract class Transacao with _$Transacao {
 
     /// Fatura da transação, quando a conta é cartão de crédito.
     String? faturaId,
+
+    /// Número da parcela, quando é compra parcelada.
+    Parcela? parcela,
   }) = _Transacao;
+}
+
+/// "Parcela 3/10": a [numero] de [total] parcelas de uma compra.
+@freezed
+abstract class Parcela with _$Parcela {
+  const factory Parcela({required int numero, required int total}) = _Parcela;
 }
 
 /// Lançamento manual: só despesa ou receita nesta versão.
@@ -54,4 +63,16 @@ abstract class NovoLancamento with _$NovoLancamento {
     required DateTime data,
     required String descricao,
   }) = _NovoLancamento;
+}
+
+/// Compra parcelada no cartão: a API gera uma despesa por parcela.
+@freezed
+abstract class NovaCompraParcelada with _$NovaCompraParcelada {
+  const factory NovaCompraParcelada({
+    required String contaId,
+    required Decimal valorTotal,
+    required int qtdParcelas,
+    required DateTime dataCompra,
+    required String descricao,
+  }) = _NovaCompraParcelada;
 }

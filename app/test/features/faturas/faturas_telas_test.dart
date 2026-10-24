@@ -101,6 +101,14 @@ void main() {
     expect(find.text('Compras · 1'), findsOneWidget);
   });
 
+  testWidgets('Fatura mostra a data e o número da parcela', (tester) async {
+    _telaAlta(tester);
+    await tester.pumpWidget(detalhe(DateTime(2026, 12)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('30 nov · Parcela 3/10'), findsOneWidget);
+  });
+
   testWidgets('Fatura fechada: informado × calculado, ajuste e vencimento', (
     tester,
   ) async {
