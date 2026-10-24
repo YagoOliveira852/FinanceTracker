@@ -237,3 +237,75 @@ def test_parcelada_exige_token(client):
     resposta = client.post("/transacoes/parceladas", json={})
 
     assert resposta.status_code == 401
+
+
+# --- realocação ------------------------------------------------------------------
+
+
+def _editar_fatura(api, cartao, competencia, fechamento, vencimento):
+    resposta = api.put(
+        f"/cartoes/{cartao['id']}/faturas/{competencia}",
+        json={
+            "data_fechamento": fechamento,
+            "data_vencimento": vencimento,
+            "valor_informado": None,
+        },
+    )
+    assert resposta.status_code == 200, resposta.json()
+
+
+def test_antecipar_fechamento_leva_a_compra_inteira(api, sessao, cartao):
+    compra = _parcelar(api, cartao, data_compra="2026-11-02")
+
+    _editar_fatura(api, cartao, "2026-11", "2026-11-02", "2026-11-10")
+
+    assert _competencias(sessao, compra) == [
+        date(2026, 12, 1),
+        date(2027, 1, 1),
+        date(2027, 2, 1),
+    ]
+    datas = [sessao.get(Transacao, uuid.UUID(p["id"])).data for p in compra["parcelas"]]
+    assert datas == [date(2026, 11, 2), date(2026, 12, 2), date(2027, 1, 2)]
+
+
+def test_parcela_no_intervalo_de_compra_fora_nao_se_move(api, sessao, cartao):
+    """A parcela 2 tem data 02/11, dentro do intervalo; a compra (02/10) não."""
+    compra = _parcelar(api, cartao, data_compra="2026-10-02")
+
+    _editar_fatura(api, cartao, "2026-11", "2026-11-02", "2026-11-10")
+
+    assert _competencias(sessao, compra) == [
+        date(2026, 10, 1),
+        date(2026, 11, 1),
+        date(2026, 12, 1),
+    ]
+
+
+def test_adiar_fechamento_traz_a_compra_de_volta(api, sessao, cartao):
+    compra = _parcelar(api, cartao, data_compra="2026-11-03", qtd_parcelas=2)
+
+    _editar_fatura(api, cartao, "2026-11", "2026-11-04", "2026-11-10")
+
+    assert _competencias(sessao, compra) == [date(2026, 11, 1), date(2026, 12, 1)]
+
+
+def test_dias_novos_do_cartao_movem_a_compra_parcelada(api, sessao, cartao, corrente):
+    compra = _parcelar(api, cartao, data_compra="2026-12-13", qtd_parcelas=2)
+    assert _competencias(sessao, compra) == [date(2027, 1, 1), date(2027, 2, 1)]
+
+    resposta = api.put(
+        f"/cartoes/{cartao['id']}",
+        json={
+            "nome": "Cartão Exemplo",
+            "instituicao": "Banco Exemplo",
+            "conta_pagamento_id": corrente["id"],
+            "dia_fechamento": 12,
+            "dia_vencimento": 20,
+            "limite": None,
+            "ativa": True,
+        },
+    )
+
+    assert resposta.status_code == 200, resposta.json()
+    # Dezembro passa a fechar seg 14/12 (12/12 é sábado): a compra de 13/12 entra nele.
+    assert _competencias(sessao, compra) == [date(2026, 12, 1), date(2027, 1, 1)]
