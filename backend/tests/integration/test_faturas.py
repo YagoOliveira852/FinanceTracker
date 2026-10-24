@@ -202,3 +202,113 @@ def test_rotas_de_fatura_de_conta_que_nao_e_cartao(api, corrente):
 
 def test_rotas_exigem_token(client):
     assert client.get(f"/cartoes/{uuid.uuid4()}/faturas").status_code == 401
+
+
+# --- editar ------------------------------------------------------------------
+
+
+def _editar(api, cartao, competencia, fechamento, vencimento, informado=None):
+    return api.put(
+        _url(cartao, f"/{competencia}"),
+        json={
+            "data_fechamento": fechamento,
+            "data_vencimento": vencimento,
+            "valor_informado": informado,
+        },
+    )
+
+
+def test_antecipar_fechamento_move_compras_para_a_seguinte(api, sessao, cartao):
+    fica = _comprar(api, cartao, "2026-10-25")
+    sai = _comprar(api, cartao, "2026-11-01")
+
+    resposta = _editar(api, cartao, "2026-11", "2026-10-28", "2026-11-10")
+
+    assert resposta.status_code == 200, resposta.json()
+    assert resposta.json()["data_fechamento"] == "2026-10-28"
+    assert _competencia_da_transacao(sessao, fica["id"]) == date(2026, 11, 1)
+    assert _competencia_da_transacao(sessao, sai["id"]) == date(2026, 12, 1)
+
+
+def test_adiar_fechamento_traz_compras_de_volta(api, sessao, cartao):
+    compra = _comprar(api, cartao, "2026-10-06")
+    assert _competencia_da_transacao(sessao, compra["id"]) == date(2026, 11, 1)
+
+    resposta = _editar(api, cartao, "2026-10", "2026-10-08", "2026-10-13")
+
+    assert resposta.status_code == 200, resposta.json()
+    assert _competencia_da_transacao(sessao, compra["id"]) == date(2026, 10, 1)
+
+
+def test_ajuste_da_fatura_nao_e_realocado(api, sessao, cartao):
+    compra = _comprar(api, cartao, "2026-11-01")
+    ajuste = Transacao(
+        conta_id=uuid.UUID(cartao["id"]),
+        tipo="ajuste_saida",
+        valor=Decimal("10.00"),
+        data=date(2026, 11, 1),
+        descricao_original="Ajuste da fatura",
+        descricao="Ajuste da fatura",
+        status="confirmada",
+        fonte="manual",
+        fatura_id=uuid.UUID(compra["fatura_id"]),
+    )
+    sessao.add(ajuste)
+    sessao.flush()
+
+    _editar(api, cartao, "2026-11", "2026-10-28", "2026-11-10")
+
+    assert _competencia_da_transacao(sessao, str(ajuste.id)) == date(2026, 11, 1)
+    assert _competencia_da_transacao(sessao, compra["id"]) == date(2026, 12, 1)
+
+
+@pytest.mark.parametrize("fechamento", ["2026-10-05", "2026-12-03"])
+def test_fechamento_nao_pode_inverter_a_ordem_das_faturas(api, cartao, fechamento):
+    resposta = _editar(api, cartao, "2026-11", fechamento, "2026-12-10")
+
+    assert _campos(resposta) == {
+        "body.data_fechamento": (
+            "O fechamento precisa ficar depois do da fatura anterior e antes do da seguinte."
+        )
+    }
+
+
+def test_vencimento_precisa_ser_depois_do_fechamento(api, cartao):
+    resposta = _editar(api, cartao, "2026-11", "2026-11-03", "2026-11-03")
+
+    assert _campos(resposta) == {
+        "body.data_vencimento": "O vencimento precisa ser depois do fechamento."
+    }
+
+
+def test_valor_informado_negativo_e_recusado(api, cartao):
+    resposta = _editar(api, cartao, "2026-11", "2026-11-03", "2026-11-10", "-1.00")
+
+    assert _campos(resposta) == {"body.valor_informado": "O valor informado não pode ser negativo."}
+
+
+def test_campos_da_edicao_sao_obrigatorios(api, cartao):
+    resposta = api.put(_url(cartao, "/2026-11"), json={"data_fechamento": "2026-11-03"})
+
+    assert set(_campos(resposta)) == {"body.data_vencimento", "body.valor_informado"}
+
+
+def test_editar_grava_a_fatura_calculada_e_null_limpa_o_informado(api, sessao, cartao):
+    resposta = _editar(api, cartao, "2026-12", "2026-12-03", "2026-12-10", "200.00")
+
+    assert resposta.status_code == 200
+    assert resposta.json()["valor_informado"] == "200.00"
+    assert sessao.query(Fatura).filter_by(competencia=date(2026, 12, 1)).count() == 1
+
+    resposta = _editar(api, cartao, "2026-12", "2026-12-03", "2026-12-10", None)
+
+    assert resposta.json()["valor_informado"] is None
+
+
+@pytest.mark.parametrize(("informado", "valor"), [("200.00", "200.00"), ("100.00", "150.00")])
+def test_valor_da_fatura_e_o_maior(api, cartao, informado, valor):
+    _comprar(api, cartao, "2026-10-20", "150.00")
+
+    corpo = _editar(api, cartao, "2026-11", "2026-11-03", "2026-11-10", informado).json()
+
+    assert (corpo["valor"], corpo["valor_calculado"]) == (valor, "150.00")

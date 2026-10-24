@@ -68,6 +68,17 @@ class ListaFaturasSaida(BaseModel):
     anteriores: list[FaturaResumo] = Field(description="Gravadas antes da atual, da mais recente.")
 
 
+class FaturaEdicao(BaseModel):
+    """Os três campos vão sempre (o formulário manda tudo): `valor_informado`
+    nulo apaga o valor informado."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    data_fechamento: date
+    data_vencimento: date
+    valor_informado: Dinheiro | None
+
+
 class FeriadoSaida(BaseModel):
     data: date
     descricao: str
