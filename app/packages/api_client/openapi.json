@@ -590,6 +590,85 @@
         ]
       }
     },
+    "/cartoes/{conta_id}": {
+      "put": {
+        "tags": [
+          "cartoes"
+        ],
+        "summary": "Editar",
+        "description": "Edita o cartão ou o desativa/reativa. Dias novos valem a partir da\nfatura seguinte à atual.",
+        "operationId": "cartoes_editar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conta Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CartaoEdicao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/cartoes/previa": {
       "get": {
         "tags": [
@@ -661,6 +740,415 @@
         }
       }
     },
+    "/cartoes/{conta_id}/faturas": {
+      "get": {
+        "tags": [
+          "faturas"
+        ],
+        "summary": "Listar",
+        "description": "A fatura atual (a de uma compra feita hoje) e as gravadas antes e depois dela.",
+        "operationId": "faturas_listar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conta Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaFaturasSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cartoes/{conta_id}/faturas/para-compra": {
+      "get": {
+        "tags": [
+          "faturas"
+        ],
+        "summary": "Para Compra",
+        "description": "Em que fatura entra uma compra feita em `data`.",
+        "operationId": "faturas_para_compra",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conta Id"
+            }
+          },
+          {
+            "name": "data",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Data"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasFaturaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cartoes/{conta_id}/faturas/{competencia}": {
+      "get": {
+        "tags": [
+          "faturas"
+        ],
+        "summary": "Obter",
+        "description": "Detalhe da fatura: datas efetivas e calculadas, valores e transações.",
+        "operationId": "faturas_obter",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "competencia",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "description": "Mês da fatura, `AAAA-MM`.",
+              "title": "Competencia"
+            },
+            "description": "Mês da fatura, `AAAA-MM`."
+          },
+          {
+            "name": "conta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conta Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaturaDetalheSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "faturas"
+        ],
+        "summary": "Editar",
+        "description": "Edita datas e valor informado; mudar o fechamento realoca compras.",
+        "operationId": "faturas_editar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "competencia",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "description": "Mês da fatura, `AAAA-MM`.",
+              "title": "Competencia"
+            },
+            "description": "Mês da fatura, `AAAA-MM`."
+          },
+          {
+            "name": "conta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conta Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FaturaEdicao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaturaDetalheSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cartoes/{conta_id}/faturas/{competencia}/ajuste": {
+      "post": {
+        "tags": [
+          "faturas"
+        ],
+        "summary": "Ajustar",
+        "description": "Ajusta a fatura para o valor real: cria, substitui ou remove o ajuste.",
+        "operationId": "faturas_ajustar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "competencia",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "description": "Mês da fatura, `AAAA-MM`.",
+              "title": "Competencia"
+            },
+            "description": "Mês da fatura, `AAAA-MM`."
+          },
+          {
+            "name": "conta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conta Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjusteEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaturaDetalheSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -696,6 +1184,125 @@
   },
   "components": {
     "schemas": {
+      "AjusteDataSaida": {
+        "properties": {
+          "data_prevista": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Prevista"
+          },
+          "feriados": {
+            "items": {
+              "$ref": "#/components/schemas/FeriadoSaida"
+            },
+            "type": "array",
+            "title": "Feriados",
+            "description": "Feriados pulados até a data efetiva; vazia se só o fim de semana pesou."
+          }
+        },
+        "type": "object",
+        "required": [
+          "data_prevista",
+          "feriados"
+        ],
+        "title": "AjusteDataSaida",
+        "description": "A data prevista (o dia do cartão) não era dia útil."
+      },
+      "AjusteEntrada": {
+        "properties": {
+          "valor_real": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor Real",
+            "description": "O total que o banco cobra; não negativo."
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao",
+            "description": "A causa da diferença; sem ela, \"Ajuste da fatura\"."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "valor_real"
+        ],
+        "title": "AjusteEntrada"
+      },
+      "CartaoEdicao": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Nome"
+          },
+          "instituicao": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Instituicao",
+            "description": "Nome da instituição. Se nenhuma tiver esse nome (sem diferenciar maiúsculas), uma nova é criada."
+          },
+          "conta_pagamento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Pagamento Id",
+            "description": "Conta corrente ativa que paga a fatura."
+          },
+          "dia_fechamento": {
+            "type": "integer",
+            "maximum": 31.0,
+            "minimum": 1.0,
+            "title": "Dia Fechamento",
+            "description": "31 vira o último dia do mês."
+          },
+          "dia_vencimento": {
+            "type": "integer",
+            "maximum": 31.0,
+            "minimum": 1.0,
+            "title": "Dia Vencimento",
+            "description": "Diferente do fechamento; 31 vira o último dia do mês."
+          },
+          "limite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limite"
+          },
+          "ativa": {
+            "type": "boolean",
+            "title": "Ativa"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nome",
+          "instituicao",
+          "conta_pagamento_id",
+          "dia_fechamento",
+          "dia_vencimento",
+          "ativa"
+        ],
+        "title": "CartaoEdicao",
+        "description": "Os mesmos campos do cadastro, mais `ativa` (desativar ou reativar)."
+      },
       "CartaoEntrada": {
         "properties": {
           "nome": {
@@ -989,6 +1596,148 @@
         ],
         "title": "ErroCampo"
       },
+      "FaturaDetalheSaida": {
+        "properties": {
+          "competencia": {
+            "type": "string",
+            "format": "date",
+            "title": "Competencia",
+            "description": "Primeiro dia do mês do vencimento."
+          },
+          "data_fechamento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Fechamento"
+          },
+          "data_vencimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Vencimento"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusFatura",
+            "description": "Aberta antes do fechamento; fechada a partir dele."
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor",
+            "description": "O maior entre o informado e o calculado."
+          },
+          "valor_calculado": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor Calculado",
+            "description": "Compras menos estornos da fatura, com rascunhos e sem as ignoradas."
+          },
+          "valor_informado": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Informado",
+            "description": "O total que o banco mostra."
+          },
+          "fechamento_calculado": {
+            "type": "string",
+            "format": "date",
+            "title": "Fechamento Calculado",
+            "description": "Pela regra do cartão, ignorando edições."
+          },
+          "vencimento_calculado": {
+            "type": "string",
+            "format": "date",
+            "title": "Vencimento Calculado",
+            "description": "Pela regra do cartão, ignorando edições."
+          },
+          "ajuste_fechamento": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AjusteDataSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Por que o fechamento calculado não é o dia do cartão; nulo se é."
+          },
+          "ajuste_vencimento": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AjusteDataSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Por que o vencimento calculado não é o dia do cartão; nulo se é."
+          },
+          "transacoes": {
+            "items": {
+              "$ref": "#/components/schemas/TransacaoSaida"
+            },
+            "type": "array",
+            "title": "Transacoes",
+            "description": "Sem as ignoradas, das mais recentes."
+          }
+        },
+        "type": "object",
+        "required": [
+          "competencia",
+          "data_fechamento",
+          "data_vencimento",
+          "status",
+          "valor",
+          "valor_calculado",
+          "valor_informado",
+          "fechamento_calculado",
+          "vencimento_calculado",
+          "ajuste_fechamento",
+          "ajuste_vencimento",
+          "transacoes"
+        ],
+        "title": "FaturaDetalheSaida"
+      },
+      "FaturaEdicao": {
+        "properties": {
+          "data_fechamento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Fechamento"
+          },
+          "data_vencimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Vencimento"
+          },
+          "valor_informado": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Informado"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "data_fechamento",
+          "data_vencimento",
+          "valor_informado"
+        ],
+        "title": "FaturaEdicao",
+        "description": "Os três campos vão sempre (o formulário manda tudo): `valor_informado`\nnulo apaga o valor informado."
+      },
       "FaturaResumo": {
         "properties": {
           "competencia": {
@@ -1050,6 +1799,25 @@
         "title": "FaturaResumo",
         "description": "Uma fatura: gravada ou, enquanto não recebeu transação nem foi editada,\ncalculada pela regra do cartão."
       },
+      "FeriadoSaida": {
+        "properties": {
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "descricao"
+        ],
+        "title": "FeriadoSaida"
+      },
       "FonteTransacao": {
         "type": "string",
         "enum": [
@@ -1091,6 +1859,37 @@
           "nome"
         ],
         "title": "InstituicaoSaida"
+      },
+      "ListaFaturasSaida": {
+        "properties": {
+          "atual": {
+            "$ref": "#/components/schemas/FaturaResumo",
+            "description": "A fatura de uma compra feita hoje."
+          },
+          "proximas": {
+            "items": {
+              "$ref": "#/components/schemas/FaturaResumo"
+            },
+            "type": "array",
+            "title": "Proximas",
+            "description": "Gravadas depois da atual, em ordem."
+          },
+          "anteriores": {
+            "items": {
+              "$ref": "#/components/schemas/FaturaResumo"
+            },
+            "type": "array",
+            "title": "Anteriores",
+            "description": "Gravadas antes da atual, da mais recente."
+          }
+        },
+        "type": "object",
+        "required": [
+          "atual",
+          "proximas",
+          "anteriores"
+        ],
+        "title": "ListaFaturasSaida"
       },
       "LoginEntrada": {
         "properties": {

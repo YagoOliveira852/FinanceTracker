@@ -26,6 +26,11 @@ from app.modulos.cartoes.feriados import feriados_entre
 from app.modulos.cartoes.models import Cartao, Fatura
 from app.modulos.contas.models import Conta, TipoConta
 from app.modulos.contas.service import obter_ou_criar_instituicao
+from app.modulos.transacoes.models import TipoTransacao, Transacao
+
+# O ajuste da fatura pertence a ela por definição, não pela data: nunca muda de
+# fatura quando um fechamento muda.
+TIPOS_AJUSTE = frozenset({TipoTransacao.ajuste_entrada, TipoTransacao.ajuste_saida})
 
 
 class CartaoNaoEncontrado(Exception):
@@ -72,6 +77,63 @@ def criar_cartao(
         limite=limite,
     )
     sessao.add(cartao)
+    sessao.commit()
+    return cartao
+
+
+def editar_cartao(
+    sessao: Session,
+    conta_id: uuid.UUID,
+    *,
+    nome: str,
+    nome_instituicao: str,
+    conta_pagamento_id: uuid.UUID,
+    dia_fechamento: int,
+    dia_vencimento: int,
+    limite: Decimal | None,
+    ativa: bool,
+    hoje: date,
+) -> Cartao:
+    """Edita o cartão; `ativa=False` desativa (nada é excluído).
+
+    Dias novos valem a partir da fatura seguinte à atual, como nos bancos: a
+    atual é gravada (para manter as datas que tinha), as seguintes gravadas são
+    recalculadas, e as compras a partir do fechamento da atual são realocadas.
+    """
+    cartao = obter_cartao(sessao, conta_id)
+    _validar_dias(dia_fechamento, dia_vencimento)
+    _validar_conta_pagamento(sessao, conta_pagamento_id)
+    dias_mudaram = (dia_fechamento, dia_vencimento) != (
+        cartao.dia_fechamento,
+        cartao.dia_vencimento,
+    )
+    if dias_mudaram:
+        atual = competencia_para_data(sessao, cartao, hoje)
+        fechamento_atual = fechamento_efetivo(sessao, cartao, atual)
+        seguinte = _datas(sessao, mes_seguinte(atual), dia_fechamento, dia_vencimento)
+        if seguinte.fechamento <= fechamento_atual:
+            raise CampoInvalido(
+                "dia_fechamento", "Com esses dias, a próxima fatura fecharia antes da atual."
+            )
+        obter_ou_criar_fatura(sessao, cartao, atual)
+
+    cartao.conta.nome = nome
+    cartao.conta.instituicao = obter_ou_criar_instituicao(sessao, nome_instituicao)
+    cartao.conta.ativa = ativa
+    cartao.conta_pagamento_id = conta_pagamento_id
+    cartao.limite = limite
+    if dias_mudaram:
+        cartao.dia_fechamento = dia_fechamento
+        cartao.dia_vencimento = dia_vencimento
+        futuras = sessao.scalars(
+            select(Fatura).where(Fatura.cartao_id == cartao.conta_id, Fatura.competencia > atual)
+        )
+        for fatura in futuras:
+            datas = datas_calculadas(sessao, cartao, fatura.competencia)
+            fatura.data_fechamento = datas.fechamento
+            fatura.data_vencimento = datas.vencimento
+        sessao.flush()
+        realocar_compras(sessao, cartao, fechamento_atual, None)
     sessao.commit()
     return cartao
 
@@ -126,6 +188,26 @@ def obter_ou_criar_fatura(sessao: Session, cartao: Cartao, competencia: date) ->
     sessao.add(fatura)
     sessao.flush()
     return fatura
+
+
+def realocar_compras(sessao: Session, cartao: Cartao, de: date, ate: date | None) -> None:
+    """Põe cada transação do cartão com data em [`de`, `ate`) (ou a partir de
+    `de`, se `ate` é nulo) na fatura que a regra manda, gravando a fatura se
+    preciso. Usada quando um fechamento muda. Sem commit."""
+    consulta = select(Transacao).where(
+        Transacao.conta_id == cartao.conta_id,
+        Transacao.data >= de,
+        Transacao.tipo.not_in([tipo.value for tipo in TIPOS_AJUSTE]),
+    )
+    if ate is not None:
+        consulta = consulta.where(Transacao.data < ate)
+    faturas: dict[date, Fatura] = {}
+    for transacao in sessao.scalars(consulta):
+        competencia = competencia_para_data(sessao, cartao, transacao.data)
+        if competencia not in faturas:
+            faturas[competencia] = obter_ou_criar_fatura(sessao, cartao, competencia)
+        transacao.fatura_id = faturas[competencia].id
+    sessao.flush()
 
 
 def _datas(

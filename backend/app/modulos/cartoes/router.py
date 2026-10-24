@@ -1,14 +1,15 @@
 """Rotas de cartões. Só traduzem HTTP; as regras estão no service."""
 
+import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.exceptions import RequestValidationError
 
 from app.core.deps import HojeDep, SessaoDep, get_usuario_atual
 from app.core.erros import RespostaErro
 from app.modulos.cartoes import service
-from app.modulos.cartoes.schemas import CartaoEntrada, DatasFaturaSaida
+from app.modulos.cartoes.schemas import CartaoEdicao, CartaoEntrada, DatasFaturaSaida
 from app.modulos.contas import service as contas_service
 from app.modulos.contas.router import conta_saida
 from app.modulos.contas.schemas import ContaSaida
@@ -36,6 +37,30 @@ def criar(dados: CartaoEntrada, sessao: SessaoDep, hoje: HojeDep) -> ContaSaida:
         limite=dados.limite,
         hoje=hoje,
     )
+    return conta_saida(sessao, contas_service.obter_conta(sessao, cartao.conta_id), hoje)
+
+
+@router.put("/{conta_id}", responses={status.HTTP_404_NOT_FOUND: {"model": RespostaErro}})
+def editar(
+    conta_id: uuid.UUID, dados: CartaoEdicao, sessao: SessaoDep, hoje: HojeDep
+) -> ContaSaida:
+    """Edita o cartão ou o desativa/reativa. Dias novos valem a partir da
+    fatura seguinte à atual."""
+    try:
+        cartao = service.editar_cartao(
+            sessao,
+            conta_id,
+            nome=dados.nome,
+            nome_instituicao=dados.instituicao,
+            conta_pagamento_id=dados.conta_pagamento_id,
+            dia_fechamento=dados.dia_fechamento,
+            dia_vencimento=dados.dia_vencimento,
+            limite=dados.limite,
+            ativa=dados.ativa,
+            hoje=hoje,
+        )
+    except service.CartaoNaoEncontrado as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Cartão não encontrado.") from exc
     return conta_saida(sessao, contas_service.obter_conta(sessao, cartao.conta_id), hoje)
 
 

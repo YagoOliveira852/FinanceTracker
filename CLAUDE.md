@@ -213,7 +213,7 @@ Manual, importação OFX/CSV e Open Finance via Pluggy. Tudo que não é manual 
 - **Idempotência:** unique `(conta_id, fonte, id_externo)`. `id_externo` = FITID (OFX; a linha de IOF usa `FITID:iof`, porque compra e IOF compartilham o FITID no Nubank), id da Pluggy, ou identificador/hash para o CSV do Mercado Pago. FITID ainda repetido no arquivo = erro explícito, nunca descarte silencioso. `importacao.hash_arquivo` impede reimportar o mesmo arquivo.
 - **Mesma transação por fontes diferentes** (CSV e Pluggy): não fundir automaticamente; preencher `possivel_duplicata_de` e decidir na revisão.
 - **Não contam como gasto:** `pagamento_fatura` e transferências entre contas próprias (`transferencia_par_id`).
-- **Cartão:** toda transação de conta `cartao_credito` tem `fatura_id`. Data da compra ≠ competência da fatura ≠ data do pagamento. Compra parcelada = `compra_parcelada` + uma transação por parcela, cada uma na sua fatura; o app só gera parcelas no lançamento manual — das fontes, chegam as que a Pluggy/OFX enviam.
+- **Cartão:** toda transação de conta `cartao_credito` tem `fatura_id`. Data da compra ≠ competência da fatura (mês do vencimento) ≠ data do pagamento. Fechamento e vencimento no próximo dia útil; compra no dia do fechamento vai para a fatura seguinte. A fatura só é gravada quando recebe transação ou é editada, e as rotas a endereçam pela competência (`AAAA-MM`). Status (aberta/fechada) é derivado da data. Spec `2026-10-23-cartoes-faturas-design.md`. Compra parcelada = `compra_parcelada` + uma transação por parcela, cada uma na sua fatura; o app só gera parcelas no lançamento manual — das fontes, chegam as que a Pluggy/OFX enviam.
 
 ### Pluggy (Open Finance)
 
@@ -285,7 +285,7 @@ As telas são desenhadas no **Claude Design** antes de implementadas, sempre com
 
 Nomes: `YYYY-MM-DD-<tema>-design.md` (specs), `YYYY-MM-DD-<tema>.md` (planos), `NN-<tema>.md` (explicações).
 
-Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e alerta; dinheiro no contrato da API; backend síncrono e usuário único; revisão e classificação; spike da Pluggy (sync, reconciliação, cartão, investimentos). Em 2026-10-20: conexões da Pluggy pelo app (itemId, vínculo de contas, estado do sync). Prevista: deduplicação entre fontes.
+Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e alerta; dinheiro no contrato da API; backend síncrono e usuário único; revisão e classificação; spike da Pluggy (sync, reconciliação, cartão, investimentos). Em 2026-10-20: conexões da Pluggy pelo app (itemId, vínculo de contas, estado do sync). Em 2026-10-23: cartões e faturas (regra das datas, feriados com Carnaval, fatura calculada até ser gravada, ajuste para o valor real, editar/desativar cartão). Prevista: deduplicação entre fontes.
 
 ## Do / Don't
 
@@ -314,7 +314,7 @@ Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e aler
 
 **O `dart-dio` traduz `format: decimal` para `double`.** O contrato está certo (`string`/`decimal`), mas sem o `--type-mappings decimal=String` do script todo campo de dinheiro vira `double` no Dart, e a leitura de `"1234.56"` quebra em tempo de execução. Ao mexer no script, confira que `saldoAtual`/`valor` continuam `String` (o teste `app/test/core/api/cliente_api_test.dart` acusa).
 
-**Vencimento e fechamento caem em feriado/fim de semana.** Sempre calcular pela tabela `feriado` + regra do cartão; nunca assumir o dia fixo.
+**Vencimento e fechamento caem em feriado/fim de semana.** Sempre calcular pela tabela `feriado` + regra do cartão (`modulos/cartoes/datas.py`); nunca assumir o dia fixo. A tabela tem feriados até 2040, escritos por extenso na migration (com o Carnaval); anos novos = migration nova gerada com o critério de `tests/integration/test_feriados.py`. `holidays` é dependência só de dev.
 
 **Pluggy proxy não aceita refresh.** Chamar update num item MeuPluggy falha por desenho; o dado chega em até 24h. Não "conserte" isso com polling agressivo.
 

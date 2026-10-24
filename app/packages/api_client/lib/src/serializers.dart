@@ -14,6 +14,9 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:api_client/src/date_serializer.dart';
 import 'package:api_client/src/model/date.dart';
 
+import 'package:api_client/src/model/ajuste_data_saida.dart';
+import 'package:api_client/src/model/ajuste_entrada.dart';
+import 'package:api_client/src/model/cartao_edicao.dart';
 import 'package:api_client/src/model/cartao_entrada.dart';
 import 'package:api_client/src/model/cartao_saida.dart';
 import 'package:api_client/src/model/conta_entrada.dart';
@@ -21,10 +24,14 @@ import 'package:api_client/src/model/conta_saida.dart';
 import 'package:api_client/src/model/contas_resumo.dart';
 import 'package:api_client/src/model/datas_fatura_saida.dart';
 import 'package:api_client/src/model/erro_campo.dart';
+import 'package:api_client/src/model/fatura_detalhe_saida.dart';
+import 'package:api_client/src/model/fatura_edicao.dart';
 import 'package:api_client/src/model/fatura_resumo.dart';
+import 'package:api_client/src/model/feriado_saida.dart';
 import 'package:api_client/src/model/fonte_transacao.dart';
 import 'package:api_client/src/model/http_validation_error.dart';
 import 'package:api_client/src/model/instituicao_saida.dart';
+import 'package:api_client/src/model/lista_faturas_saida.dart';
 import 'package:api_client/src/model/location_inner.dart';
 import 'package:api_client/src/model/login_entrada.dart';
 import 'package:api_client/src/model/refresh_entrada.dart';
@@ -43,6 +50,9 @@ import 'package:api_client/src/model/validation_error.dart';
 part 'serializers.g.dart';
 
 @SerializersFor([
+  AjusteDataSaida,
+  AjusteEntrada,
+  CartaoEdicao,
   CartaoEntrada,
   CartaoSaida,
   ContaEntrada,
@@ -50,10 +60,14 @@ part 'serializers.g.dart';
   ContasResumo,
   DatasFaturaSaida,
   ErroCampo,
+  FaturaDetalheSaida,
+  FaturaEdicao,
   FaturaResumo,
+  FeriadoSaida,
   FonteTransacao,
   HTTPValidationError,
   InstituicaoSaida,
+  ListaFaturasSaida,
   LocationInner,
   LoginEntrada,
   RefreshEntrada,
@@ -70,6 +84,14 @@ part 'serializers.g.dart';
   ValidationError,
 ])
 Serializers serializers = (_$serializers.toBuilder()
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(FeriadoSaida)]),
+        () => ListBuilder<FeriadoSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(FaturaResumo)]),
+        () => ListBuilder<FaturaResumo>(),
+      )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(LocationInner)]),
         () => ListBuilder<LocationInner>(),

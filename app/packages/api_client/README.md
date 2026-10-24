@@ -68,10 +68,16 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**login**](doc/AuthApi.md#login) | **POST** /auth/login | Login
 [*AuthApi*](doc/AuthApi.md) | [**refresh**](doc/AuthApi.md#refresh) | **POST** /auth/refresh | Refresh
 [*CartoesApi*](doc/CartoesApi.md) | [**criar**](doc/CartoesApi.md#criar) | **POST** /cartoes | Criar
+[*CartoesApi*](doc/CartoesApi.md) | [**editar**](doc/CartoesApi.md#editar) | **PUT** /cartoes/{conta_id} | Editar
 [*CartoesApi*](doc/CartoesApi.md) | [**previa**](doc/CartoesApi.md#previa) | **GET** /cartoes/previa | Previa
 [*ContasApi*](doc/ContasApi.md) | [**criar**](doc/ContasApi.md#criar) | **POST** /contas | Criar
 [*ContasApi*](doc/ContasApi.md) | [**listar**](doc/ContasApi.md#listar) | **GET** /contas | Listar
 [*ContasApi*](doc/ContasApi.md) | [**obter**](doc/ContasApi.md#obter) | **GET** /contas/{conta_id} | Obter
+[*FaturasApi*](doc/FaturasApi.md) | [**ajustar**](doc/FaturasApi.md#ajustar) | **POST** /cartoes/{conta_id}/faturas/{competencia}/ajuste | Ajustar
+[*FaturasApi*](doc/FaturasApi.md) | [**editar**](doc/FaturasApi.md#editar) | **PUT** /cartoes/{conta_id}/faturas/{competencia} | Editar
+[*FaturasApi*](doc/FaturasApi.md) | [**listar**](doc/FaturasApi.md#listar) | **GET** /cartoes/{conta_id}/faturas | Listar
+[*FaturasApi*](doc/FaturasApi.md) | [**obter**](doc/FaturasApi.md#obter) | **GET** /cartoes/{conta_id}/faturas/{competencia} | Obter
+[*FaturasApi*](doc/FaturasApi.md) | [**paraCompra**](doc/FaturasApi.md#paracompra) | **GET** /cartoes/{conta_id}/faturas/para-compra | Para Compra
 [*SaudeApi*](doc/SaudeApi.md) | [**saude**](doc/SaudeApi.md#saude) | **GET** /saude | Saude
 [*TransacoesApi*](doc/TransacoesApi.md) | [**lancar**](doc/TransacoesApi.md#lancar) | **POST** /transacoes | Lancar
 [*TransacoesApi*](doc/TransacoesApi.md) | [**listar**](doc/TransacoesApi.md#listar) | **GET** /transacoes | Listar
@@ -80,6 +86,9 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [AjusteDataSaida](doc/AjusteDataSaida.md)
+ - [AjusteEntrada](doc/AjusteEntrada.md)
+ - [CartaoEdicao](doc/CartaoEdicao.md)
  - [CartaoEntrada](doc/CartaoEntrada.md)
  - [CartaoSaida](doc/CartaoSaida.md)
  - [ContaEntrada](doc/ContaEntrada.md)
@@ -87,10 +96,14 @@ Class | Method | HTTP request | Description
  - [ContasResumo](doc/ContasResumo.md)
  - [DatasFaturaSaida](doc/DatasFaturaSaida.md)
  - [ErroCampo](doc/ErroCampo.md)
+ - [FaturaDetalheSaida](doc/FaturaDetalheSaida.md)
+ - [FaturaEdicao](doc/FaturaEdicao.md)
  - [FaturaResumo](doc/FaturaResumo.md)
+ - [FeriadoSaida](doc/FeriadoSaida.md)
  - [FonteTransacao](doc/FonteTransacao.md)
  - [HTTPValidationError](doc/HTTPValidationError.md)
  - [InstituicaoSaida](doc/InstituicaoSaida.md)
+ - [ListaFaturasSaida](doc/ListaFaturasSaida.md)
  - [LocationInner](doc/LocationInner.md)
  - [LoginEntrada](doc/LoginEntrada.md)
  - [RefreshEntrada](doc/RefreshEntrada.md)
