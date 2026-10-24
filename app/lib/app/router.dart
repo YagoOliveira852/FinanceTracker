@@ -9,7 +9,14 @@ import '../features/contas/cubit/nova_conta_cubit.dart';
 import '../features/contas/data/contas_repositorio.dart';
 import '../features/contas/ui/contas_tela.dart';
 import '../features/contas/ui/nova_conta_tela.dart';
+import '../features/faturas/cubit/editar_fatura_cubit.dart';
+import '../features/faturas/cubit/fatura_cubit.dart';
+import '../features/faturas/cubit/faturas_cubit.dart';
+import '../features/faturas/data/fatura.dart';
 import '../features/faturas/data/faturas_repositorio.dart';
+import '../features/faturas/ui/editar_fatura_tela.dart';
+import '../features/faturas/ui/fatura_tela.dart';
+import '../features/faturas/ui/faturas_tela.dart';
 import '../features/inicio/ui/inicio_tela.dart';
 import '../features/login/cubit/login_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
@@ -122,6 +129,60 @@ GoRouter criarRouter(SessaoCubit sessao) {
                           child: const NovaContaTela(),
                         ),
                       ),
+                      GoRoute(
+                        path: 'cartao/:id',
+                        builder: (context, state) {
+                          final id = state.pathParameters['id']!;
+                          return BlocProvider(
+                            create: (context) => FaturasCubit(
+                              context.read<FaturasRepositorio>(),
+                              id,
+                            )..carregar(),
+                            child: FaturasTela(contaId: id),
+                          );
+                        },
+                        routes: [
+                          GoRoute(
+                            path: 'fatura/:competencia',
+                            builder: (context, state) {
+                              final id = state.pathParameters['id']!;
+                              return BlocProvider(
+                                create: (context) => FaturaCubit(
+                                  context.read<FaturasRepositorio>(),
+                                  id,
+                                ),
+                                child: FaturaTela(
+                                  contaId: id,
+                                  competencia: _competencia(state),
+                                  ordem:
+                                      state.extra as List<DateTime>? ??
+                                      const [],
+                                ),
+                              );
+                            },
+                            routes: [
+                              GoRoute(
+                                path: 'editar',
+                                parentNavigatorKey: chaveRaiz,
+                                builder: (context, state) {
+                                  final id = state.pathParameters['id']!;
+                                  return BlocProvider(
+                                    create: (context) => EditarFaturaCubit(
+                                      context.read<FaturasRepositorio>(),
+                                      id,
+                                      _competencia(state),
+                                    ),
+                                    child: EditarFaturaTela(
+                                      contaId: id,
+                                      detalhe: state.extra! as DetalheFatura,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ],
@@ -132,6 +193,12 @@ GoRouter criarRouter(SessaoCubit sessao) {
       ),
     ],
   );
+}
+
+/// Competência da rota (`2026-11`) como o primeiro dia do mês.
+DateTime _competencia(GoRouterState state) {
+  final [ano, mes] = state.pathParameters['competencia']!.split('-');
+  return DateTime(int.parse(ano), int.parse(mes));
 }
 
 /// Barra de navegação inferior com as quatro abas.

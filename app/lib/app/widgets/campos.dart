@@ -66,10 +66,14 @@ class CampoData extends StatelessWidget {
     this.ajuda,
     this.erro,
     this.habilitado = true,
+    this.ultimaData,
   });
 
   final String rotulo;
   final DateTime data;
+
+  /// Última data que o calendário oferece; sem ela, hoje.
+  final DateTime? ultimaData;
   final ValueChanged<DateTime> aoMudar;
   final String? ajuda;
   final String? erro;
@@ -80,9 +84,9 @@ class CampoData extends StatelessWidget {
       context: context,
       initialDate: data,
       firstDate: DateTime(2000),
-      // Sem datas futuras: o saldo inicial não pode ser futuro, e lançamento
-      // agendado não existe nesta versão.
-      lastDate: somenteData(DateTime.now()),
+      // Por padrão sem datas futuras: o saldo inicial não pode ser futuro, e
+      // lançamento agendado não existe nesta versão. Datas de fatura podem.
+      lastDate: ultimaData ?? somenteData(DateTime.now()),
       helpText: rotulo,
     );
     if (escolhida != null) aoMudar(escolhida);
