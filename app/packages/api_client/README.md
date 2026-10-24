@@ -80,6 +80,7 @@ Class | Method | HTTP request | Description
 [*FaturasApi*](doc/FaturasApi.md) | [**paraCompra**](doc/FaturasApi.md#paracompra) | **GET** /cartoes/{conta_id}/faturas/para-compra | Para Compra
 [*SaudeApi*](doc/SaudeApi.md) | [**saude**](doc/SaudeApi.md#saude) | **GET** /saude | Saude
 [*TransacoesApi*](doc/TransacoesApi.md) | [**lancar**](doc/TransacoesApi.md#lancar) | **POST** /transacoes | Lancar
+[*TransacoesApi*](doc/TransacoesApi.md) | [**lancarParcelada**](doc/TransacoesApi.md#lancarparcelada) | **POST** /transacoes/parceladas | Lancar Parcelada
 [*TransacoesApi*](doc/TransacoesApi.md) | [**listar**](doc/TransacoesApi.md#listar) | **GET** /transacoes | Listar
 [*TransacoesApi*](doc/TransacoesApi.md) | [**obter**](doc/TransacoesApi.md#obter) | **GET** /transacoes/{transacao_id} | Obter
 
@@ -91,6 +92,8 @@ Class | Method | HTTP request | Description
  - [CartaoEdicao](doc/CartaoEdicao.md)
  - [CartaoEntrada](doc/CartaoEntrada.md)
  - [CartaoSaida](doc/CartaoSaida.md)
+ - [CompraParceladaEntrada](doc/CompraParceladaEntrada.md)
+ - [CompraParceladaSaida](doc/CompraParceladaSaida.md)
  - [ContaEntrada](doc/ContaEntrada.md)
  - [ContaSaida](doc/ContaSaida.md)
  - [ContasResumo](doc/ContasResumo.md)
@@ -106,6 +109,7 @@ Class | Method | HTTP request | Description
  - [ListaFaturasSaida](doc/ListaFaturasSaida.md)
  - [LocationInner](doc/LocationInner.md)
  - [LoginEntrada](doc/LoginEntrada.md)
+ - [ParcelaSaida](doc/ParcelaSaida.md)
  - [RefreshEntrada](doc/RefreshEntrada.md)
  - [RespostaErro](doc/RespostaErro.md)
  - [Saude](doc/Saude.md)

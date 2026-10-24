@@ -465,6 +465,63 @@
         }
       }
     },
+    "/transacoes/parceladas": {
+      "post": {
+        "tags": [
+          "transacoes"
+        ],
+        "summary": "Lancar Parcelada",
+        "description": "Compra parcelada no cartão: uma despesa por parcela, cada uma na sua fatura.",
+        "operationId": "transacoes_lancar_parcelada",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompraParceladaEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompraParceladaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/transacoes/{transacao_id}": {
       "get": {
         "tags": [
@@ -1404,6 +1461,99 @@
         ],
         "title": "CartaoSaida"
       },
+      "CompraParceladaEntrada": {
+        "properties": {
+          "conta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Id"
+          },
+          "valor_total": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor Total",
+            "description": "O total da compra; o centavo que sobra da divisão vai para a 1ª parcela."
+          },
+          "qtd_parcelas": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 2.0,
+            "title": "Qtd Parcelas"
+          },
+          "data_compra": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Compra"
+          },
+          "descricao": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Descricao"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "conta_id",
+          "valor_total",
+          "qtd_parcelas",
+          "data_compra",
+          "descricao"
+        ],
+        "title": "CompraParceladaEntrada",
+        "description": "Compra parcelada no cartão: gera uma despesa por parcela, cada uma na\nsua fatura. À vista é o lançamento comum."
+      },
+      "CompraParceladaSaida": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          },
+          "valor_total": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor Total"
+          },
+          "qtd_parcelas": {
+            "type": "integer",
+            "title": "Qtd Parcelas"
+          },
+          "data_compra": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Compra"
+          },
+          "data_compra_estimada": {
+            "type": "boolean",
+            "title": "Data Compra Estimada"
+          },
+          "parcelas": {
+            "items": {
+              "$ref": "#/components/schemas/TransacaoSaida"
+            },
+            "type": "array",
+            "title": "Parcelas",
+            "description": "Da 1ª à última parcela."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "descricao",
+          "valor_total",
+          "qtd_parcelas",
+          "data_compra",
+          "data_compra_estimada",
+          "parcelas"
+        ],
+        "title": "CompraParceladaSaida"
+      },
       "ContaEntrada": {
         "properties": {
           "nome": {
@@ -1912,6 +2062,30 @@
         ],
         "title": "LoginEntrada"
       },
+      "ParcelaSaida": {
+        "properties": {
+          "compra_parcelada_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Compra Parcelada Id"
+          },
+          "numero": {
+            "type": "integer",
+            "title": "Numero"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "compra_parcelada_id",
+          "numero",
+          "total"
+        ],
+        "title": "ParcelaSaida"
+      },
       "RefreshEntrada": {
         "properties": {
           "refresh_token": {
@@ -2135,6 +2309,17 @@
             ],
             "title": "Fatura Id",
             "description": "Fatura da transação, se a conta é cartão."
+          },
+          "parcela": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParcelaSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Número da parcela, se é compra parcelada."
           }
         },
         "type": "object",
@@ -2148,7 +2333,8 @@
           "descricao_original",
           "status",
           "fonte",
-          "fatura_id"
+          "fatura_id",
+          "parcela"
         ],
         "title": "TransacaoSaida"
       },

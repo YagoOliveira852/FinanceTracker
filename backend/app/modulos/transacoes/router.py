@@ -9,7 +9,12 @@ from fastapi.exceptions import RequestValidationError
 from app.core.deps import SessaoDep, get_usuario_atual
 from app.core.erros import RespostaErro
 from app.modulos.transacoes import service
-from app.modulos.transacoes.schemas import TransacaoEntrada, TransacaoSaida
+from app.modulos.transacoes.schemas import (
+    CompraParceladaEntrada,
+    CompraParceladaSaida,
+    TransacaoEntrada,
+    TransacaoSaida,
+)
 
 router = APIRouter(
     prefix="/transacoes",
@@ -31,6 +36,20 @@ def lancar(dados: TransacaoEntrada, sessao: SessaoDep) -> TransacaoSaida:
         descricao=dados.descricao,
     )
     return TransacaoSaida.model_validate(transacao)
+
+
+@router.post("/parceladas", status_code=status.HTTP_201_CREATED)
+def lancar_parcelada(dados: CompraParceladaEntrada, sessao: SessaoDep) -> CompraParceladaSaida:
+    """Compra parcelada no cartão: uma despesa por parcela, cada uma na sua fatura."""
+    compra = service.lancar_parcelada(
+        sessao,
+        conta_id=dados.conta_id,
+        valor_total=dados.valor_total,
+        qtd_parcelas=dados.qtd_parcelas,
+        data_compra=dados.data_compra,
+        descricao=dados.descricao,
+    )
+    return CompraParceladaSaida.model_validate(compra)
 
 
 @router.get("")

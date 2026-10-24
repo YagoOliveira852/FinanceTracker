@@ -19,6 +19,8 @@ import 'package:api_client/src/model/ajuste_entrada.dart';
 import 'package:api_client/src/model/cartao_edicao.dart';
 import 'package:api_client/src/model/cartao_entrada.dart';
 import 'package:api_client/src/model/cartao_saida.dart';
+import 'package:api_client/src/model/compra_parcelada_entrada.dart';
+import 'package:api_client/src/model/compra_parcelada_saida.dart';
 import 'package:api_client/src/model/conta_entrada.dart';
 import 'package:api_client/src/model/conta_saida.dart';
 import 'package:api_client/src/model/contas_resumo.dart';
@@ -34,6 +36,7 @@ import 'package:api_client/src/model/instituicao_saida.dart';
 import 'package:api_client/src/model/lista_faturas_saida.dart';
 import 'package:api_client/src/model/location_inner.dart';
 import 'package:api_client/src/model/login_entrada.dart';
+import 'package:api_client/src/model/parcela_saida.dart';
 import 'package:api_client/src/model/refresh_entrada.dart';
 import 'package:api_client/src/model/resposta_erro.dart';
 import 'package:api_client/src/model/saude.dart';
@@ -55,6 +58,8 @@ part 'serializers.g.dart';
   CartaoEdicao,
   CartaoEntrada,
   CartaoSaida,
+  CompraParceladaEntrada,
+  CompraParceladaSaida,
   ContaEntrada,
   ContaSaida,
   ContasResumo,
@@ -70,6 +75,7 @@ part 'serializers.g.dart';
   ListaFaturasSaida,
   LocationInner,
   LoginEntrada,
+  ParcelaSaida,
   RefreshEntrada,
   RespostaErro,
   Saude,
