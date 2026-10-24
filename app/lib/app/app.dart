@@ -41,6 +41,7 @@ class _FinancasAppState extends State<FinancasApp> {
         RepositoryProvider.value(value: dependencias.auth),
         RepositoryProvider.value(value: dependencias.contas),
         RepositoryProvider.value(value: dependencias.transacoes),
+        RepositoryProvider.value(value: dependencias.faturas),
       ],
       child: MultiBlocProvider(
         providers: [

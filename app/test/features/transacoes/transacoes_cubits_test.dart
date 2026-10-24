@@ -7,6 +7,7 @@ import 'package:financas/features/transacoes/data/transacao.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../apoio/contas_falso.dart';
+import '../../apoio/faturas_falso.dart';
 import '../../apoio/transacoes_falso.dart';
 
 void main() {
@@ -131,7 +132,7 @@ void main() {
 
     blocTest<LancamentoCubit, LancamentoEstado>(
       'valida conta, valor e descrição no aparelho',
-      build: () => LancamentoCubit(transacoes),
+      build: () => LancamentoCubit(transacoes, FaturasRepositorioFalso()),
       act: (cubit) => cubit.salvar(
         contaId: null,
         valor: '0,00',
@@ -152,7 +153,7 @@ void main() {
 
     blocTest<LancamentoCubit, LancamentoEstado>(
       'lança receita com valor em Decimal e data sem horário',
-      build: () => LancamentoCubit(transacoes),
+      build: () => LancamentoCubit(transacoes, FaturasRepositorioFalso()),
       act: (cubit) {
         cubit.escolherTipo(TipoTransacao.receita);
         return cubit.salvar(
@@ -183,7 +184,7 @@ void main() {
           status: 422,
           campos: {'conta_id': 'Esta conta está desativada.'},
         );
-        return LancamentoCubit(transacoes);
+        return LancamentoCubit(transacoes, FaturasRepositorioFalso());
       },
       act: (cubit) => cubit.salvar(
         contaId: 'c1',
@@ -197,6 +198,62 @@ void main() {
           erros: {'conta_id': 'Esta conta está desativada.'},
         ),
       ],
+    );
+  });
+
+  group('LancamentoCubit · fatura da compra', () {
+    late FaturasRepositorioFalso faturas;
+
+    setUp(() => faturas = FaturasRepositorioFalso());
+
+    LancamentoCubit criar() =>
+        LancamentoCubit(TransacoesRepositorioFalso(), faturas);
+
+    blocTest<LancamentoCubit, LancamentoEstado>(
+      'no cartão, consulta a fatura da data',
+      build: criar,
+      act: (cubit) =>
+          cubit.consultarFatura(cartaoExemplo(), DateTime(2026, 10, 4)),
+      expect: () => [
+        isA<LancamentoEstado>().having(
+          (e) => e.faturaDaCompra?.competencia,
+          'competência',
+          DateTime(2026, 10),
+        ),
+      ],
+    );
+
+    blocTest<LancamentoCubit, LancamentoEstado>(
+      'mesma conta e data não consultam de novo',
+      build: criar,
+      act: (cubit) async {
+        await cubit.consultarFatura(cartaoExemplo(), DateTime(2026, 10, 20));
+        await cubit.consultarFatura(cartaoExemplo(), DateTime(2026, 10, 20));
+      },
+      expect: () => [isA<LancamentoEstado>()],
+      verify: (_) => expect(faturas.consultasParaCompra, hasLength(1)),
+    );
+
+    blocTest<LancamentoCubit, LancamentoEstado>(
+      'conta comum limpa a fatura sem consultar',
+      build: criar,
+      act: (cubit) async {
+        await cubit.consultarFatura(cartaoExemplo(), DateTime(2026, 10, 20));
+        await cubit.consultarFatura(contaExemplo(), DateTime(2026, 10, 20));
+      },
+      expect: () => [
+        isA<LancamentoEstado>().having(
+          (e) => e.faturaDaCompra,
+          'fatura',
+          isNotNull,
+        ),
+        isA<LancamentoEstado>().having(
+          (e) => e.faturaDaCompra,
+          'fatura',
+          isNull,
+        ),
+      ],
+      verify: (_) => expect(faturas.consultasParaCompra, hasLength(1)),
     );
   });
 }

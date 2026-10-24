@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/tema.dart';
-import '../../../app/widgets/chip_opcao.dart';
 import '../../../app/widgets/estados.dart';
 import '../../../app/widgets/lista.dart';
+import '../../../core/formatacao/datas.dart';
 import '../../../core/formatacao/dinheiro.dart';
 import '../cubit/contas_cubit.dart';
 import '../data/conta.dart';
@@ -27,12 +27,17 @@ class ContasTela extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final estado = context.watch<ContasCubit>().state;
-    final contas = switch (estado) {
-      ContasCarregado(:final resumo) =>
-        resumo.contas.where((c) => c.aceitaLancamento).toList(),
+    final todas = switch (estado) {
+      ContasCarregado(:final resumo) => resumo.contas,
       _ => const <Conta>[],
     };
-    final vazio = estado is ContasCarregado && contas.isEmpty;
+    final contas = todas.where((c) => c.recebeReceita).toList();
+    // Cartão desativado aparece com o PR de editar cartão.
+    final cartoes = todas
+        .where((c) => c.ativa && c.tipo == TipoConta.cartaoCredito)
+        .toList();
+    final vazio =
+        estado is ContasCarregado && contas.isEmpty && cartoes.isEmpty;
 
     return Scaffold(
       appBar: AppBar(titleSpacing: Espaco.x1, title: const Text('Contas')),
@@ -77,16 +82,19 @@ class ContasTela extends StatelessWidget {
               GrupoLista(itens: [for (final c in contas) _ItemConta(c)]),
               const SizedBox(height: Espaco.x6),
               const TituloSecao('Cartões de crédito'),
-              const GrupoLista(
-                itens: [
-                  ItemLista(
-                    icone: Icons.credit_card_rounded,
-                    titulo: 'Cartões e faturas',
-                    subtitulo: Text('Fechamento, vencimento e fatura atual'),
-                    direita: SeloEmBreve(),
-                    habilitado: false,
-                  ),
-                ],
+              GrupoLista(
+                itens: cartoes.isEmpty
+                    ? const [
+                        ItemLista(
+                          icone: Icons.credit_card_rounded,
+                          titulo: 'Nenhum cartão cadastrado',
+                          subtitulo: Text(
+                            'Em Adicionar conta, escolha Cartão de crédito.',
+                          ),
+                          habilitado: false,
+                        ),
+                      ]
+                    : [for (final c in cartoes) _ItemCartao(c)],
               ),
             ],
           ),
@@ -167,6 +175,39 @@ class _ItemConta extends StatelessWidget {
             formatarDinheiro(conta.saldoAtual),
             style: textos.titleMedium?.copyWith(
               color: corValor,
+              fontFeatures: algarismosTabulares,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Cartão com o fechamento e o vencimento da fatura atual e o valor dela.
+class _ItemCartao extends StatelessWidget {
+  const _ItemCartao(this.conta);
+
+  final Conta conta;
+
+  @override
+  Widget build(BuildContext context) {
+    final fatura = conta.cartao!.faturaAtual;
+    final textos = context.textos;
+    return ItemLista(
+      icone: Icons.credit_card_rounded,
+      titulo: conta.nome,
+      subtitulo: Text(
+        'Fecha ${formatarDiaMes(fatura.dataFechamento)} · '
+        'vence ${formatarDiaMes(fatura.dataVencimento)}',
+      ),
+      direita: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text('Fatura atual', style: textos.bodySmall),
+          Text(
+            formatarDinheiro(fatura.valor),
+            style: textos.titleMedium?.copyWith(
               fontFeatures: algarismosTabulares,
             ),
           ),

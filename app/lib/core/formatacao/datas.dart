@@ -43,6 +43,15 @@ String formatarData(DateTime data) {
   return '${doisDigitos(data.day)}/${doisDigitos(data.month)}/${data.year}';
 }
 
+/// `3 nov`: datas de fatura numa linha de lista.
+String formatarDiaMes(DateTime data) =>
+    '${data.day} ${_meses[data.month - 1].substring(0, 3)}';
+
+/// `ter, 3 nov`: datas de fatura (fechamento e vencimento).
+String formatarDiaCurto(DateTime data) =>
+    '${_diasDaSemana[data.weekday - 1].substring(0, 3).toLowerCase()}, '
+    '${data.day} ${_meses[data.month - 1].substring(0, 3)}';
+
 /// `Terça, 20 de outubro`.
 String formatarDataLonga(DateTime data) =>
     '${_diasDaSemana[data.weekday - 1]}, ${data.day} de ${_meses[data.month - 1]}';

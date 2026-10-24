@@ -148,4 +148,150 @@ void main() {
       ],
     );
   });
+
+  group('NovaContaCubit · cartão de crédito', () {
+    late ContasRepositorioFalso repositorio;
+
+    setUp(() => repositorio = ContasRepositorioFalso());
+
+    NovaContaCubit criar() =>
+        NovaContaCubit(repositorio)..escolherTipo(TipoConta.cartaoCredito);
+
+    blocTest<NovaContaCubit, NovaContaEstado>(
+      'prévia da próxima fatura com os dois dias válidos',
+      build: criar,
+      act: (cubit) => cubit.atualizarPrevia('3', '10'),
+      expect: () => [
+        NovaContaEstado(tipo: TipoConta.cartaoCredito, previa: previaExemplo),
+      ],
+      verify: (_) =>
+          expect(repositorio.previas, [(diaFechamento: 3, diaVencimento: 10)]),
+    );
+
+    blocTest<NovaContaCubit, NovaContaEstado>(
+      'sem prévia (e sem chamar a API) com dia inválido ou dias iguais',
+      build: criar,
+      act: (cubit) async {
+        await cubit.atualizarPrevia('0', '10');
+        await cubit.atualizarPrevia('3', '');
+        await cubit.atualizarPrevia('3', '3');
+      },
+      expect: () => const <NovaContaEstado>[],
+      verify: (_) => expect(repositorio.previas, isEmpty),
+    );
+
+    blocTest<NovaContaCubit, NovaContaEstado>(
+      'valida o cartão no aparelho',
+      build: criar,
+      act: (cubit) => cubit.salvarCartao(
+        nome: ' ',
+        instituicao: '',
+        contaPagamentoId: null,
+        diaFechamento: '32',
+        diaVencimento: '32',
+        limite: '0',
+      ),
+      expect: () => [
+        const NovaContaEstado(
+          tipo: TipoConta.cartaoCredito,
+          erros: {
+            'nome': 'Dê um nome ao cartão, por exemplo: Cartão principal.',
+            'instituicao': 'Informe a instituição do cartão.',
+            'conta_pagamento_id': 'Escolha a conta que paga a fatura.',
+            'dia_fechamento': 'Informe um dia de 1 a 31.',
+            'dia_vencimento': 'Informe um dia de 1 a 31.',
+            'limite': 'Informe um valor maior que zero.',
+          },
+        ),
+      ],
+      verify: (_) => expect(repositorio.cartoesCriados, isEmpty),
+    );
+
+    blocTest<NovaContaCubit, NovaContaEstado>(
+      'dias iguais são recusados',
+      build: criar,
+      act: (cubit) => cubit.salvarCartao(
+        nome: 'Cartão Exemplo',
+        instituicao: 'Banco Exemplo',
+        contaPagamentoId: 'c1',
+        diaFechamento: '10',
+        diaVencimento: '10',
+        limite: '',
+      ),
+      expect: () => [
+        const NovaContaEstado(
+          tipo: TipoConta.cartaoCredito,
+          erros: {
+            'dia_vencimento':
+                'O vencimento precisa ser num dia diferente do fechamento.',
+          },
+        ),
+      ],
+    );
+
+    blocTest<NovaContaCubit, NovaContaEstado>(
+      'salva o cartão com limite opcional',
+      build: criar,
+      act: (cubit) => cubit.salvarCartao(
+        nome: ' Cartão Exemplo ',
+        instituicao: 'Banco Exemplo',
+        contaPagamentoId: 'c1',
+        diaFechamento: '3',
+        diaVencimento: '10',
+        limite: '3.000,00',
+      ),
+      skip: 1,
+      expect: () => [
+        isA<NovaContaEstado>().having(
+          (e) => e.salva?.nome,
+          'salva',
+          'Cartão Exemplo',
+        ),
+      ],
+      verify: (_) => expect(
+        repositorio.cartoesCriados.single,
+        NovoCartao(
+          nome: 'Cartão Exemplo',
+          instituicao: 'Banco Exemplo',
+          contaPagamentoId: 'c1',
+          diaFechamento: 3,
+          diaVencimento: 10,
+          limite: Decimal.parse('3000'),
+        ),
+      ),
+    );
+
+    blocTest<NovaContaCubit, NovaContaEstado>(
+      'erro do servidor na conta de pagamento aparece no campo',
+      build: () {
+        repositorio.erro = const ErroApi(
+          'Dados inválidos.',
+          status: 422,
+          campos: {
+            'conta_pagamento_id':
+                'Escolha uma conta corrente ativa para pagar a fatura.',
+          },
+        );
+        return criar();
+      },
+      act: (cubit) => cubit.salvarCartao(
+        nome: 'Cartão Exemplo',
+        instituicao: 'Banco Exemplo',
+        contaPagamentoId: 'c1',
+        diaFechamento: '3',
+        diaVencimento: '10',
+        limite: '',
+      ),
+      skip: 1,
+      expect: () => [
+        const NovaContaEstado(
+          tipo: TipoConta.cartaoCredito,
+          erros: {
+            'conta_pagamento_id':
+                'Escolha uma conta corrente ativa para pagar a fatura.',
+          },
+        ),
+      ],
+    );
+  });
 }
