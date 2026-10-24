@@ -119,7 +119,7 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 - **Mesma transação por duas fontes** (CSV e Pluggy): não fundir automaticamente; marcar como possível duplicata e pedir confirmação na revisão.
 - **Pagamento de fatura e transferência entre contas próprias** não são gasto.
 - **Compra parcelada:** uma compra gera N parcelas, cada uma numa fatura.
-- **Vencimento e fechamento em feriado/fim de semana:** calcular pela tabela `feriado` + regra do cartão, nunca assumir o dia fixo.
+- **Vencimento e fechamento em feriado/fim de semana:** calcular pela tabela `feriado` + regra do cartão, nunca assumir o dia fixo. Os dois passam para o próximo dia útil, e compra feita no dia do fechamento (já ajustado) entra na fatura seguinte ("melhor dia de compra").
 - **Rentabilidade com aportes em datas diferentes:** XIRR (pyxirr) comparado ao CDI — opcional.
 
 ---
@@ -179,25 +179,30 @@ Saldo atual = `saldo_inicial` + soma das transações confirmadas a partir de `d
 |---|---|---|
 | conta_id | uuid PK/FK | |
 | conta_pagamento_id | uuid FK | conta corrente que paga a fatura |
-| dia_fechamento | smallint | 1–31, por cartão |
-| dia_vencimento | smallint | 1–31, por cartão |
-| limite | numeric(14,2) null | |
+| dia_fechamento | smallint | 1–31, por cartão; 31 vira o último dia do mês |
+| dia_vencimento | smallint | 1–31, diferente do fechamento (`CHECK`) |
+| limite | numeric(14,2) null | `> 0` |
+
+A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o cartão não tem saldo, e o app mostra a fatura atual no lugar (`ContaSaida.cartao.fatura_atual`). Editar os dias vale a partir da fatura seguinte à atual. Desativar é `conta.ativa = false`; nada é excluído.
 
 **fatura**
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
 | cartao_id | uuid FK | |
-| competencia | date | primeiro dia do mês da fatura (ex.: 2026-11-01) |
-| data_fechamento | date | calculada a partir do cartão, editável |
-| data_vencimento | date | ajustada para dia útil |
-| valor_informado | numeric(14,2) null | valor que o banco mostra (Pluggy ou manual) |
-| status | text | `aberta` \| `fechada` \| `paga` |
+| competencia | date | primeiro dia do mês do **vencimento** (ex.: 2026-11-01 = fatura de novembro) |
+| data_fechamento | date | calculada pela regra do cartão, ajustada para dia útil, editável |
+| data_vencimento | date | idem; depois do fechamento (`CHECK`) |
+| valor_informado | numeric(14,2) null | valor que o banco mostra (Pluggy, OFX ou manual); `>= 0` |
 | unique | (cartao_id, competencia) | |
 
-Total calculado = soma das transações da fatura. Diferença entre calculado e informado = lançamentos faltando.
+**Regra das datas** (funções puras em `cartoes/datas.py`): se o dia de fechamento é maior que o de vencimento, o fechamento cai no mês anterior ao da competência; dia inexistente no mês vira o último; fechamento e vencimento em fim de semana ou feriado passam para o próximo dia útil; uma compra entra na primeira fatura cujo fechamento (gravado, se a fatura foi editada, ou calculado) é depois da data da compra.
 
-**feriado** — `data` PK, `descricao`. Usado para ajustar vencimento e a data esperada do salário. Seed só com feriados nacionais, gerado pela biblioteca `holidays` (feriado municipal não move vencimento de banco digital).
+**A fatura só é gravada quando precisa** (recebe transação ou é editada); antes disso a API a calcula. Por isso as rotas usam a competência (`/cartoes/{id}/faturas/2026-11`), e uma `GET` nunca grava. **Sem coluna de status:** aberta antes do fechamento, fechada a partir dele; `paga` virá dos pagamentos ligados à fatura.
+
+**Valor:** calculado = compras − estornos da fatura (rascunhos contam, ignoradas não, pagamento e transferência ficam fora); valor da fatura = o maior entre informado e calculado. Com diferença, o app oferece "ajustar para o valor real": grava o informado e deixa na fatura **um** `ajuste_saida`/`ajuste_entrada` com a diferença (substituído a cada novo ajuste, removido quando a diferença zera). Mudar o fechamento realoca as compras entre a data antiga e a nova; o ajuste nunca muda de fatura. Detalhes na spec `2026-10-23-cartoes-faturas`.
+
+**feriado** — `data` PK, `descricao`. Usado para ajustar fechamento, vencimento e a data esperada do salário. Feriados nacionais **mais a segunda e a terça de Carnaval** (os bancos não abrem), de 2024 a 2040, escritos por extenso na migration a partir da biblioteca `holidays` (dependência só de dev; um teste confere a lista). Feriado municipal não move vencimento de banco digital. Ano fora da tabela = erro explícito, nunca cálculo sem feriados.
 
 ### 7.3 Transações
 
@@ -239,7 +244,7 @@ Total calculado = soma das transações da fatura. Diferença entre calculado e 
 | fonte | text | `manual` \| `ofx` \| `csv_mercadopago` \| `pluggy` |
 | id_externo | text null | FITID, id da Pluggy ou hash gerado |
 | importacao_id | uuid FK null | |
-| fatura_id | uuid FK null | obrigatório se a conta é cartão |
+| fatura_id | uuid FK null | obrigatório se a conta é cartão (regra no service); lançamento manual em cartão só aceita `despesa` |
 | compra_parcelada_id | uuid FK null | |
 | parcela_numero | smallint null | |
 | transferencia_par_id | uuid FK null | liga saída e entrada entre contas próprias |
