@@ -81,3 +81,17 @@ abstract class NovoCartao with _$NovoCartao {
     Decimal? limite,
   }) = _NovoCartao;
 }
+
+/// Dados do Editar cartão: os do cadastro e [ativa] (desativar/reativar).
+@freezed
+abstract class EdicaoCartao with _$EdicaoCartao {
+  const factory EdicaoCartao({
+    required String nome,
+    required String instituicao,
+    required String contaPagamentoId,
+    required int diaFechamento,
+    required int diaVencimento,
+    Decimal? limite,
+    required bool ativa,
+  }) = _EdicaoCartao;
+}

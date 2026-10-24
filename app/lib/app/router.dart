@@ -5,9 +5,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/configuracoes/ui/mais_tela.dart';
+import '../features/contas/cubit/editar_cartao_cubit.dart';
 import '../features/contas/cubit/nova_conta_cubit.dart';
+import '../features/contas/data/conta.dart';
 import '../features/contas/data/contas_repositorio.dart';
 import '../features/contas/ui/contas_tela.dart';
+import '../features/contas/ui/editar_cartao_tela.dart';
 import '../features/contas/ui/nova_conta_tela.dart';
 import '../features/faturas/cubit/editar_fatura_cubit.dart';
 import '../features/faturas/cubit/fatura_cubit.dart';
@@ -142,6 +145,20 @@ GoRouter criarRouter(SessaoCubit sessao) {
                           );
                         },
                         routes: [
+                          GoRoute(
+                            path: 'editar',
+                            parentNavigatorKey: chaveRaiz,
+                            builder: (context, state) {
+                              final conta = state.extra! as Conta;
+                              return BlocProvider(
+                                create: (context) => EditarCartaoCubit(
+                                  context.read<ContasRepositorio>(),
+                                  conta,
+                                ),
+                                child: EditarCartaoTela(conta: conta),
+                              );
+                            },
+                          ),
                           GoRoute(
                             path: 'fatura/:competencia',
                             builder: (context, state) {

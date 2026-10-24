@@ -33,9 +33,10 @@ class ContasTela extends StatelessWidget {
       _ => const <Conta>[],
     };
     final contas = todas.where((c) => c.recebeReceita).toList();
-    // Cartão desativado aparece com a tela de editar cartão.
+    // Cartão desativado continua aqui (as faturas dele seguem visíveis);
+    // conta corrente ou carteira desativada não aparece.
     final cartoes = todas
-        .where((c) => c.ativa && c.tipo == TipoConta.cartaoCredito)
+        .where((c) => c.tipo == TipoConta.cartaoCredito)
         .toList();
     final vazio =
         estado is ContasCarregado && contas.isEmpty && cartoes.isEmpty;
@@ -195,6 +196,36 @@ class _ItemCartao extends StatelessWidget {
   Widget build(BuildContext context) {
     final fatura = conta.cartao!.faturaAtual;
     final textos = context.textos;
+    final esquema = context.esquema;
+    if (!conta.ativa) {
+      return ItemLista(
+        icone: Icons.credit_card_off_rounded,
+        corIcone: esquema.onSurfaceVariant,
+        fundoIcone: esquema.surfaceContainerHigh,
+        titulo: conta.nome,
+        aoTocar: () => context.push(rotaFaturas(conta.id)),
+        subtitulo: Wrap(
+          spacing: Espaco.x2,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                color: esquema.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Desativado',
+                style: textos.labelMedium?.copyWith(
+                  color: esquema.onSurfaceVariant,
+                ),
+              ),
+            ),
+            if (conta.instituicao case final instituicao?) Text(instituicao),
+          ],
+        ),
+      );
+    }
     return ItemLista(
       icone: Icons.credit_card_rounded,
       titulo: conta.nome,

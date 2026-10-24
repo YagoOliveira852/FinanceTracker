@@ -65,6 +65,7 @@ void main() {
     expect(find.text('vence ter, 10 nov'), findsOneWidget);
     expect(find.text('R\$ 544,80'), findsOneWidget);
     expect(find.text('R\$ 1.032,15'), findsOneWidget);
+    expect(find.byTooltip('Editar cartão'), findsOneWidget);
   });
 
   Widget detalhe(DateTime competencia) => _app(
