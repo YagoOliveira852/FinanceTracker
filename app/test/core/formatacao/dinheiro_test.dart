@@ -96,4 +96,13 @@ void main() {
     expect(dinheiroParaApi(d('1234.5')), '1234.50');
     expect(dinheiroParaApi(d('-120.4')), '-120.40');
   });
+
+  test('dinheiroParaCampo volta pelo lerDinheiro', () {
+    expect(dinheiroParaCampo(Decimal.parse('1032.15')), '1.032,15');
+    expect(dinheiroParaCampo(Decimal.parse('-120.4')), '-120,40');
+    expect(
+      lerDinheiro(dinheiroParaCampo(Decimal.parse('1032.15'))),
+      Decimal.parse('1032.15'),
+    );
+  });
 }

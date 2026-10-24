@@ -8,6 +8,7 @@ import '../../../app/widgets/estados.dart';
 import '../../../app/widgets/lista.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../../core/formatacao/dinheiro.dart';
+import '../../faturas/ui/faturas_tela.dart';
 import '../cubit/contas_cubit.dart';
 import '../data/conta.dart';
 
@@ -32,7 +33,7 @@ class ContasTela extends StatelessWidget {
       _ => const <Conta>[],
     };
     final contas = todas.where((c) => c.recebeReceita).toList();
-    // Cartão desativado aparece com o PR de editar cartão.
+    // Cartão desativado aparece com a tela de editar cartão.
     final cartoes = todas
         .where((c) => c.ativa && c.tipo == TipoConta.cartaoCredito)
         .toList();
@@ -197,6 +198,7 @@ class _ItemCartao extends StatelessWidget {
     return ItemLista(
       icone: Icons.credit_card_rounded,
       titulo: conta.nome,
+      aoTocar: () => context.push(rotaFaturas(conta.id)),
       subtitulo: Text(
         'Fecha ${formatarDiaMes(fatura.dataFechamento)} · '
         'vence ${formatarDiaMes(fatura.dataVencimento)}',

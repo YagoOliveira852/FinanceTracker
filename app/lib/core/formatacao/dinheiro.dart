@@ -25,6 +25,13 @@ String formatarDinheiroComSinal(Decimal valor, {required bool entrada}) {
   return '${entrada ? '+' : _menos} R\$ ${_numero(valor.abs())}';
 }
 
+/// Valor para preencher um campo de dinheiro (`1.234,50`, sem `R$`); o
+/// campo lê de volta com [lerDinheiro].
+String dinheiroParaCampo(Decimal valor) {
+  final texto = _numero(valor.abs());
+  return valor < Decimal.zero ? '-$texto' : texto;
+}
+
 /// Formato do contrato da API: string com ponto e duas casas (`"1234.50"`).
 String dinheiroParaApi(Decimal valor) => valor.toStringAsFixed(2);
 

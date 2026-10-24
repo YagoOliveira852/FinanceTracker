@@ -35,7 +35,7 @@ class TransacoesRepositorioApi implements TransacoesRepositorio {
         de: de.toDate(),
         ate: ate.toDate(),
       );
-      return resposta.data!.map(_transacao).toList();
+      return resposta.data!.map(transacaoDaApi).toList();
     } catch (erro) {
       throw ErroApi.de(erro);
     }
@@ -59,20 +59,22 @@ class TransacoesRepositorioApi implements TransacoesRepositorio {
       final resposta = await _cliente.getTransacoesApi().lancar(
         transacaoEntrada: entrada,
       );
-      return _transacao(resposta.data!);
+      return transacaoDaApi(resposta.data!);
     } catch (erro) {
       throw ErroApi.de(erro);
     }
   }
-
-  static Transacao _transacao(api.TransacaoSaida t) => Transacao(
-    id: t.id,
-    contaId: t.contaId,
-    tipo: TipoTransacao.values.byName(t.tipo.name),
-    valor: Decimal.parse(t.valor),
-    data: t.data.toDateTime(),
-    descricao: t.descricao,
-    status: StatusTransacao.values.byName(t.status.name),
-    faturaId: t.faturaId,
-  );
 }
+
+/// Transação do cliente gerado no modelo do app; também usada pelo
+/// repositório de faturas (transações do detalhe).
+Transacao transacaoDaApi(api.TransacaoSaida t) => Transacao(
+  id: t.id,
+  contaId: t.contaId,
+  tipo: TipoTransacao.values.byName(t.tipo.name),
+  valor: Decimal.parse(t.valor),
+  data: t.data.toDateTime(),
+  descricao: t.descricao,
+  status: StatusTransacao.values.byName(t.status.name),
+  faturaId: t.faturaId,
+);
