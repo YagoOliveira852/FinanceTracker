@@ -36,7 +36,7 @@ def criar(dados: CartaoEntrada, sessao: SessaoDep, hoje: HojeDep) -> ContaSaida:
         limite=dados.limite,
         hoje=hoje,
     )
-    return conta_saida(contas_service.obter_conta(sessao, cartao.conta_id))
+    return conta_saida(sessao, contas_service.obter_conta(sessao, cartao.conta_id), hoje)
 
 
 @router.get("/previa")

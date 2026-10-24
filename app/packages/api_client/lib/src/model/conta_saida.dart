@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:api_client/src/model/cartao_saida.dart';
 import 'package:api_client/src/model/tipo_conta.dart';
 import 'package:api_client/src/model/instituicao_saida.dart';
 import 'package:api_client/src/model/date.dart';
@@ -22,6 +23,7 @@ part 'conta_saida.g.dart';
 /// * [dataSaldoInicial] 
 /// * [saldoAtual] - `saldo_inicial` mais as transações confirmadas com data a partir de `data_saldo_inicial`.
 /// * [ativa] 
+/// * [cartao] - Dados do cartão; nulo se não for cartão.
 @BuiltValue()
 abstract class ContaSaida implements Built<ContaSaida, ContaSaidaBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -49,6 +51,10 @@ abstract class ContaSaida implements Built<ContaSaida, ContaSaidaBuilder> {
 
   @BuiltValueField(wireName: r'ativa')
   bool get ativa;
+
+  /// Dados do cartão; nulo se não for cartão.
+  @BuiltValueField(wireName: r'cartao')
+  CartaoSaida? get cartao;
 
   ContaSaida._();
 
@@ -112,6 +118,11 @@ class _$ContaSaidaSerializer implements PrimitiveSerializer<ContaSaida> {
     yield serializers.serialize(
       object.ativa,
       specifiedType: const FullType(bool),
+    );
+    yield r'cartao';
+    yield object.cartao == null ? null : serializers.serialize(
+      object.cartao,
+      specifiedType: const FullType.nullable(CartaoSaida),
     );
   }
 
@@ -192,6 +203,14 @@ class _$ContaSaidaSerializer implements PrimitiveSerializer<ContaSaida> {
             specifiedType: const FullType(bool),
           ) as bool;
           result.ativa = valueDes;
+          break;
+        case r'cartao':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(CartaoSaida),
+          ) as CartaoSaida?;
+          if (valueDes == null) continue;
+          result.cartao.replace(valueDes);
           break;
         default:
           unhandled.add(key);

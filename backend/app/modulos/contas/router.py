@@ -1,13 +1,25 @@
 """Rotas de contas. Só traduzem HTTP; as regras estão no service."""
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
 from app.core.deps import HojeDep, SessaoDep, get_usuario_atual
 from app.core.erros import RespostaErro
+from app.modulos.cartoes import faturas
+from app.modulos.cartoes import service as cartoes_service
 from app.modulos.contas import service
-from app.modulos.contas.schemas import ContaEntrada, ContaSaida, ContasResumo, InstituicaoSaida
+from app.modulos.contas.models import TipoConta
+from app.modulos.contas.schemas import (
+    CartaoSaida,
+    ContaEntrada,
+    ContaSaida,
+    ContasResumo,
+    FaturaResumo,
+    InstituicaoSaida,
+)
 
 # `dependencies` no router: toda rota daqui exige o access token, sem repetir
 # `UsuarioDep` em cada uma (as rotas não precisam do usuário em si).
@@ -22,12 +34,13 @@ _NAO_ENCONTRADA = {status.HTTP_404_NOT_FOUND: {"model": RespostaErro}}
 
 
 @router.get("")
-def listar(sessao: SessaoDep) -> ContasResumo:
-    """Todas as contas com o saldo atual, e o total disponível (correntes e carteiras)."""
+def listar(sessao: SessaoDep, hoje: HojeDep) -> ContasResumo:
+    """Todas as contas com o saldo atual, e o total disponível (correntes e carteiras).
+    Cartões trazem também a fatura atual."""
     resumo = service.listar_contas(sessao)
     return ContasResumo(
         total_disponivel=resumo.total_disponivel,
-        contas=[conta_saida(conta) for conta in resumo.contas],
+        contas=[conta_saida(sessao, conta, hoje) for conta in resumo.contas],
     )
 
 
@@ -43,19 +56,20 @@ def criar(dados: ContaEntrada, sessao: SessaoDep, hoje: HojeDep) -> ContaSaida:
         data_saldo_inicial=dados.data_saldo_inicial,
         hoje=hoje,
     )
-    return conta_saida(conta)
+    return conta_saida(sessao, conta, hoje)
 
 
 @router.get("/{conta_id}", responses=_NAO_ENCONTRADA)
-def obter(conta_id: uuid.UUID, sessao: SessaoDep) -> ContaSaida:
+def obter(conta_id: uuid.UUID, sessao: SessaoDep, hoje: HojeDep) -> ContaSaida:
     try:
         conta = service.obter_conta(sessao, conta_id)
     except service.ContaNaoEncontrada as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Conta não encontrada.") from exc
-    return conta_saida(conta)
+    return conta_saida(sessao, conta, hoje)
 
 
-def conta_saida(item: service.ContaComSaldo) -> ContaSaida:
+def conta_saida(sessao: Session, item: service.ContaComSaldo, hoje: date) -> ContaSaida:
+    """Monta a saída da conta; também usada pelas rotas de cartões."""
     conta = item.conta
     instituicao = conta.instituicao
     return ContaSaida(
@@ -67,4 +81,27 @@ def conta_saida(item: service.ContaComSaldo) -> ContaSaida:
         data_saldo_inicial=conta.data_saldo_inicial,
         saldo_atual=item.saldo_atual,
         ativa=conta.ativa,
+        cartao=_cartao_saida(sessao, conta.id, hoje)
+        if conta.tipo == TipoConta.cartao_credito
+        else None,
+    )
+
+
+def _cartao_saida(sessao: Session, conta_id: uuid.UUID, hoje: date) -> CartaoSaida:
+    cartao = cartoes_service.obter_cartao(sessao, conta_id)
+    atual = faturas.resumo_atual(sessao, cartao, hoje)
+    return CartaoSaida(
+        conta_pagamento_id=cartao.conta_pagamento_id,
+        dia_fechamento=cartao.dia_fechamento,
+        dia_vencimento=cartao.dia_vencimento,
+        limite=cartao.limite,
+        fatura_atual=FaturaResumo(
+            competencia=atual.competencia,
+            data_fechamento=atual.data_fechamento,
+            data_vencimento=atual.data_vencimento,
+            status=atual.status,
+            valor=atual.valor,
+            valor_calculado=atual.valor_calculado,
+            valor_informado=atual.valor_informado,
+        ),
     )

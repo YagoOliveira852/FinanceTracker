@@ -14,10 +14,14 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:api_client/src/date_serializer.dart';
 import 'package:api_client/src/model/date.dart';
 
+import 'package:api_client/src/model/cartao_entrada.dart';
+import 'package:api_client/src/model/cartao_saida.dart';
 import 'package:api_client/src/model/conta_entrada.dart';
 import 'package:api_client/src/model/conta_saida.dart';
 import 'package:api_client/src/model/contas_resumo.dart';
+import 'package:api_client/src/model/datas_fatura_saida.dart';
 import 'package:api_client/src/model/erro_campo.dart';
+import 'package:api_client/src/model/fatura_resumo.dart';
 import 'package:api_client/src/model/fonte_transacao.dart';
 import 'package:api_client/src/model/http_validation_error.dart';
 import 'package:api_client/src/model/instituicao_saida.dart';
@@ -26,6 +30,7 @@ import 'package:api_client/src/model/login_entrada.dart';
 import 'package:api_client/src/model/refresh_entrada.dart';
 import 'package:api_client/src/model/resposta_erro.dart';
 import 'package:api_client/src/model/saude.dart';
+import 'package:api_client/src/model/status_fatura.dart';
 import 'package:api_client/src/model/status_transacao.dart';
 import 'package:api_client/src/model/tipo_conta.dart';
 import 'package:api_client/src/model/tipo_transacao.dart';
@@ -38,10 +43,14 @@ import 'package:api_client/src/model/validation_error.dart';
 part 'serializers.g.dart';
 
 @SerializersFor([
+  CartaoEntrada,
+  CartaoSaida,
   ContaEntrada,
   ContaSaida,
   ContasResumo,
+  DatasFaturaSaida,
   ErroCampo,
+  FaturaResumo,
   FonteTransacao,
   HTTPValidationError,
   InstituicaoSaida,
@@ -50,6 +59,7 @@ part 'serializers.g.dart';
   RefreshEntrada,
   RespostaErro,
   Saude,
+  StatusFatura,
   StatusTransacao,
   TipoConta,
   TipoTransacao,

@@ -125,7 +125,7 @@ class ContasApi {
   }
 
   /// Listar
-  /// Todas as contas com o saldo atual, e o total disponível (correntes e carteiras).
+  /// Todas as contas com o saldo atual, e o total disponível (correntes e carteiras). Cartões trazem também a fatura atual.
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
