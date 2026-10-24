@@ -73,5 +73,6 @@ class TransacoesRepositorioApi implements TransacoesRepositorio {
     data: t.data.toDateTime(),
     descricao: t.descricao,
     status: StatusTransacao.values.byName(t.status.name),
+    faturaId: t.faturaId,
   );
 }

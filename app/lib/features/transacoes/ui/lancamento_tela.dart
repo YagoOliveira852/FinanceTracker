@@ -61,7 +61,7 @@ class _LancamentoTelaState extends State<LancamentoTela> {
     final estadoContas = context.watch<ContasCubit>().state;
     final contas = switch (estadoContas) {
       ContasCarregado(:final resumo) =>
-        resumo.contas.where((c) => c.aceitaLancamento).toList(),
+        resumo.contas.where((c) => c.recebeReceita).toList(),
       _ => const <Conta>[],
     };
     final ajudaConta = switch (estadoContas) {

@@ -29,7 +29,7 @@ class ContasTela extends StatelessWidget {
     final estado = context.watch<ContasCubit>().state;
     final contas = switch (estado) {
       ContasCarregado(:final resumo) =>
-        resumo.contas.where((c) => c.aceitaLancamento).toList(),
+        resumo.contas.where((c) => c.recebeReceita).toList(),
       _ => const <Conta>[],
     };
     final vazio = estado is ContasCarregado && contas.isEmpty;

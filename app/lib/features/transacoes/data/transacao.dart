@@ -38,6 +38,9 @@ abstract class Transacao with _$Transacao {
     required DateTime data,
     required String descricao,
     required StatusTransacao status,
+
+    /// Fatura da transação, quando a conta é cartão de crédito.
+    String? faturaId,
   }) = _Transacao;
 }
 
