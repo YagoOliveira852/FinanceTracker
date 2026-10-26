@@ -76,6 +76,25 @@ void main() {
     expect(find.byType(BackButton), findsOneWidget);
   });
 
+  testWidgets('Transações → Lançar → Transferência abre o formulário', (
+    tester,
+  ) async {
+    final dependencias = await _abrir(tester);
+    (dependencias.transacoes as TransacoesRepositorioFalso).transacoes.add(
+      transacaoExemplo(data: DateTime.now()),
+    );
+
+    await tester.tap(find.text('Transações'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Transferência'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(InputDecorator, 'De'), findsOneWidget);
+    expect(find.widgetWithText(InputDecorator, 'Para'), findsOneWidget);
+  });
+
   testWidgets('aba Revisão mostra em breve', (tester) async {
     await _abrir(tester);
 

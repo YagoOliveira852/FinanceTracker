@@ -14,15 +14,17 @@ import '../../contas/data/conta.dart';
 import '../../faturas/data/fatura.dart';
 import '../cubit/lancamento_cubit.dart';
 import '../data/transacao.dart';
+import 'formulario_transferencia.dart';
 import 'textos.dart';
 
 /// Opções do campo Parcelas: 1 é à vista.
 const _maximoDeParcelas = 24;
 
-/// Lançamento manual de despesa ou receita; despesa num cartão é uma compra,
-/// à vista ou parcelada, e mostra em que fatura entra. Transferência,
-/// pagamento de fatura e categoria aparecem desabilitados ("em breve"). Fecha
-/// devolvendo `true` quando salvou.
+/// Lançamento manual: despesa ou receita (despesa num cartão é uma compra, à
+/// vista ou parcelada, e mostra em que fatura entra) e transferência entre
+/// contas próprias, cada uma com o seu formulário. Pagamento de fatura e
+/// categoria aparecem desabilitados ("em breve"). Fecha devolvendo `true`
+/// quando salvou.
 class LancamentoTela extends StatefulWidget {
   const LancamentoTela({super.key, this.contaInicial});
 
@@ -87,6 +89,9 @@ class _LancamentoTelaState extends State<LancamentoTela> {
   @override
   Widget build(BuildContext context) {
     final tipo = context.select((LancamentoCubit c) => c.state.tipo);
+    if (tipo == TipoTransacao.transferenciaSaida) {
+      return FormularioTransferencia(contaInicial: widget.contaInicial);
+    }
     final estadoContas = context.watch<ContasCubit>().state;
     final contas = switch (estadoContas) {
       ContasCarregado(:final resumo) =>
@@ -128,64 +133,111 @@ class _LancamentoTelaState extends State<LancamentoTela> {
         final cubit = context.read<LancamentoCubit>();
         final livre = !estado.enviando;
 
-        // Enquanto salva, o voltar do Android fica bloqueado: fechar no meio
-        // perderia o aviso de que o registro foi criado.
-        return PopScope(
-          canPop: livre,
-          child: Scaffold(
-            appBar: AppBar(
-              titleSpacing: Espaco.x1,
-              leading: IconButton(
-                tooltip: 'Fechar',
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () => context.pop(false),
+        return EsqueletoLancamento(
+          livre: livre,
+          erroGeral: estado.erroGeral,
+          campos: [
+            DropdownButtonFormField<String>(
+              // initialValue só é lido na criação: a chave recria o campo
+              // quando as contas carregam ou o tipo muda a lista.
+              key: ValueKey((estadoContas.runtimeType, tipo)),
+              initialValue: contaSelecionada?.id,
+              isExpanded: true,
+              hint: const Text('Selecione uma conta'),
+              decoration: InputDecoration(
+                labelText: 'Conta',
+                errorText: estado.erros['conta_id'],
+                helperText: ajudaConta,
               ),
-              title: const Text('Nova transação'),
-            ),
-            body: ListView(
-              padding: const EdgeInsets.all(Espaco.x4),
-              children: [
-                if (estado.erroGeral != null) ...[
-                  Aviso.erro(context, estado.erroGeral!),
-                  const SizedBox(height: Espaco.x6),
-                ],
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: Espaco.x1,
-                    bottom: Espaco.x2,
+              items: [
+                for (final conta in contas)
+                  DropdownMenuItem(
+                    value: conta.id,
+                    child: Text(
+                      conta.instituicao == null
+                          ? conta.nome
+                          : '${conta.nome} · ${conta.instituicao}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  child: Text('Tipo', style: context.textos.bodySmall),
+              ],
+              onChanged: livre
+                  ? (id) {
+                      setState(() {
+                        _contaEscolhida = id;
+                        // Parcelas são só do cartão: outra conta volta a
+                        // à vista.
+                        final conta = contas
+                            .where((c) => c.id == id)
+                            .firstOrNull;
+                        if (conta?.tipo != TipoConta.cartaoCredito) {
+                          _parcelas = 1;
+                        }
+                      });
+                      cubit.limparErro('conta_id');
+                    }
+                  : null,
+            ),
+            const SizedBox(height: Espaco.x6),
+            CampoDinheiro(
+              controller: _valor,
+              aoMudar: (_) {
+                // O texto da divisão acompanha a digitação.
+                setState(() {});
+                cubit.limparErro('valor');
+              },
+              rotulo: noCartao ? 'Valor total' : 'Valor',
+              habilitado: livre,
+              ajuda: 'Sempre positivo; o tipo define se entra ou sai.',
+              erro: estado.erros['valor'],
+            ),
+            const SizedBox(height: Espaco.x6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: CampoData(
+                    rotulo: noCartao ? 'Data da compra' : 'Data',
+                    data: _data,
+                    habilitado: livre,
+                    aoMudar: (data) {
+                      setState(() => _data = data);
+                      cubit.limparErro('data');
+                    },
+                    erro: estado.erros['data'],
+                  ),
                 ),
-                Wrap(
-                  spacing: Espaco.x2,
-                  runSpacing: Espaco.x2,
-                  children: [
-                    ChipOpcao(
-                      rotulo: 'Despesa',
-                      selecionado: estado.tipo == TipoTransacao.despesa,
-                      aoTocar: livre
-                          ? () => cubit.escolherTipo(TipoTransacao.despesa)
+                if (noCartao) ...[
+                  const SizedBox(width: Espaco.x4),
+                  SizedBox(
+                    width: 128,
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _parcelas,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Parcelas',
+                        errorText: estado.erros['parcelas'],
+                      ),
+                      items: [
+                        for (var n = 1; n <= _maximoDeParcelas; n++)
+                          DropdownMenuItem(
+                            value: n,
+                            child: Text(n == 1 ? 'À vista' : '${n}x'),
+                          ),
+                      ],
+                      onChanged: livre
+                          ? (n) {
+                              setState(() => _parcelas = n ?? 1);
+                              cubit.limparErro('parcelas');
+                            }
                           : null,
                     ),
-                    ChipOpcao(
-                      rotulo: 'Receita',
-                      selecionado: estado.tipo == TipoTransacao.receita,
-                      aoTocar: livre
-                          ? () => cubit.escolherTipo(TipoTransacao.receita)
-                          : null,
-                    ),
-                    const ChipOpcao(
-                      rotulo: 'Transferência',
-                      selecionado: false,
-                      aoTocar: null,
-                    ),
-                    const ChipOpcao(
-                      rotulo: 'Pagamento de fatura',
-                      selecionado: false,
-                      aoTocar: null,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              ],
+            ),
+            if (noCartao) ...[
+              if (_textoDaDivisao(parcelas) case final divisao?)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     Espaco.x4,
@@ -194,170 +246,153 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                     0,
                   ),
                   child: Text(
-                    'Transferência e pagamento de fatura: em breve.',
+                    divisao,
                     style: context.textos.bodySmall?.copyWith(
                       fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
+              if (estado.faturaDaCompra case final fatura?) ...[
                 const SizedBox(height: Espaco.x6),
-                DropdownButtonFormField<String>(
-                  // initialValue só é lido na criação: a chave recria o campo
-                  // quando as contas carregam ou o tipo muda a lista.
-                  key: ValueKey((estadoContas.runtimeType, tipo)),
-                  initialValue: contaSelecionada?.id,
-                  isExpanded: true,
-                  hint: const Text('Selecione uma conta'),
-                  decoration: InputDecoration(
-                    labelText: 'Conta',
-                    errorText: estado.erros['conta_id'],
-                    helperText: ajudaConta,
-                  ),
-                  items: [
-                    for (final conta in contas)
-                      DropdownMenuItem(
-                        value: conta.id,
-                        child: Text(
-                          conta.instituicao == null
-                              ? conta.nome
-                              : '${conta.nome} · ${conta.instituicao}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: livre
-                      ? (id) {
-                          setState(() {
-                            _contaEscolhida = id;
-                            // Parcelas são só do cartão: outra conta volta a
-                            // à vista.
-                            final conta = contas
-                                .where((c) => c.id == id)
-                                .firstOrNull;
-                            if (conta?.tipo != TipoConta.cartaoCredito) {
-                              _parcelas = 1;
-                            }
-                          });
-                          cubit.limparErro('conta_id');
-                        }
-                      : null,
-                ),
-                const SizedBox(height: Espaco.x6),
-                CampoDinheiro(
-                  controller: _valor,
-                  aoMudar: (_) {
-                    // O texto da divisão acompanha a digitação.
-                    setState(() {});
-                    cubit.limparErro('valor');
-                  },
-                  rotulo: noCartao ? 'Valor total' : 'Valor',
-                  habilitado: livre,
-                  ajuda: 'Sempre positivo; o tipo define se entra ou sai.',
-                  erro: estado.erros['valor'],
-                ),
-                const SizedBox(height: Espaco.x6),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: CampoData(
-                        rotulo: noCartao ? 'Data da compra' : 'Data',
-                        data: _data,
-                        habilitado: livre,
-                        aoMudar: (data) {
-                          setState(() => _data = data);
-                          cubit.limparErro('data');
-                        },
-                        erro: estado.erros['data'],
-                      ),
-                    ),
-                    if (noCartao) ...[
-                      const SizedBox(width: Espaco.x4),
-                      SizedBox(
-                        width: 128,
-                        child: DropdownButtonFormField<int>(
-                          initialValue: _parcelas,
-                          isExpanded: true,
-                          decoration: InputDecoration(
-                            labelText: 'Parcelas',
-                            errorText: estado.erros['parcelas'],
-                          ),
-                          items: [
-                            for (var n = 1; n <= _maximoDeParcelas; n++)
-                              DropdownMenuItem(
-                                value: n,
-                                child: Text(n == 1 ? 'À vista' : '${n}x'),
-                              ),
-                          ],
-                          onChanged: livre
-                              ? (n) {
-                                  setState(() => _parcelas = n ?? 1);
-                                  cubit.limparErro('parcelas');
-                                }
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (noCartao) ...[
-                  if (_textoDaDivisao(parcelas) case final divisao?)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        Espaco.x4,
-                        Espaco.x1,
-                        Espaco.x4,
-                        0,
-                      ),
-                      child: Text(
-                        divisao,
-                        style: context.textos.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  if (estado.faturaDaCompra case final fatura?) ...[
-                    const SizedBox(height: Espaco.x6),
-                    _FaturaDaCompra(fatura, parcelas: parcelas),
-                  ],
-                ],
-                const SizedBox(height: Espaco.x6),
-                TextField(
-                  controller: _descricao,
-                  onChanged: (_) => cubit.limparErro('descricao'),
-                  enabled: livre,
-                  maxLength: 200,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    labelText: 'Descrição',
-                    errorText: estado.erros['descricao'],
-                    counterText: '',
-                  ),
-                ),
-                const SizedBox(height: Espaco.x6),
-                const TextField(
-                  enabled: false,
-                  decoration: InputDecoration(
-                    labelText: 'Categoria (opcional)',
-                    hintText: 'Sem categoria',
-                    helperText: 'Categorias: em breve.',
-                    suffixIcon: Icon(Icons.arrow_drop_down_rounded),
-                  ),
-                ),
+                _FaturaDaCompra(fatura, parcelas: parcelas),
               ],
-            ),
-            bottomNavigationBar: RodapeFormulario(
-              botao: FilledButton(
-                onPressed: livre ? () => _salvar(contas) : null,
-                child: RotuloEnviando(
-                  enviando: estado.enviando,
-                  rotulo: 'Salvar',
-                ),
+            ],
+            const SizedBox(height: Espaco.x6),
+            TextField(
+              controller: _descricao,
+              onChanged: (_) => cubit.limparErro('descricao'),
+              enabled: livre,
+              maxLength: 200,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: 'Descrição',
+                errorText: estado.erros['descricao'],
+                counterText: '',
               ),
             ),
+            const SizedBox(height: Espaco.x6),
+            const TextField(
+              enabled: false,
+              decoration: InputDecoration(
+                labelText: 'Categoria (opcional)',
+                hintText: 'Sem categoria',
+                helperText: 'Categorias: em breve.',
+                suffixIcon: Icon(Icons.arrow_drop_down_rounded),
+              ),
+            ),
+          ],
+          botao: FilledButton(
+            onPressed: livre ? () => _salvar(contas) : null,
+            child: RotuloEnviando(enviando: estado.enviando, rotulo: 'Salvar'),
           ),
         );
       },
+    );
+  }
+}
+
+/// Moldura comum dos formulários do Lançamento: fechar, título, os chips de
+/// tipo, os [campos] e o [botao] no rodapé. Enquanto não está [livre]
+/// (salvando), o voltar do Android fica bloqueado (fechar no meio perderia o
+/// aviso de que o registro foi criado) e os chips ficam desabilitados.
+class EsqueletoLancamento extends StatelessWidget {
+  const EsqueletoLancamento({
+    super.key,
+    required this.livre,
+    this.erroGeral,
+    required this.campos,
+    required this.botao,
+  });
+
+  final bool livre;
+  final String? erroGeral;
+  final List<Widget> campos;
+  final Widget botao;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: livre,
+      child: Scaffold(
+        appBar: AppBar(
+          titleSpacing: Espaco.x1,
+          leading: IconButton(
+            tooltip: 'Fechar',
+            icon: const Icon(Icons.close_rounded),
+            onPressed: () => context.pop(false),
+          ),
+          title: const Text('Nova transação'),
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(Espaco.x4),
+          children: [
+            if (erroGeral != null) ...[
+              Aviso.erro(context, erroGeral!),
+              const SizedBox(height: Espaco.x6),
+            ],
+            _ChipsDeTipo(livre: livre),
+            const SizedBox(height: Espaco.x6),
+            ...campos,
+          ],
+        ),
+        bottomNavigationBar: RodapeFormulario(botao: botao),
+      ),
+    );
+  }
+}
+
+/// Tipo do lançamento; o escolhido fica no [LancamentoCubit] e decide o
+/// formulário.
+class _ChipsDeTipo extends StatelessWidget {
+  const _ChipsDeTipo({required this.livre});
+
+  final bool livre;
+
+  @override
+  Widget build(BuildContext context) {
+    final tipo = context.select((LancamentoCubit c) => c.state.tipo);
+    final cubit = context.read<LancamentoCubit>();
+    ChipOpcao chip(String rotulo, TipoTransacao valor) => ChipOpcao(
+      rotulo: rotulo,
+      selecionado: tipo == valor,
+      aoTocar: livre ? () => cubit.escolherTipo(valor) : null,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: Espaco.x1, bottom: Espaco.x2),
+          child: Text('Tipo', style: context.textos.bodySmall),
+        ),
+        Wrap(
+          spacing: Espaco.x2,
+          runSpacing: Espaco.x2,
+          children: [
+            chip('Despesa', TipoTransacao.despesa),
+            chip('Receita', TipoTransacao.receita),
+            chip('Transferência', TipoTransacao.transferenciaSaida),
+            const ChipOpcao(
+              rotulo: 'Pagamento de fatura',
+              selecionado: false,
+              aoTocar: null,
+            ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Espaco.x4,
+            Espaco.x1,
+            Espaco.x4,
+            0,
+          ),
+          child: Text(
+            'Pagamento de fatura: em breve.',
+            style: context.textos.bodySmall?.copyWith(
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

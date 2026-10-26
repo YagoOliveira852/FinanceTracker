@@ -28,6 +28,7 @@ import '../features/login/ui/login_tela.dart';
 import '../features/revisao/ui/revisao_tela.dart';
 import '../features/transacoes/cubit/lancamento_cubit.dart';
 import '../features/transacoes/cubit/transacoes_cubit.dart';
+import '../features/transacoes/cubit/transferencia_cubit.dart';
 import '../features/transacoes/data/transacoes_repositorio.dart';
 import '../features/transacoes/ui/lancamento_tela.dart';
 import '../features/transacoes/ui/transacoes_tela.dart';
@@ -99,11 +100,20 @@ GoRouter criarRouter(SessaoCubit sessao) {
                   GoRoute(
                     path: 'nova',
                     parentNavigatorKey: chaveRaiz,
-                    builder: (context, state) => BlocProvider(
-                      create: (context) => LancamentoCubit(
-                        context.read<TransacoesRepositorio>(),
-                        context.read<FaturasRepositorio>(),
-                      ),
+                    builder: (context, state) => MultiBlocProvider(
+                      providers: [
+                        BlocProvider(
+                          create: (context) => LancamentoCubit(
+                            context.read<TransacoesRepositorio>(),
+                            context.read<FaturasRepositorio>(),
+                          ),
+                        ),
+                        BlocProvider(
+                          create: (context) => TransferenciaCubit(
+                            context.read<TransacoesRepositorio>(),
+                          ),
+                        ),
+                      ],
                       child: LancamentoTela(
                         contaInicial: state.extra as String?,
                       ),
