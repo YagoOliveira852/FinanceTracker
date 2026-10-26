@@ -16,10 +16,11 @@ part 'fatura_resumo.g.dart';
 /// * [competencia] - Primeiro dia do mês do vencimento.
 /// * [dataFechamento] 
 /// * [dataVencimento] 
-/// * [status] - Aberta antes do fechamento; fechada a partir dele.
+/// * [status] - Aberta antes do fechamento; depois dele, paga se os pagamentos cobrem o valor, senão fechada.
 /// * [valor] - O maior entre o informado e o calculado.
 /// * [valorCalculado] - Compras menos estornos da fatura, com rascunhos e sem as ignoradas.
 /// * [valorInformado] - O total que o banco mostra.
+/// * [valorPago] - Soma dos pagamentos ligados à fatura, com rascunhos e sem os ignorados.
 @BuiltValue()
 abstract class FaturaResumo implements Built<FaturaResumo, FaturaResumoBuilder> {
   /// Primeiro dia do mês do vencimento.
@@ -32,10 +33,10 @@ abstract class FaturaResumo implements Built<FaturaResumo, FaturaResumoBuilder> 
   @BuiltValueField(wireName: r'data_vencimento')
   Date get dataVencimento;
 
-  /// Aberta antes do fechamento; fechada a partir dele.
+  /// Aberta antes do fechamento; depois dele, paga se os pagamentos cobrem o valor, senão fechada.
   @BuiltValueField(wireName: r'status')
   StatusFatura get status;
-  // enum statusEnum {  aberta,  fechada,  };
+  // enum statusEnum {  aberta,  fechada,  paga,  };
 
   /// O maior entre o informado e o calculado.
   @BuiltValueField(wireName: r'valor')
@@ -48,6 +49,10 @@ abstract class FaturaResumo implements Built<FaturaResumo, FaturaResumoBuilder> 
   /// O total que o banco mostra.
   @BuiltValueField(wireName: r'valor_informado')
   String? get valorInformado;
+
+  /// Soma dos pagamentos ligados à fatura, com rascunhos e sem os ignorados.
+  @BuiltValueField(wireName: r'valor_pago')
+  String get valorPago;
 
   FaturaResumo._();
 
@@ -106,6 +111,11 @@ class _$FaturaResumoSerializer implements PrimitiveSerializer<FaturaResumo> {
     yield object.valorInformado == null ? null : serializers.serialize(
       object.valorInformado,
       specifiedType: const FullType.nullable(String),
+    );
+    yield r'valor_pago';
+    yield serializers.serialize(
+      object.valorPago,
+      specifiedType: const FullType(String),
     );
   }
 
@@ -179,6 +189,13 @@ class _$FaturaResumoSerializer implements PrimitiveSerializer<FaturaResumo> {
           ) as String?;
           if (valueDes == null) continue;
           result.valorInformado = valueDes;
+          break;
+        case r'valor_pago':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.valorPago = valueDes;
           break;
         default:
           unhandled.add(key);

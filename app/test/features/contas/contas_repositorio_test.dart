@@ -35,6 +35,7 @@ Map<String, Object?> _faturaJson() => {
   'status': 'aberta',
   'valor': '544.80',
   'valor_calculado': '544.80',
+  'valor_pago': '0.00',
   'valor_informado': null,
 };
 

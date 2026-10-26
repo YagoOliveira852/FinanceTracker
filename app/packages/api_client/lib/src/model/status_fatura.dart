@@ -15,6 +15,8 @@ class StatusFatura extends EnumClass {
   static const StatusFatura aberta = _$aberta;
   @BuiltValueEnumConst(wireName: r'fechada')
   static const StatusFatura fechada = _$fechada;
+  @BuiltValueEnumConst(wireName: r'paga')
+  static const StatusFatura paga = _$paga;
 
   static Serializer<StatusFatura> get serializer => _$statusFaturaSerializer;
 

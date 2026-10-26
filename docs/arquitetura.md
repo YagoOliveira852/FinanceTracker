@@ -117,7 +117,7 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 - **Três datas:** data da compra ≠ competência da fatura ≠ data do pagamento.
 - **Importação idempotente:** importar o mesmo arquivo duas vezes, ou receber a sobreposição de 4 dias da Pluggy, não duplica.
 - **Mesma transação por duas fontes** (CSV e Pluggy): não fundir automaticamente; marcar como possível duplicata e pedir confirmação na revisão.
-- **Pagamento de fatura e transferência entre contas próprias** não são gasto.
+- **Pagamento de fatura e transferência entre contas próprias** não são gasto. O pagamento é **uma** transação `pagamento_fatura` na conta que paga (corrente ou carteira), ligada à fatura por `fatura_id`; não há linha do lado do cartão. A transferência são duas transações ligadas por `transferencia_par_id`. Spec `2026-10-24-pagamento-transferencia`.
 - **Compra parcelada:** uma compra gera N parcelas, cada uma numa fatura. No lançamento manual, a parcela k tem a data da compra + (k−1) meses e entra na fatura da compra + (k−1) competências (nunca na fatura da própria data, que pode pular uma competência); o centavo que sobra da divisão vai para a 1ª. Fechamento que muda leva a compra inteira, pela data da compra. Spec `2026-10-24-compra-parcelada`.
 - **Vencimento e fechamento em feriado/fim de semana:** calcular pela tabela `feriado` + regra do cartão, nunca assumir o dia fixo. Os dois passam para o próximo dia útil, e compra feita no dia do fechamento (já ajustado) entra na fatura seguinte ("melhor dia de compra").
 - **Rentabilidade com aportes em datas diferentes:** XIRR (pyxirr) comparado ao CDI — opcional.
@@ -198,7 +198,7 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 
 **Regra das datas** (funções puras em `cartoes/datas.py`): se o dia de fechamento é maior que o de vencimento, o fechamento cai no mês anterior ao da competência; dia inexistente no mês vira o último; fechamento e vencimento em fim de semana ou feriado passam para o próximo dia útil; uma compra entra na primeira fatura cujo fechamento (gravado, se a fatura foi editada, ou calculado) é depois da data da compra.
 
-**A fatura só é gravada quando precisa** (recebe transação ou é editada); antes disso a API a calcula. Por isso as rotas usam a competência (`/cartoes/{id}/faturas/2026-11`), e uma `GET` nunca grava. **Sem coluna de status:** aberta antes do fechamento, fechada a partir dele; `paga` virá dos pagamentos ligados à fatura.
+**A fatura só é gravada quando precisa** (recebe transação ou é editada); antes disso a API a calcula. Por isso as rotas usam a competência (`/cartoes/{id}/faturas/2026-11`), e uma `GET` nunca grava. **Sem coluna de status:** aberta antes do fechamento; a partir dele, `paga` se o **valor pago** (soma dos `pagamento_fatura` ligados à fatura, com rascunhos, sem os ignorados e sem os que estiverem na própria conta do cartão) é maior que zero e cobre o valor da fatura, senão `fechada`. Fatura aberta nunca aparece paga, mesmo com pagamento adiantado; pagamento menor deixa a fatura fechada. Pagamento: `POST /cartoes/{id}/faturas/{competencia}/pagamentos`, com a conta que paga, o valor e a data em que o dinheiro sai.
 
 **Valor:** calculado = compras − estornos da fatura (rascunhos contam, ignoradas não, pagamento e transferência ficam fora); valor da fatura = o maior entre informado e calculado. Com diferença, o app oferece "ajustar para o valor real": grava o informado e deixa na fatura **um** `ajuste_saida`/`ajuste_entrada` com a diferença (substituído a cada novo ajuste, removido quando a diferença zera). Mudar o fechamento realoca as compras entre a data antiga e a nova; o ajuste nunca muda de fatura. Detalhes na spec `2026-10-23-cartoes-faturas`.
 
@@ -244,7 +244,7 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 | fonte | text | `manual` \| `ofx` \| `csv_mercadopago` \| `pluggy` |
 | id_externo | text null | FITID, id da Pluggy ou hash gerado |
 | importacao_id | uuid FK null | |
-| fatura_id | uuid FK null | obrigatório se a conta é cartão (regra no service); lançamento manual em cartão só aceita `despesa` |
+| fatura_id | uuid FK null | obrigatório se a conta é cartão (regra no service); lançamento manual em cartão só aceita `despesa`. Em conta que não é cartão, só o `pagamento_fatura` tem (a fatura paga); sem `CHECK`, porque o pagamento vindo das fontes pode chegar como rascunho antes de a revisão saber a fatura |
 | compra_parcelada_id | uuid FK null | indexado; com `parcela_numero`, os dois juntos ou nenhum (`CHECK`) |
 | parcela_numero | smallint null | `CHECK >= 1`; até `qtd_parcelas` (regra no service). Sem unique com a compra: a mesma parcela pode chegar por duas fontes até a revisão decidir |
 | transferencia_par_id | uuid FK null | liga saída e entrada entre contas próprias; unique, e cada lado aponta para o outro (regra no service). `CHECK`: só `transferencia_saida`/`transferencia_entrada` têm par, e nenhuma é par de si mesma |

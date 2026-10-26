@@ -39,6 +39,7 @@ export 'package:api_client/src/model/instituicao_saida.dart';
 export 'package:api_client/src/model/lista_faturas_saida.dart';
 export 'package:api_client/src/model/location_inner.dart';
 export 'package:api_client/src/model/login_entrada.dart';
+export 'package:api_client/src/model/pagamento_entrada.dart';
 export 'package:api_client/src/model/parcela_saida.dart';
 export 'package:api_client/src/model/refresh_entrada.dart';
 export 'package:api_client/src/model/resposta_erro.dart';

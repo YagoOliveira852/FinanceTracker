@@ -40,6 +40,7 @@ lib/src/model/instituicao_saida.dart
 lib/src/model/lista_faturas_saida.dart
 lib/src/model/location_inner.dart
 lib/src/model/login_entrada.dart
+lib/src/model/pagamento_entrada.dart
 lib/src/model/parcela_saida.dart
 lib/src/model/refresh_entrada.dart
 lib/src/model/resposta_erro.dart

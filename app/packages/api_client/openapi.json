@@ -1263,6 +1263,97 @@
         }
       }
     },
+    "/cartoes/{conta_id}/faturas/{competencia}/pagamentos": {
+      "post": {
+        "tags": [
+          "faturas"
+        ],
+        "summary": "Pagar",
+        "description": "Registra um pagamento da fatura (não é gasto); devolve o detalhe.",
+        "operationId": "faturas_pagar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "competencia",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "description": "Mês da fatura, `AAAA-MM`.",
+              "title": "Competencia"
+            },
+            "description": "Mês da fatura, `AAAA-MM`."
+          },
+          {
+            "name": "conta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conta Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagamentoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaturaDetalheSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -1823,7 +1914,7 @@
           },
           "status": {
             "$ref": "#/components/schemas/StatusFatura",
-            "description": "Aberta antes do fechamento; fechada a partir dele."
+            "description": "Aberta antes do fechamento; depois dele, paga se os pagamentos cobrem o valor, senão fechada."
           },
           "valor": {
             "type": "string",
@@ -1849,6 +1940,12 @@
             ],
             "title": "Valor Informado",
             "description": "O total que o banco mostra."
+          },
+          "valor_pago": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor Pago",
+            "description": "Soma dos pagamentos ligados à fatura, com rascunhos e sem os ignorados."
           },
           "fechamento_calculado": {
             "type": "string",
@@ -1890,7 +1987,15 @@
             },
             "type": "array",
             "title": "Transacoes",
-            "description": "Sem as ignoradas, das mais recentes."
+            "description": "As do cartão, sem as ignoradas, das mais recentes."
+          },
+          "pagamentos": {
+            "items": {
+              "$ref": "#/components/schemas/TransacaoSaida"
+            },
+            "type": "array",
+            "title": "Pagamentos",
+            "description": "Pagamentos da fatura, sem os ignorados, do mais antigo."
           }
         },
         "type": "object",
@@ -1902,11 +2007,13 @@
           "valor",
           "valor_calculado",
           "valor_informado",
+          "valor_pago",
           "fechamento_calculado",
           "vencimento_calculado",
           "ajuste_fechamento",
           "ajuste_vencimento",
-          "transacoes"
+          "transacoes",
+          "pagamentos"
         ],
         "title": "FaturaDetalheSaida"
       },
@@ -1965,7 +2072,7 @@
           },
           "status": {
             "$ref": "#/components/schemas/StatusFatura",
-            "description": "Aberta antes do fechamento; fechada a partir dele."
+            "description": "Aberta antes do fechamento; depois dele, paga se os pagamentos cobrem o valor, senão fechada."
           },
           "valor": {
             "type": "string",
@@ -1991,6 +2098,12 @@
             ],
             "title": "Valor Informado",
             "description": "O total que o banco mostra."
+          },
+          "valor_pago": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor Pago",
+            "description": "Soma dos pagamentos ligados à fatura, com rascunhos e sem os ignorados."
           }
         },
         "type": "object",
@@ -2001,7 +2114,8 @@
           "status",
           "valor",
           "valor_calculado",
-          "valor_informado"
+          "valor_informado",
+          "valor_pago"
         ],
         "title": "FaturaResumo",
         "description": "Uma fatura: gravada ou, enquanto não recebeu transação nem foi editada,\ncalculada pela regra do cartão."
@@ -2119,6 +2233,35 @@
         ],
         "title": "LoginEntrada"
       },
+      "PagamentoEntrada": {
+        "properties": {
+          "conta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Id",
+            "description": "A corrente ou carteira de onde sai o dinheiro."
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor"
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data",
+            "description": "O dia em que o dinheiro sai da conta."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "conta_id",
+          "valor",
+          "data"
+        ],
+        "title": "PagamentoEntrada"
+      },
       "ParcelaSaida": {
         "properties": {
           "compra_parcelada_id": {
@@ -2202,7 +2345,8 @@
         "type": "string",
         "enum": [
           "aberta",
-          "fechada"
+          "fechada",
+          "paga"
         ],
         "title": "StatusFatura"
       },

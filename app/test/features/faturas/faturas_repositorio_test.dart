@@ -42,6 +42,7 @@ void main() {
     'status': 'aberta',
     'valor': '544.80',
     'valor_calculado': '544.80',
+    'valor_pago': '0.00',
     'valor_informado': informado,
   };
 
@@ -95,6 +96,7 @@ void main() {
             'fatura_id': 'f1',
           },
         ],
+        'pagamentos': [],
       },
     ));
 

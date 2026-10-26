@@ -52,12 +52,20 @@ class FaturaResumo(BaseModel):
     competencia: date = Field(description="Primeiro dia do mês do vencimento.")
     data_fechamento: date
     data_vencimento: date
-    status: StatusFatura = Field(description="Aberta antes do fechamento; fechada a partir dele.")
+    status: StatusFatura = Field(
+        description=(
+            "Aberta antes do fechamento; depois dele, paga se os pagamentos cobrem o "
+            "valor, senão fechada."
+        )
+    )
     valor: Dinheiro = Field(description="O maior entre o informado e o calculado.")
     valor_calculado: Dinheiro = Field(
         description="Compras menos estornos da fatura, com rascunhos e sem as ignoradas."
     )
     valor_informado: Dinheiro | None = Field(description="O total que o banco mostra.")
+    valor_pago: Dinheiro = Field(
+        description="Soma dos pagamentos ligados à fatura, com rascunhos e sem os ignorados."
+    )
 
 
 class CartaoSaida(BaseModel):
@@ -97,6 +105,14 @@ class AjusteEntrada(BaseModel):
     )
 
 
+class PagamentoEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    conta_id: uuid.UUID = Field(description="A corrente ou carteira de onde sai o dinheiro.")
+    valor: DinheiroPositivo
+    data: date = Field(description="O dia em que o dinheiro sai da conta.")
+
+
 class FeriadoSaida(BaseModel):
     data: date
     descricao: str
@@ -120,7 +136,12 @@ class FaturaDetalheSaida(FaturaResumo):
     ajuste_vencimento: AjusteDataSaida | None = Field(
         description="Por que o vencimento calculado não é o dia do cartão; nulo se é."
     )
-    transacoes: list[TransacaoSaida] = Field(description="Sem as ignoradas, das mais recentes.")
+    transacoes: list[TransacaoSaida] = Field(
+        description="As do cartão, sem as ignoradas, das mais recentes."
+    )
+    pagamentos: list[TransacaoSaida] = Field(
+        description="Pagamentos da fatura, sem os ignorados, do mais antigo."
+    )
 
 
 def lista_saida(lista: ListaFaturas) -> ListaFaturasSaida:
@@ -139,6 +160,7 @@ def detalhe_saida(detalhe: DetalheFatura) -> FaturaDetalheSaida:
         ajuste_fechamento=_ajuste_saida(detalhe.ajuste_fechamento),
         ajuste_vencimento=_ajuste_saida(detalhe.ajuste_vencimento),
         transacoes=[TransacaoSaida.model_validate(t) for t in detalhe.transacoes],
+        pagamentos=[TransacaoSaida.model_validate(t) for t in detalhe.pagamentos],
     )
 
 
@@ -160,4 +182,5 @@ def resumo_saida(resumo: ResumoFatura) -> FaturaResumo:
         valor=resumo.valor,
         valor_calculado=resumo.valor_calculado,
         valor_informado=resumo.valor_informado,
+        valor_pago=resumo.valor_pago,
     )

@@ -19,15 +19,17 @@ part 'fatura_detalhe_saida.g.dart';
 /// * [competencia] - Primeiro dia do mês do vencimento.
 /// * [dataFechamento] 
 /// * [dataVencimento] 
-/// * [status] - Aberta antes do fechamento; fechada a partir dele.
+/// * [status] - Aberta antes do fechamento; depois dele, paga se os pagamentos cobrem o valor, senão fechada.
 /// * [valor] - O maior entre o informado e o calculado.
 /// * [valorCalculado] - Compras menos estornos da fatura, com rascunhos e sem as ignoradas.
 /// * [valorInformado] - O total que o banco mostra.
+/// * [valorPago] - Soma dos pagamentos ligados à fatura, com rascunhos e sem os ignorados.
 /// * [fechamentoCalculado] - Pela regra do cartão, ignorando edições.
 /// * [vencimentoCalculado] - Pela regra do cartão, ignorando edições.
 /// * [ajusteFechamento] - Por que o fechamento calculado não é o dia do cartão; nulo se é.
 /// * [ajusteVencimento] - Por que o vencimento calculado não é o dia do cartão; nulo se é.
-/// * [transacoes] - Sem as ignoradas, das mais recentes.
+/// * [transacoes] - As do cartão, sem as ignoradas, das mais recentes.
+/// * [pagamentos] - Pagamentos da fatura, sem os ignorados, do mais antigo.
 @BuiltValue()
 abstract class FaturaDetalheSaida implements Built<FaturaDetalheSaida, FaturaDetalheSaidaBuilder> {
   /// Primeiro dia do mês do vencimento.
@@ -40,10 +42,10 @@ abstract class FaturaDetalheSaida implements Built<FaturaDetalheSaida, FaturaDet
   @BuiltValueField(wireName: r'data_vencimento')
   Date get dataVencimento;
 
-  /// Aberta antes do fechamento; fechada a partir dele.
+  /// Aberta antes do fechamento; depois dele, paga se os pagamentos cobrem o valor, senão fechada.
   @BuiltValueField(wireName: r'status')
   StatusFatura get status;
-  // enum statusEnum {  aberta,  fechada,  };
+  // enum statusEnum {  aberta,  fechada,  paga,  };
 
   /// O maior entre o informado e o calculado.
   @BuiltValueField(wireName: r'valor')
@@ -56,6 +58,10 @@ abstract class FaturaDetalheSaida implements Built<FaturaDetalheSaida, FaturaDet
   /// O total que o banco mostra.
   @BuiltValueField(wireName: r'valor_informado')
   String? get valorInformado;
+
+  /// Soma dos pagamentos ligados à fatura, com rascunhos e sem os ignorados.
+  @BuiltValueField(wireName: r'valor_pago')
+  String get valorPago;
 
   /// Pela regra do cartão, ignorando edições.
   @BuiltValueField(wireName: r'fechamento_calculado')
@@ -73,9 +79,13 @@ abstract class FaturaDetalheSaida implements Built<FaturaDetalheSaida, FaturaDet
   @BuiltValueField(wireName: r'ajuste_vencimento')
   AjusteDataSaida? get ajusteVencimento;
 
-  /// Sem as ignoradas, das mais recentes.
+  /// As do cartão, sem as ignoradas, das mais recentes.
   @BuiltValueField(wireName: r'transacoes')
   BuiltList<TransacaoSaida> get transacoes;
+
+  /// Pagamentos da fatura, sem os ignorados, do mais antigo.
+  @BuiltValueField(wireName: r'pagamentos')
+  BuiltList<TransacaoSaida> get pagamentos;
 
   FaturaDetalheSaida._();
 
@@ -135,6 +145,11 @@ class _$FaturaDetalheSaidaSerializer implements PrimitiveSerializer<FaturaDetalh
       object.valorInformado,
       specifiedType: const FullType.nullable(String),
     );
+    yield r'valor_pago';
+    yield serializers.serialize(
+      object.valorPago,
+      specifiedType: const FullType(String),
+    );
     yield r'fechamento_calculado';
     yield serializers.serialize(
       object.fechamentoCalculado,
@@ -158,6 +173,11 @@ class _$FaturaDetalheSaidaSerializer implements PrimitiveSerializer<FaturaDetalh
     yield r'transacoes';
     yield serializers.serialize(
       object.transacoes,
+      specifiedType: const FullType(BuiltList, [FullType(TransacaoSaida)]),
+    );
+    yield r'pagamentos';
+    yield serializers.serialize(
+      object.pagamentos,
       specifiedType: const FullType(BuiltList, [FullType(TransacaoSaida)]),
     );
   }
@@ -233,6 +253,13 @@ class _$FaturaDetalheSaidaSerializer implements PrimitiveSerializer<FaturaDetalh
           if (valueDes == null) continue;
           result.valorInformado = valueDes;
           break;
+        case r'valor_pago':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.valorPago = valueDes;
+          break;
         case r'fechamento_calculado':
           final valueDes = serializers.deserialize(
             value,
@@ -269,6 +296,13 @@ class _$FaturaDetalheSaidaSerializer implements PrimitiveSerializer<FaturaDetalh
             specifiedType: const FullType(BuiltList, [FullType(TransacaoSaida)]),
           ) as BuiltList<TransacaoSaida>;
           result.transacoes.replace(valueDes);
+          break;
+        case r'pagamentos':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(TransacaoSaida)]),
+          ) as BuiltList<TransacaoSaida>;
+          result.pagamentos.replace(valueDes);
           break;
         default:
           unhandled.add(key);
