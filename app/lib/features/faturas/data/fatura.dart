@@ -5,9 +5,9 @@ import '../../transacoes/data/transacao.dart';
 
 part 'fatura.freezed.dart';
 
-/// Aberta antes do fechamento; fechada a partir dele. "Paga" chega com o
-/// pagamento de fatura.
-enum StatusFatura { aberta, fechada }
+/// Aberta antes do fechamento; a partir dele, paga se os pagamentos cobrem o
+/// valor, senão fechada.
+enum StatusFatura { aberta, fechada, paga }
 
 /// Competência na URL da API: `2026-11`.
 String competenciaParaApi(DateTime competencia) =>
@@ -40,9 +40,18 @@ abstract class ResumoFatura with _$ResumoFatura {
 
     /// O total que o banco mostra; nulo enquanto não informado.
     Decimal? valorInformado,
+
+    /// Soma dos pagamentos ligados à fatura.
+    required Decimal valorPago,
   }) = _ResumoFatura;
 
   const ResumoFatura._();
+
+  /// O que falta pagar: valor menos o pago, nunca negativo.
+  Decimal get aPagar {
+    final falta = valor - valorPago;
+    return falta > Decimal.zero ? falta : Decimal.zero;
+  }
 
   /// Informado menos calculado: positivo = faltam lançamentos; negativo =
   /// lançado a mais. Nula sem valor informado ou quando os dois batem.
@@ -75,9 +84,23 @@ abstract class DetalheFatura with _$DetalheFatura {
     AjusteData? ajusteFechamento,
     AjusteData? ajusteVencimento,
 
-    /// Sem as ignoradas, das mais recentes para as mais antigas.
+    /// As do cartão, sem as ignoradas, das mais recentes para as mais antigas.
     required List<Transacao> transacoes,
+
+    /// Pagamentos da fatura (na conta que pagou), do mais antigo ao mais
+    /// recente.
+    required List<Transacao> pagamentos,
   }) = _DetalheFatura;
+}
+
+/// Pagamento de uma fatura: sai de [contaId] (corrente ou carteira) em [data].
+@freezed
+abstract class NovoPagamento with _$NovoPagamento {
+  const factory NovoPagamento({
+    required String contaId,
+    required Decimal valor,
+    required DateTime data,
+  }) = _NovoPagamento;
 }
 
 @freezed

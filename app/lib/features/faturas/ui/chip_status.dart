@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../app/tema.dart';
 import '../data/fatura.dart';
 
-/// Status da fatura: "Aberta" (tonal) ou "Fechada" (atenção). [grande] é o
-/// chip do detalhe, com ícone e "Fechada · a pagar".
+/// Status da fatura: "Aberta" (tonal), "Fechada" (atenção) ou "Paga"
+/// (sucesso). [grande] é o chip do detalhe, com ícone e "Fechada · a pagar".
 class ChipStatus extends StatelessWidget {
   const ChipStatus(this.status, {super.key, this.grande = false});
 
@@ -27,6 +27,12 @@ class ChipStatus extends StatelessWidget {
         Icons.lock_rounded,
         cores.ritmoAtencaoContainer,
         cores.ritmoAtencao,
+      ),
+      StatusFatura.paga => (
+        'Paga',
+        Icons.check_circle_rounded,
+        cores.ritmoOkContainer,
+        cores.ritmoOk,
       ),
     };
     final estilo =

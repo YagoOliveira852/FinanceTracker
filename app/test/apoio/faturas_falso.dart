@@ -17,6 +17,7 @@ final outubroExemplo = ResumoFatura(
   valor: Decimal.parse('1032.15'),
   valorCalculado: Decimal.parse('986.25'),
   valorInformado: Decimal.parse('1032.15'),
+  valorPago: Decimal.zero,
 );
 
 final novembroExemplo = ResumoFatura(
@@ -26,6 +27,7 @@ final novembroExemplo = ResumoFatura(
   status: StatusFatura.aberta,
   valor: Decimal.parse('544.80'),
   valorCalculado: Decimal.parse('544.80'),
+  valorPago: Decimal.zero,
 );
 
 final dezembroExemplo = ResumoFatura(
@@ -35,6 +37,7 @@ final dezembroExemplo = ResumoFatura(
   status: StatusFatura.aberta,
   valor: Decimal.parse('249.90'),
   valorCalculado: Decimal.parse('249.90'),
+  valorPago: Decimal.zero,
 );
 
 final listaExemplo = ListaFaturas(
@@ -70,6 +73,7 @@ DetalheFatura detalheExemplo(ResumoFatura resumo) {
             : null,
       ),
     ],
+    pagamentos: const [],
   );
 }
 
@@ -87,12 +91,17 @@ class FaturasRepositorioFalso implements FaturasRepositorio {
       >[];
   final ajustes = <({Decimal valorReal, String? descricao})>[];
   final obtidas = <DateTime>[];
+  final pagamentos =
+      <({String cartaoId, DateTime competencia, NovoPagamento dados})>[];
   ErroApi? erro;
+
+  /// O que `listar` devolve e de onde `obter` tira o resumo.
+  ListaFaturas lista = listaExemplo;
 
   @override
   Future<ListaFaturas> listar(String contaId) async {
     if (erro case final e?) throw e;
-    return listaExemplo;
+    return lista;
   }
 
   @override
@@ -100,7 +109,7 @@ class FaturasRepositorioFalso implements FaturasRepositorio {
     obtidas.add(competencia);
     if (erro case final e?) throw e;
     return detalheExemplo(
-      listaExemplo.emOrdem.firstWhere((f) => f.competencia == competencia),
+      lista.emOrdem.firstWhere((f) => f.competencia == competencia),
     );
   }
 
@@ -158,6 +167,39 @@ class FaturasRepositorioFalso implements FaturasRepositorio {
       competencia: resumo.competencia,
       dataFechamento: resumo.dataFechamento,
       dataVencimento: resumo.dataVencimento,
+    );
+  }
+
+  /// Soma o pagamento ao resumo; cobrindo o valor de uma fatura que não está
+  /// aberta, ela fica paga.
+  @override
+  Future<DetalheFatura> pagar(
+    String contaId,
+    DateTime competencia,
+    NovoPagamento dados,
+  ) async {
+    if (erro case final e?) throw e;
+    pagamentos.add((cartaoId: contaId, competencia: competencia, dados: dados));
+    final atual = await obter(contaId, competencia);
+    final pago = atual.resumo.valorPago + dados.valor;
+    final paga =
+        atual.resumo.status != StatusFatura.aberta &&
+        pago >= atual.resumo.valor;
+    return atual.copyWith(
+      resumo: atual.resumo.copyWith(
+        valorPago: pago,
+        status: paga ? StatusFatura.paga : atual.resumo.status,
+      ),
+      pagamentos: [
+        transacaoExemplo(
+          id: 'pagamento-${pagamentos.length}',
+          contaId: dados.contaId,
+          tipo: TipoTransacao.pagamentoFatura,
+          valor: dados.valor.toString(),
+          data: dados.data,
+          descricao: 'Pagamento de fatura · Cartão Exemplo',
+        ),
+      ],
     );
   }
 }

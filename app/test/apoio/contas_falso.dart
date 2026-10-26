@@ -37,6 +37,7 @@ ResumoFatura faturaExemplo({
   valor: Decimal.parse(valor),
   valorCalculado: Decimal.parse(valor),
   valorInformado: informado == null ? null : Decimal.parse(informado),
+  valorPago: Decimal.zero,
 );
 
 Conta cartaoExemplo({String id = 'k1', bool ativa = true}) => contaExemplo(
