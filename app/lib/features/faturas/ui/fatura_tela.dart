@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/tema.dart';
-import '../../../app/widgets/chip_opcao.dart';
 import '../../../app/widgets/estados.dart';
 import '../../../app/widgets/lista.dart';
 import '../../../core/formatacao/datas.dart';
@@ -16,6 +15,7 @@ import '../data/fatura.dart';
 import 'ajuste_folha.dart';
 import 'chip_status.dart';
 import 'faturas_tela.dart';
+import 'quadro_pagamento.dart';
 import 'textos.dart';
 
 /// Rota do Editar fatura; recebe o [DetalheFatura] em `extra` e devolve o
@@ -23,8 +23,14 @@ import 'textos.dart';
 String rotaEditarFatura(String contaId, DateTime competencia) =>
     '${rotaFatura(contaId, competencia)}/editar';
 
-/// Detalhe de uma fatura: valor, datas (com o porquê do ajuste para dia
-/// útil) e as compras. As setas andam pelas faturas da lista.
+/// Rota do pagamento da fatura (o Lançamento já em Pagamento de fatura);
+/// devolve `true` quando salvou.
+String rotaPagarFatura(String contaId, DateTime competencia) =>
+    '${rotaFatura(contaId, competencia)}/pagar';
+
+/// Detalhe de uma fatura: valor, pagamentos, datas (com o porquê do ajuste
+/// para dia útil) e as compras. As setas andam pelas faturas da lista; a
+/// fechada a pagar tem "Registrar pagamento".
 class FaturaTela extends StatefulWidget {
   const FaturaTela({
     super.key,
@@ -65,6 +71,17 @@ class _FaturaTelaState extends State<FaturaTela> {
     if (salva != null && mounted) context.read<FaturaCubit>().atualizar(salva);
   }
 
+  Future<void> _pagar() async {
+    final contas = context.read<ContasCubit>();
+    final pagou = await context.push<bool>(
+      rotaPagarFatura(widget.contaId, _competencia),
+    );
+    if (pagou != true || !mounted) return;
+    // O pagamento muda o saldo da conta que pagou e o status da fatura.
+    await context.read<FaturaCubit>().carregar(_competencia);
+    await contas.carregar();
+  }
+
   @override
   Widget build(BuildContext context) {
     final nome = switch (context.watch<ContasCubit>().state) {
@@ -81,6 +98,16 @@ class _FaturaTelaState extends State<FaturaTela> {
     final proxima = indice > 0 ? widget.ordem[indice - 1] : null;
 
     return Scaffold(
+      floatingActionButton: switch (estado) {
+        FaturaCarregada(:final detalhe)
+            when detalhe.resumo.status == StatusFatura.fechada =>
+          FloatingActionButton.extended(
+            onPressed: _pagar,
+            icon: const Icon(Icons.payments_rounded),
+            label: const Text('Registrar pagamento'),
+          ),
+        _ => null,
+      },
       appBar: AppBar(
         titleSpacing: Espaco.x1,
         title: Text(nome ?? 'Cartão'),
@@ -170,15 +197,10 @@ class _Detalhe extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resumo = detalhe.resumo;
-    final fechada = resumo.status == StatusFatura.fechada;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        Espaco.x4,
-        Espaco.x2,
-        Espaco.x4,
-        Espaco.x6,
-      ),
+      // Embaixo, espaço para o botão "Registrar pagamento" não cobrir a
+      // última compra.
+      padding: const EdgeInsets.fromLTRB(Espaco.x4, Espaco.x2, Espaco.x4, 96),
       children: [
         _CardResumo(detalhe),
         const SizedBox(height: Espaco.x4),
@@ -200,23 +222,6 @@ class _Detalhe extends StatelessWidget {
                 ItemTransacao(transacao: t, subtitulo: formatarDiaMes(t.data)),
             ],
           ),
-        if (fechada) ...[
-          const SizedBox(height: Espaco.x6),
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: Espaco.x2,
-            runSpacing: Espaco.x2,
-            children: [
-              OutlinedButton.icon(
-                onPressed: null,
-                icon: const Icon(Icons.payments_rounded),
-                label: const Text('Registrar pagamento'),
-              ),
-              const SeloEmBreve(),
-            ],
-          ),
-        ],
       ],
     );
   }
@@ -230,11 +235,26 @@ class _CardResumo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resumo = detalhe.resumo;
-    final fechada = resumo.status == StatusFatura.fechada;
+    final aberta = resumo.status == StatusFatura.aberta;
+    final paga = resumo.status == StatusFatura.paga;
+    // Fechada com parte paga: o número grande é o que falta.
+    final parcial = !aberta && !paga && resumo.valorPago > Decimal.zero;
     final textos = context.textos;
     final variante = context.esquema.onSurfaceVariant;
     final informado = resumo.valorInformado;
     final diferenca = resumo.diferenca;
+    final rotuloPagamento = switch (resumo.status) {
+      StatusFatura.paga => 'Paga em',
+      StatusFatura.aberta => 'Pagamento adiantado em',
+      StatusFatura.fechada => 'Pagamento em',
+    };
+    final nomes = switch (context.watch<ContasCubit>().state) {
+      ContasCarregado(:final resumo) => {
+        for (final c in resumo.contas)
+          c.id: c.instituicao == null ? c.nome : '${c.nome} · ${c.instituicao}',
+      },
+      _ => const <String, String>{},
+    };
     final explicacoes = [
       ?_explicacao(
         'Fechamento',
@@ -259,16 +279,28 @@ class _CardResumo extends StatelessWidget {
             ChipStatus(resumo.status, grande: true),
             const SizedBox(height: Espaco.x2),
             Text(
-              fechada ? 'Valor da fatura' : 'Total até agora',
+              aberta
+                  ? 'Total até agora'
+                  : parcial
+                  ? 'Falta pagar'
+                  : 'Valor da fatura',
               style: textos.bodySmall,
             ),
             Text(
-              formatarDinheiro(resumo.valor),
+              formatarDinheiro(parcial ? resumo.aPagar : resumo.valor),
               style: textos.displaySmall?.copyWith(
                 fontFeatures: algarismosTabulares,
               ),
             ),
-            if (informado == null)
+            if (parcial)
+              Text(
+                'De ${formatarDinheiro(resumo.valor)} da fatura. Pagando o '
+                'restante, ela fica paga.',
+                style: textos.bodyMedium?.copyWith(color: variante),
+              )
+            else if (paga && informado != null && diferenca == null)
+              const _ConfereComBanco()
+            else if (informado == null)
               Text(
                 'Soma das compras lançadas. O banco ainda não informou o '
                 'valor desta fatura.',
@@ -283,6 +315,22 @@ class _CardResumo extends StatelessWidget {
               const SizedBox(height: Espaco.x2),
               _AvisoDiferenca(detalhe, diferenca),
             ],
+            if (aberta && resumo.valorPago > Decimal.zero) ...[
+              const SizedBox(height: Espaco.x1),
+              Text(
+                'Falta pagar ${formatarDinheiro(resumo.aPagar)} até agora. '
+                'Compras novas ainda entram nesta fatura.',
+                style: textos.bodyMedium?.copyWith(color: variante),
+              ),
+            ],
+            for (final pagamento in detalhe.pagamentos) ...[
+              const SizedBox(height: Espaco.x2),
+              QuadroPagamento(
+                pagamento,
+                rotulo: rotuloPagamento,
+                nomeDaConta: nomes[pagamento.contaId] ?? '',
+              ),
+            ],
             const SizedBox(height: Espaco.x3),
             const Divider(height: 1),
             const SizedBox(height: Espaco.x3),
@@ -290,11 +338,16 @@ class _CardResumo extends StatelessWidget {
               children: [
                 Expanded(
                   child: _Data(
-                    fechada ? 'Fechou' : 'Fecha',
+                    aberta ? 'Fecha' : 'Fechou',
                     resumo.dataFechamento,
                   ),
                 ),
-                Expanded(child: _Data('Vence', resumo.dataVencimento)),
+                Expanded(
+                  child: _Data(
+                    paga ? 'Venceu' : 'Vence',
+                    resumo.dataVencimento,
+                  ),
+                ),
               ],
             ),
             for (final texto in explicacoes) ...[
@@ -318,6 +371,30 @@ class _CardResumo extends StatelessWidget {
     if (ajuste == null || efetiva != calculada) return null;
     final texto = explicarAjuste(ajuste);
     return '$rotulo: ${texto[0].toLowerCase()}${texto.substring(1)}';
+  }
+}
+
+/// Fatura paga cujo calculado bate com o informado pelo banco.
+class _ConfereComBanco extends StatelessWidget {
+  const _ConfereComBanco();
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = context.textos;
+    return Row(
+      children: [
+        Icon(Icons.check_rounded, size: 18, color: context.cores.ritmoOk),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'Confere com o valor informado pelo banco.',
+            style: textos.bodyMedium?.copyWith(
+              color: context.esquema.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

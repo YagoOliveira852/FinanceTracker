@@ -73,7 +73,18 @@ DetalheFatura detalheExemplo(ResumoFatura resumo) {
             : null,
       ),
     ],
-    pagamentos: const [],
+    // Com valor pago, um pagamento só, da conta principal, no vencimento.
+    pagamentos: [
+      if (resumo.valorPago > Decimal.zero)
+        transacaoExemplo(
+          id: 'pagamento-${resumo.competencia.month}',
+          contaId: 'c1',
+          tipo: TipoTransacao.pagamentoFatura,
+          valor: resumo.valorPago.toString(),
+          data: resumo.dataVencimento,
+          descricao: 'Pagamento de fatura · Cartão Exemplo',
+        ),
+    ],
   );
 }
 

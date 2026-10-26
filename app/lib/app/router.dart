@@ -29,6 +29,8 @@ import '../features/revisao/ui/revisao_tela.dart';
 import '../features/transacoes/cubit/lancamento_cubit.dart';
 import '../features/transacoes/cubit/transacoes_cubit.dart';
 import '../features/transacoes/cubit/transferencia_cubit.dart';
+import '../features/faturas/cubit/pagamento_cubit.dart';
+import '../features/faturas/ui/formulario_pagamento.dart';
 import '../features/transacoes/data/transacoes_repositorio.dart';
 import '../features/transacoes/ui/lancamento_tela.dart';
 import '../features/transacoes/ui/transacoes_tela.dart';
@@ -113,6 +115,11 @@ GoRouter criarRouter(SessaoCubit sessao) {
                             context.read<TransacoesRepositorio>(),
                           ),
                         ),
+                        BlocProvider(
+                          create: (context) => PagamentoCubit(
+                            context.read<FaturasRepositorio>(),
+                          ),
+                        ),
                       ],
                       child: LancamentoTela(
                         contaInicial: state.extra as String?,
@@ -136,9 +143,18 @@ GoRouter criarRouter(SessaoCubit sessao) {
                       GoRoute(
                         path: 'nova',
                         parentNavigatorKey: chaveRaiz,
-                        builder: (context, _) => BlocProvider(
-                          create: (context) =>
-                              NovaContaCubit(context.read<ContasRepositorio>()),
+                        // `extra`: o tipo já escolhido ("Cadastrar cartão" no
+                        // pagamento de fatura).
+                        builder: (context, state) => BlocProvider(
+                          create: (context) {
+                            final cubit = NovaContaCubit(
+                              context.read<ContasRepositorio>(),
+                            );
+                            if (state.extra case final TipoConta tipo) {
+                              cubit.escolherTipo(tipo);
+                            }
+                            return cubit;
+                          },
                           child: const NovaContaTela(),
                         ),
                       ),
@@ -188,6 +204,36 @@ GoRouter criarRouter(SessaoCubit sessao) {
                               );
                             },
                             routes: [
+                              GoRoute(
+                                path: 'pagar',
+                                parentNavigatorKey: chaveRaiz,
+                                builder: (context, state) => MultiBlocProvider(
+                                  providers: [
+                                    BlocProvider(
+                                      create: (context) => LancamentoCubit(
+                                        context.read<TransacoesRepositorio>(),
+                                        context.read<FaturasRepositorio>(),
+                                      ),
+                                    ),
+                                    BlocProvider(
+                                      create: (context) => TransferenciaCubit(
+                                        context.read<TransacoesRepositorio>(),
+                                      ),
+                                    ),
+                                    BlocProvider(
+                                      create: (context) => PagamentoCubit(
+                                        context.read<FaturasRepositorio>(),
+                                      ),
+                                    ),
+                                  ],
+                                  child: LancamentoTela(
+                                    pagamentoInicial: PagamentoInicial(
+                                      cartaoId: state.pathParameters['id']!,
+                                      competencia: _competencia(state),
+                                    ),
+                                  ),
+                                ),
+                              ),
                               GoRoute(
                                 path: 'editar',
                                 parentNavigatorKey: chaveRaiz,
