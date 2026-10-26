@@ -823,6 +823,20 @@ void main() {
       expect(find.text('Fechou'), findsOneWidget);
     });
 
+    testWidgets('trocar de tipo e voltar mantém valor e data da fatura', (
+      tester,
+    ) async {
+      await abrirPagamento(tester, contas: [contaExemplo(), cartaoExemplo()]);
+
+      await tester.tap(find.text('Despesa'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pagamento de fatura'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(TextField, '1.032,15'), findsOneWidget);
+      expect(find.text('13/10/2026'), findsOneWidget);
+    });
+
     testWidgets('sem cartão ativo: aviso, cadastrar e salvar desabilitado', (
       tester,
     ) async {

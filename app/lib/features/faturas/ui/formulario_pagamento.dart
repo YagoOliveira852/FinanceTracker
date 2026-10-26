@@ -43,6 +43,16 @@ class _FormularioPagamentoState extends State<FormularioPagamento> {
   var _data = somenteData(DateTime.now());
 
   @override
+  void initState() {
+    super.initState();
+    // Voltando a este tipo depois de trocar de chip, o cubit já tem a fatura
+    // (o listener não dispara de novo): valor e data voltam ao padrão dela.
+    if (context.read<PagamentoCubit>().state.fatura case final fatura?) {
+      _preencher(fatura);
+    }
+  }
+
+  @override
   void dispose() {
     _valor.dispose();
     super.dispose();
@@ -72,7 +82,7 @@ class _FormularioPagamentoState extends State<FormularioPagamento> {
   void _preencher(ResumoFatura fatura) {
     final aPagar = fatura.aPagar;
     _valor.text = aPagar > Decimal.zero ? dinheiroParaCampo(aPagar) : '';
-    setState(() => _data = dataPadraoDoPagamento(fatura, DateTime.now()));
+    _data = dataPadraoDoPagamento(fatura, DateTime.now());
   }
 
   @override
@@ -114,7 +124,7 @@ class _FormularioPagamentoState extends State<FormularioPagamento> {
         if (estado.salvo != null) {
           context.pop(true);
         } else if (estado.fatura case final fatura?) {
-          _preencher(fatura);
+          setState(() => _preencher(fatura));
         }
       },
       builder: (context, estado) {
@@ -296,10 +306,16 @@ class _SemCartao extends StatelessWidget {
                     foregroundColor: cores.ritmoAtencao,
                     side: BorderSide(color: cores.ritmoAtencao),
                   ),
-                  onPressed: () => context.push(
-                    rotaNovaConta,
-                    extra: TipoConta.cartaoCredito,
-                  ),
+                  onPressed: () async {
+                    final contas = context.read<ContasCubit>();
+                    final criou = await context.push<bool>(
+                      rotaNovaConta,
+                      extra: TipoConta.cartaoCredito,
+                    );
+                    // O cartão novo entra no formulário (que escolhe o
+                    // primeiro cartão quando as contas recarregam).
+                    if (criou == true) await contas.carregar();
+                  },
                   child: const Text('Cadastrar cartão'),
                 ),
               ],
