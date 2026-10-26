@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../apoio/auth_falso.dart';
+import '../apoio/categorias_falso.dart';
 import '../apoio/contas_falso.dart';
 import '../apoio/faturas_falso.dart';
 import '../apoio/transacoes_falso.dart';
@@ -19,6 +20,7 @@ Future<Dependencias> _abrir(WidgetTester tester, {bool sessao = true}) async {
     contas: ContasRepositorioFalso(contas: [contaExemplo()]),
     transacoes: TransacoesRepositorioFalso(),
     faturas: FaturasRepositorioFalso(),
+    categorias: CategoriasRepositorioFalso(),
   );
   await dependencias.sessao.iniciar();
   await tester.pumpWidget(FinancasApp(dependencias));
@@ -68,7 +70,7 @@ void main() {
     await tester.tap(find.text('Mais'));
     await tester.pumpAndSettle();
     expect(find.text('Open Finance'), findsOneWidget);
-    expect(find.text('Em breve'), findsNWidgets(7));
+    expect(find.text('Em breve'), findsNWidgets(6));
 
     await tester.tap(find.text('Contas'));
     await tester.pumpAndSettle();
@@ -133,6 +135,32 @@ void main() {
     expect(find.text('Nova transação'), findsOneWidget);
     expect(find.text('Cadastrar cartão'), findsNothing);
     expect(find.text('Cartão Exemplo · Banco Exemplo'), findsOneWidget);
+  });
+
+  testWidgets('Mais → Categorias e regras: editar e voltar à lista nova', (
+    tester,
+  ) async {
+    await _abrir(tester);
+
+    await tester.tap(find.text('Mais'));
+    await tester.pumpAndSettle();
+    // O item fica atrás da barra de navegação: rola até ele antes do toque.
+    await tester.drag(find.text('Contas'), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Categorias e regras'));
+    await tester.pumpAndSettle();
+    expect(find.text('Essencial'), findsOneWidget);
+
+    await tester.tap(find.text('Mercado'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar categoria'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Nome'), 'Feira');
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Categorias e regras'), findsOneWidget);
+    expect(find.text('Feira'), findsOneWidget);
+    expect(find.text('Mercado'), findsNothing);
   });
 
   testWidgets('aba Revisão mostra em breve', (tester) async {

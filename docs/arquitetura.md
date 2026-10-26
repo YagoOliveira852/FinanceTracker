@@ -469,6 +469,7 @@ FinanceTracker/
             ├── transacoes/
             ├── contas/
             ├── faturas/
+            ├── categorias/       # categorias e regras (Mais)
             ├── importacao/
             ├── investimentos/
             └── configuracoes/

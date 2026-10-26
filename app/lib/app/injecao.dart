@@ -1,6 +1,7 @@
 import '../core/api/cliente_api.dart';
 import '../core/api/interceptor_auth.dart';
 import '../core/auth/armazenamento_tokens.dart';
+import '../features/categorias/data/categorias_repositorio.dart';
 import '../features/contas/data/contas_repositorio.dart';
 import '../features/faturas/data/faturas_repositorio.dart';
 import '../features/login/cubit/sessao_cubit.dart';
@@ -18,6 +19,7 @@ class Dependencias {
     required this.contas,
     required this.transacoes,
     required this.faturas,
+    required this.categorias,
   }) : sessao = SessaoCubit(auth);
 
   /// Dependências reais, falando com a API em [baseUrl].
@@ -40,6 +42,7 @@ class Dependencias {
       contas: ContasRepositorioApi(cliente),
       transacoes: TransacoesRepositorioApi(cliente),
       faturas: FaturasRepositorioApi(cliente),
+      categorias: CategoriasRepositorioApi(cliente),
     );
   }
 
@@ -47,5 +50,6 @@ class Dependencias {
   final ContasRepositorio contas;
   final TransacoesRepositorio transacoes;
   final FaturasRepositorio faturas;
+  final CategoriasRepositorio categorias;
   final SessaoCubit sessao;
 }
