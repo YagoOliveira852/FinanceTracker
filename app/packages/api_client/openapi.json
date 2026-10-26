@@ -1354,6 +1354,180 @@
         }
       }
     },
+    "/categorias": {
+      "get": {
+        "tags": [
+          "categorias"
+        ],
+        "summary": "Listar",
+        "description": "Todas as categorias, ativas ou não, por grupo e nome.",
+        "operationId": "categorias_listar",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoriaSaida"
+                  },
+                  "type": "array",
+                  "title": "Response Categorias Listar"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "categorias"
+        ],
+        "summary": "Criar",
+        "operationId": "categorias_criar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoriaEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoriaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/categorias/{categoria_id}": {
+      "put": {
+        "tags": [
+          "categorias"
+        ],
+        "summary": "Editar",
+        "description": "Renomeia, troca o grupo ou desativa/reativa. Desativada, sai das opções\ne as regras dela param de sugerir; as transações antigas continuam com ela.",
+        "operationId": "categorias_editar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "categoria_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Categoria Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoriaEdicao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoriaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -1609,6 +1783,118 @@
         ],
         "title": "CartaoSaida"
       },
+      "CategoriaEdicao": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Nome",
+            "description": "Único, sem diferenciar maiúsculas."
+          },
+          "grupo": {
+            "$ref": "#/components/schemas/GrupoCategoria",
+            "description": "Essencial e variável são gasto (despesa e estorno); renda vale para receita; investimento, para aporte e resgate."
+          },
+          "ativa": {
+            "type": "boolean",
+            "title": "Ativa"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nome",
+          "grupo",
+          "ativa"
+        ],
+        "title": "CategoriaEdicao",
+        "description": "Os mesmos campos do cadastro, mais `ativa` (desativar ou reativar).\n\nO grupo só troca de natureza (gasto, renda, investimento) enquanto nenhuma\ntransação usa a categoria."
+      },
+      "CategoriaEntrada": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Nome",
+            "description": "Único, sem diferenciar maiúsculas."
+          },
+          "grupo": {
+            "$ref": "#/components/schemas/GrupoCategoria",
+            "description": "Essencial e variável são gasto (despesa e estorno); renda vale para receita; investimento, para aporte e resgate."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nome",
+          "grupo"
+        ],
+        "title": "CategoriaEntrada"
+      },
+      "CategoriaResumo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "grupo": {
+            "$ref": "#/components/schemas/GrupoCategoria"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "grupo"
+        ],
+        "title": "CategoriaResumo"
+      },
+      "CategoriaSaida": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "grupo": {
+            "$ref": "#/components/schemas/GrupoCategoria"
+          },
+          "ativa": {
+            "type": "boolean",
+            "title": "Ativa",
+            "description": "Desativada sai das opções; as regras dela não sugerem."
+          },
+          "qtd_regras": {
+            "type": "integer",
+            "title": "Qtd Regras"
+          },
+          "qtd_transacoes": {
+            "type": "integer",
+            "title": "Qtd Transacoes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "grupo",
+          "ativa",
+          "qtd_regras",
+          "qtd_transacoes"
+        ],
+        "title": "CategoriaSaida"
+      },
       "CompraParceladaEntrada": {
         "properties": {
           "conta_id": {
@@ -1638,6 +1924,19 @@
             "maxLength": 200,
             "minLength": 1,
             "title": "Descricao"
+          },
+          "categoria_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categoria Id",
+            "description": "De gasto e ativa; vale para todas as parcelas."
           }
         },
         "additionalProperties": false,
@@ -2149,6 +2448,16 @@
         ],
         "title": "FonteTransacao"
       },
+      "GrupoCategoria": {
+        "type": "string",
+        "enum": [
+          "essencial",
+          "variavel",
+          "renda",
+          "investimento"
+        ],
+        "title": "GrupoCategoria"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2445,6 +2754,19 @@
             "maxLength": 200,
             "minLength": 1,
             "title": "Descricao"
+          },
+          "categoria_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categoria Id",
+            "description": "Ativa e do grupo que combina com o tipo; não cria regra."
           }
         },
         "additionalProperties": false,
@@ -2491,6 +2813,17 @@
           "descricao_original": {
             "type": "string",
             "title": "Descricao Original"
+          },
+          "categoria": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoriaResumo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Confirmada na revisão ou escolhida no lançamento; a sugestão não vem aqui."
           },
           "status": {
             "$ref": "#/components/schemas/StatusTransacao"
@@ -2543,6 +2876,7 @@
           "data",
           "descricao",
           "descricao_original",
+          "categoria",
           "status",
           "fonte",
           "fatura_id",

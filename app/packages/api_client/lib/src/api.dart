@@ -11,6 +11,7 @@ import 'package:api_client/src/auth/bearer_auth.dart';
 import 'package:api_client/src/auth/oauth.dart';
 import 'package:api_client/src/api/auth_api.dart';
 import 'package:api_client/src/api/cartoes_api.dart';
+import 'package:api_client/src/api/categorias_api.dart';
 import 'package:api_client/src/api/contas_api.dart';
 import 'package:api_client/src/api/faturas_api.dart';
 import 'package:api_client/src/api/saude_api.dart';
@@ -120,6 +121,12 @@ class ApiClient {
   /// by doing that all interceptors will not be executed
   CartoesApi getCartoesApi() {
     return CartoesApi(dio, serializers);
+  }
+
+  /// Get CategoriasApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  CategoriasApi getCategoriasApi() {
+    return CategoriasApi(dio, serializers);
   }
 
   /// Get ContasApi instance, base route and serializer can be overridden by a given but be careful,

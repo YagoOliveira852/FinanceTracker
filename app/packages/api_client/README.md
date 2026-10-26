@@ -70,6 +70,9 @@ Class | Method | HTTP request | Description
 [*CartoesApi*](doc/CartoesApi.md) | [**criar**](doc/CartoesApi.md#criar) | **POST** /cartoes | Criar
 [*CartoesApi*](doc/CartoesApi.md) | [**editar**](doc/CartoesApi.md#editar) | **PUT** /cartoes/{conta_id} | Editar
 [*CartoesApi*](doc/CartoesApi.md) | [**previa**](doc/CartoesApi.md#previa) | **GET** /cartoes/previa | Previa
+[*CategoriasApi*](doc/CategoriasApi.md) | [**criar**](doc/CategoriasApi.md#criar) | **POST** /categorias | Criar
+[*CategoriasApi*](doc/CategoriasApi.md) | [**editar**](doc/CategoriasApi.md#editar) | **PUT** /categorias/{categoria_id} | Editar
+[*CategoriasApi*](doc/CategoriasApi.md) | [**listar**](doc/CategoriasApi.md#listar) | **GET** /categorias | Listar
 [*ContasApi*](doc/ContasApi.md) | [**criar**](doc/ContasApi.md#criar) | **POST** /contas | Criar
 [*ContasApi*](doc/ContasApi.md) | [**listar**](doc/ContasApi.md#listar) | **GET** /contas | Listar
 [*ContasApi*](doc/ContasApi.md) | [**obter**](doc/ContasApi.md#obter) | **GET** /contas/{conta_id} | Obter
@@ -94,6 +97,10 @@ Class | Method | HTTP request | Description
  - [CartaoEdicao](doc/CartaoEdicao.md)
  - [CartaoEntrada](doc/CartaoEntrada.md)
  - [CartaoSaida](doc/CartaoSaida.md)
+ - [CategoriaEdicao](doc/CategoriaEdicao.md)
+ - [CategoriaEntrada](doc/CategoriaEntrada.md)
+ - [CategoriaResumo](doc/CategoriaResumo.md)
+ - [CategoriaSaida](doc/CategoriaSaida.md)
  - [CompraParceladaEntrada](doc/CompraParceladaEntrada.md)
  - [CompraParceladaSaida](doc/CompraParceladaSaida.md)
  - [ContaEntrada](doc/ContaEntrada.md)
@@ -106,6 +113,7 @@ Class | Method | HTTP request | Description
  - [FaturaResumo](doc/FaturaResumo.md)
  - [FeriadoSaida](doc/FeriadoSaida.md)
  - [FonteTransacao](doc/FonteTransacao.md)
+ - [GrupoCategoria](doc/GrupoCategoria.md)
  - [HTTPValidationError](doc/HTTPValidationError.md)
  - [InstituicaoSaida](doc/InstituicaoSaida.md)
  - [ListaFaturasSaida](doc/ListaFaturasSaida.md)

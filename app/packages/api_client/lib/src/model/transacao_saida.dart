@@ -7,6 +7,7 @@ import 'package:api_client/src/model/transferencia_par_saida.dart';
 import 'package:api_client/src/model/status_transacao.dart';
 import 'package:api_client/src/model/tipo_transacao.dart';
 import 'package:api_client/src/model/parcela_saida.dart';
+import 'package:api_client/src/model/categoria_resumo.dart';
 import 'package:api_client/src/model/fonte_transacao.dart';
 import 'package:api_client/src/model/date.dart';
 import 'package:built_value/built_value.dart';
@@ -24,6 +25,7 @@ part 'transacao_saida.g.dart';
 /// * [data] 
 /// * [descricao] 
 /// * [descricaoOriginal] 
+/// * [categoria] - Confirmada na revisão ou escolhida no lançamento; a sugestão não vem aqui.
 /// * [status] 
 /// * [fonte] 
 /// * [faturaId] - Fatura da transação, se a conta é cartão.
@@ -52,6 +54,10 @@ abstract class TransacaoSaida implements Built<TransacaoSaida, TransacaoSaidaBui
 
   @BuiltValueField(wireName: r'descricao_original')
   String get descricaoOriginal;
+
+  /// Confirmada na revisão ou escolhida no lançamento; a sugestão não vem aqui.
+  @BuiltValueField(wireName: r'categoria')
+  CategoriaResumo? get categoria;
 
   @BuiltValueField(wireName: r'status')
   StatusTransacao get status;
@@ -130,6 +136,11 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
     yield serializers.serialize(
       object.descricaoOriginal,
       specifiedType: const FullType(String),
+    );
+    yield r'categoria';
+    yield object.categoria == null ? null : serializers.serialize(
+      object.categoria,
+      specifiedType: const FullType.nullable(CategoriaResumo),
     );
     yield r'status';
     yield serializers.serialize(
@@ -227,6 +238,14 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
             specifiedType: const FullType(String),
           ) as String;
           result.descricaoOriginal = valueDes;
+          break;
+        case r'categoria':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(CategoriaResumo),
+          ) as CategoriaResumo?;
+          if (valueDes == null) continue;
+          result.categoria.replace(valueDes);
           break;
         case r'status':
           final valueDes = serializers.deserialize(

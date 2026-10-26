@@ -19,6 +19,10 @@ import 'package:api_client/src/model/ajuste_entrada.dart';
 import 'package:api_client/src/model/cartao_edicao.dart';
 import 'package:api_client/src/model/cartao_entrada.dart';
 import 'package:api_client/src/model/cartao_saida.dart';
+import 'package:api_client/src/model/categoria_edicao.dart';
+import 'package:api_client/src/model/categoria_entrada.dart';
+import 'package:api_client/src/model/categoria_resumo.dart';
+import 'package:api_client/src/model/categoria_saida.dart';
 import 'package:api_client/src/model/compra_parcelada_entrada.dart';
 import 'package:api_client/src/model/compra_parcelada_saida.dart';
 import 'package:api_client/src/model/conta_entrada.dart';
@@ -31,6 +35,7 @@ import 'package:api_client/src/model/fatura_edicao.dart';
 import 'package:api_client/src/model/fatura_resumo.dart';
 import 'package:api_client/src/model/feriado_saida.dart';
 import 'package:api_client/src/model/fonte_transacao.dart';
+import 'package:api_client/src/model/grupo_categoria.dart';
 import 'package:api_client/src/model/http_validation_error.dart';
 import 'package:api_client/src/model/instituicao_saida.dart';
 import 'package:api_client/src/model/lista_faturas_saida.dart';
@@ -62,6 +67,10 @@ part 'serializers.g.dart';
   CartaoEdicao,
   CartaoEntrada,
   CartaoSaida,
+  CategoriaEdicao,
+  CategoriaEntrada,
+  CategoriaResumo,
+  CategoriaSaida,
   CompraParceladaEntrada,
   CompraParceladaSaida,
   ContaEntrada,
@@ -74,6 +83,7 @@ part 'serializers.g.dart';
   FaturaResumo,
   FeriadoSaida,
   FonteTransacao,
+  GrupoCategoria,
   HTTPValidationError,
   InstituicaoSaida,
   ListaFaturasSaida,
@@ -109,6 +119,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(LocationInner)]),
         () => ListBuilder<LocationInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(CategoriaSaida)]),
+        () => ListBuilder<CategoriaSaida>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ContaSaida)]),
