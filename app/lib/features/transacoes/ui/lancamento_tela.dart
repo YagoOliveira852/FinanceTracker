@@ -9,6 +9,8 @@ import '../../../app/widgets/campos.dart';
 import '../../../app/widgets/chip_opcao.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../../core/formatacao/dinheiro.dart';
+import '../../categorias/cubit/categorias_cubit.dart';
+import '../../categorias/data/categoria.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
 import '../../faturas/data/fatura.dart';
@@ -24,8 +26,8 @@ const _maximoDeParcelas = 24;
 /// Lançamento manual: despesa ou receita (despesa num cartão é uma compra, à
 /// vista ou parcelada, e mostra em que fatura entra), transferência entre
 /// contas próprias e pagamento de fatura, cada um com o seu formulário.
-/// Categoria aparece desabilitada ("em breve"). Fecha devolvendo `true`
-/// quando salvou.
+/// Categoria é opcional e só oferece as ativas do grupo do tipo. Fecha
+/// devolvendo `true` quando salvou.
 class LancamentoTela extends StatefulWidget {
   const LancamentoTela({super.key, this.contaInicial, this.pagamentoInicial});
 
@@ -50,6 +52,9 @@ class _LancamentoTelaState extends State<LancamentoTela> {
 
   /// Escolha do campo Parcelas; só vale com cartão (ver [_parcelasDa]).
   var _parcelas = 1;
+
+  /// Escolha do campo Categoria; só vale se está entre as opções do tipo.
+  String? _categoriaEscolhida;
 
   @override
   void initState() {
@@ -80,7 +85,14 @@ class _LancamentoTelaState extends State<LancamentoTela> {
   int _parcelasDa(Conta? conta) =>
       conta?.tipo == TipoConta.cartaoCredito ? _parcelas : 1;
 
-  void _salvar(List<Conta> contas) {
+  /// A categoria escolhida, se ela é uma das [opcoes] (trocar de despesa
+  /// para receita descarta a escolha).
+  String? _categoriaSelecionada(List<Categoria> opcoes) =>
+      opcoes.any((c) => c.id == _categoriaEscolhida)
+      ? _categoriaEscolhida
+      : null;
+
+  void _salvar(List<Conta> contas, List<Categoria> categorias) {
     final conta = _contaSelecionada(contas);
     context.read<LancamentoCubit>().salvar(
       contaId: conta?.id,
@@ -88,6 +100,7 @@ class _LancamentoTelaState extends State<LancamentoTela> {
       data: _data,
       descricao: _descricao.text,
       parcelas: _parcelasDa(conta),
+      categoriaId: _categoriaSelecionada(categorias),
     );
   }
 
@@ -128,6 +141,17 @@ class _LancamentoTelaState extends State<LancamentoTela> {
       ContasCarregado() when contas.isEmpty =>
         'Cadastre uma conta em Mais → Contas.',
       ContasCarregado() => null,
+    };
+    final estadoCategorias = context.watch<CategoriasCubit>().state;
+    final categorias = switch (estadoCategorias) {
+      CategoriasCarregado(:final categorias) =>
+        categorias.where((c) => c.opcaoPara(tipo)).toList(),
+      _ => const <Categoria>[],
+    };
+    final ajudaCategoria = switch (estadoCategorias) {
+      CategoriasCarregando() => 'Carregando as categorias…',
+      CategoriasErro(:final mensagem) => mensagem,
+      CategoriasCarregado() => null,
     };
     final contaSelecionada = _contaSelecionada(contas);
     final noCartao = contaSelecionada?.tipo == TipoConta.cartaoCredito;
@@ -289,18 +313,39 @@ class _LancamentoTelaState extends State<LancamentoTela> {
               ),
             ),
             const SizedBox(height: Espaco.x6),
-            const TextField(
-              enabled: false,
+            DropdownButtonFormField<String?>(
+              // A chave recria o campo quando as categorias carregam ou o
+              // tipo muda as opções.
+              key: ValueKey((estadoCategorias.runtimeType, tipo)),
+              initialValue: _categoriaSelecionada(categorias),
+              isExpanded: true,
+              hint: const Text('Sem categoria'),
               decoration: InputDecoration(
                 labelText: 'Categoria (opcional)',
-                hintText: 'Sem categoria',
-                helperText: 'Categorias: em breve.',
-                suffixIcon: Icon(Icons.arrow_drop_down_rounded),
+                errorText: estado.erros['categoria_id'],
+                helperText: ajudaCategoria,
               ),
+              items: [
+                const DropdownMenuItem(child: Text('Sem categoria')),
+                for (final categoria in categorias)
+                  DropdownMenuItem(
+                    value: categoria.id,
+                    child: Text(
+                      categoria.nome,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: livre
+                  ? (id) {
+                      setState(() => _categoriaEscolhida = id);
+                      cubit.limparErro('categoria_id');
+                    }
+                  : null,
             ),
           ],
           botao: FilledButton(
-            onPressed: livre ? () => _salvar(contas) : null,
+            onPressed: livre ? () => _salvar(contas, categorias) : null,
             child: RotuloEnviando(enviando: estado.enviando, rotulo: 'Salvar'),
           ),
         );

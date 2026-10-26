@@ -11,6 +11,7 @@ Transacao transacaoExemplo({
   DateTime? data,
   String descricao = 'Mercado do bairro',
   StatusTransacao status = StatusTransacao.confirmada,
+  CategoriaDaTransacao? categoria,
   Parcela? parcela,
   ParTransferencia? transferencia,
 }) => Transacao(
@@ -21,6 +22,7 @@ Transacao transacaoExemplo({
   data: data ?? DateTime(2026, 10, 20),
   descricao: descricao,
   status: status,
+  categoria: categoria,
   parcela: parcela,
   transferencia: transferencia,
 );

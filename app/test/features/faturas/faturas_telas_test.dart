@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../apoio/categorias_falso.dart';
 import '../../apoio/contas_falso.dart';
 import '../../apoio/faturas_falso.dart';
 import '../../apoio/transacoes_falso.dart';
@@ -327,7 +328,9 @@ void main() {
         create: (_) => ContasCubit(
           ContasRepositorioFalso(contas: [contaExemplo(), cartaoExemplo()]),
         )..carregar(),
-        child: MaterialApp.router(theme: temaClaro(), routerConfig: router),
+        child: comCategorias(
+          MaterialApp.router(theme: temaClaro(), routerConfig: router),
+        ),
       ),
     );
     await tester.pumpAndSettle();

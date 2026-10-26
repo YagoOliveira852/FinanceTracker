@@ -39,6 +39,9 @@ abstract class Transacao with _$Transacao {
     required String descricao,
     required StatusTransacao status,
 
+    /// Confirmada na revisão ou escolhida no lançamento; nula sem categoria.
+    CategoriaDaTransacao? categoria,
+
     /// Fatura da transação, quando a conta é cartão de crédito.
     String? faturaId,
 
@@ -48,6 +51,15 @@ abstract class Transacao with _$Transacao {
     /// O outro lado e as duas contas, quando é transferência ligada.
     ParTransferencia? transferencia,
   }) = _Transacao;
+}
+
+/// A categoria de uma transação, como a lista mostra: "Mercado · Conta".
+@freezed
+abstract class CategoriaDaTransacao with _$CategoriaDaTransacao {
+  const factory CategoriaDaTransacao({
+    required String id,
+    required String nome,
+  }) = _CategoriaDaTransacao;
 }
 
 /// Transferência entre contas próprias: o outro lado ([parId]) e as contas
@@ -77,6 +89,9 @@ abstract class NovoLancamento with _$NovoLancamento {
     required Decimal valor,
     required DateTime data,
     required String descricao,
+
+    /// Opcional; ativa e do grupo que combina com o [tipo].
+    String? categoriaId,
   }) = _NovoLancamento;
 }
 
@@ -89,6 +104,9 @@ abstract class NovaCompraParcelada with _$NovaCompraParcelada {
     required int qtdParcelas,
     required DateTime dataCompra,
     required String descricao,
+
+    /// Opcional; vale para todas as parcelas.
+    String? categoriaId,
   }) = _NovaCompraParcelada;
 }
 
