@@ -18,6 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, ComTimestamps, check_enum
+from app.modulos.categorias.models import Categoria
 
 
 class TipoTransacao(StrEnum):
@@ -133,6 +134,9 @@ class Transacao(ComTimestamps, Base):
     # Como veio do banco, nunca editada; `descricao` é a que o usuário edita.
     descricao_original: Mapped[str] = mapped_column(Text)
     descricao: Mapped[str] = mapped_column(Text)
+    # Gravada ao confirmar na revisão ou no lançamento manual; a sugestão das
+    # regras é calculada na leitura, não fica aqui.
+    categoria_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("categoria.id"), index=True)
     status: Mapped[str] = mapped_column(Text)
     fonte: Mapped[str] = mapped_column(Text)
     # FITID do OFX, id da Pluggy ou hash do CSV; nulo no lançamento manual.
@@ -151,6 +155,7 @@ class Transacao(ComTimestamps, Base):
         ForeignKey("transacao.id"), unique=True
     )
 
+    categoria: Mapped[Categoria | None] = relationship(lazy="joined")
     compra_parcelada: Mapped[CompraParcelada | None] = relationship(
         back_populates="parcelas", lazy="joined"
     )
