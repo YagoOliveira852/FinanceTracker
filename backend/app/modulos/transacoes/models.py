@@ -155,7 +155,12 @@ class Transacao(ComTimestamps, Base):
         back_populates="parcelas", lazy="joined"
     )
     # As duas FKs se cruzam: `post_update` grava as linhas primeiro e liga os
-    # pares num UPDATE depois.
+    # pares num UPDATE depois. Auto-referência só faz o JOIN com `join_depth`;
+    # 1 basta (o par do par é a própria transação).
     transferencia_par: Mapped["Transacao | None"] = relationship(
-        remote_side=[id], foreign_keys=[transferencia_par_id], post_update=True, lazy="joined"
+        remote_side=[id],
+        foreign_keys=[transferencia_par_id],
+        post_update=True,
+        lazy="joined",
+        join_depth=1,
     )
