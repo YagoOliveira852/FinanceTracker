@@ -30,7 +30,8 @@ abstract class TransacoesEstado with _$TransacoesEstado {
     /// Filtro por conta; `null` = todas.
     String? contaId,
 
-    /// Contas ativas, para os chips de filtro e o nome em cada item.
+    /// Todas as contas: o nome em cada item (a transferência pode citar uma
+    /// conta desativada); os chips de filtro usam só as ativas.
     @Default([]) List<Conta> contas,
     @Default([]) List<DiaDeTransacoes> dias,
     @Default(true) bool carregando,
@@ -80,8 +81,8 @@ class TransacoesCubit extends Cubit<TransacoesEstado> {
       emit(
         state.copyWith(
           carregando: false,
-          contas: resumo.contas.where((c) => c.ativa).toList(),
-          dias: _agruparPorDia(transacoes),
+          contas: resumo.contas,
+          dias: _agruparPorDia(transacoes, todas: state.contaId == null),
         ),
       );
     } on ErroApi catch (erro) {
@@ -109,12 +110,21 @@ class TransacoesCubit extends Cubit<TransacoesEstado> {
     return carregar();
   }
 
-  /// Ignoradas não aparecem. A API já ordena da mais recente para a mais
-  /// antiga; o agrupamento mantém essa ordem.
-  static List<DiaDeTransacoes> _agruparPorDia(List<Transacao> transacoes) {
+  /// Ignoradas não aparecem. Com [todas] as contas, a transferência ligada
+  /// aparece uma vez só, pelo lado da saída. A API já ordena da mais recente
+  /// para a mais antiga; o agrupamento mantém essa ordem.
+  static List<DiaDeTransacoes> _agruparPorDia(
+    List<Transacao> transacoes, {
+    required bool todas,
+  }) {
     final porDia = <DateTime, List<Transacao>>{};
     for (final t in transacoes) {
       if (t.status == StatusTransacao.ignorada) continue;
+      if (todas &&
+          t.tipo == TipoTransacao.transferenciaEntrada &&
+          t.transferencia != null) {
+        continue;
+      }
       porDia.putIfAbsent(somenteData(t.data), () => []).add(t);
     }
     final datas = porDia.keys.toList()..sort((a, b) => b.compareTo(a));

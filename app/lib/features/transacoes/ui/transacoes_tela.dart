@@ -163,7 +163,7 @@ class _FiltroDeContas extends StatelessWidget {
             selecionado: estado.contaId == null,
             aoTocar: () => cubit.filtrar(null),
           ),
-          for (final conta in estado.contas)
+          for (final conta in estado.contas.where((c) => c.ativa))
             ChipOpcao(
               rotulo: conta.nome,
               selecionado: estado.contaId == conta.id,

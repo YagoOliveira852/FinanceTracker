@@ -12,6 +12,7 @@ Transacao transacaoExemplo({
   String descricao = 'Mercado do bairro',
   StatusTransacao status = StatusTransacao.confirmada,
   Parcela? parcela,
+  ParTransferencia? transferencia,
 }) => Transacao(
   id: id,
   contaId: contaId,
@@ -21,6 +22,7 @@ Transacao transacaoExemplo({
   descricao: descricao,
   status: status,
   parcela: parcela,
+  transferencia: transferencia,
 );
 
 /// Repositório de transações em memória: filtra por conta e período como a
@@ -33,6 +35,7 @@ class TransacoesRepositorioFalso implements TransacoesRepositorio {
   final consultas = <({String? contaId, DateTime de, DateTime ate})>[];
   final lancados = <NovoLancamento>[];
   final parceladas = <NovaCompraParcelada>[];
+  final transferencias = <NovaTransferencia>[];
   ErroApi? erro;
 
   @override
@@ -91,5 +94,49 @@ class TransacoesRepositorioFalso implements TransacoesRepositorio {
     ];
     transacoes.addAll(parcelas);
     return parcelas;
+  }
+
+  /// Grava os dois lados ligados e devolve a saída.
+  @override
+  Future<Transacao> transferir(NovaTransferencia dados) async {
+    if (erro case final e?) throw e;
+    transferencias.add(dados);
+    final n = transferencias.length;
+    ParTransferencia par(String parId) => ParTransferencia(
+      parId: parId,
+      contaOrigemId: dados.contaOrigemId,
+      contaDestinoId: dados.contaDestinoId,
+    );
+    Transacao lado(
+      String id,
+      String contaId,
+      TipoTransacao tipo,
+      String parId,
+    ) => Transacao(
+      id: id,
+      contaId: contaId,
+      tipo: tipo,
+      valor: dados.valor,
+      data: dados.data,
+      descricao: dados.descricao ?? 'Transferência',
+      status: StatusTransacao.confirmada,
+      transferencia: par(parId),
+    );
+    final saida = lado(
+      'saida-$n',
+      dados.contaOrigemId,
+      TipoTransacao.transferenciaSaida,
+      'entrada-$n',
+    );
+    transacoes.addAll([
+      saida,
+      lado(
+        'entrada-$n',
+        dados.contaDestinoId,
+        TipoTransacao.transferenciaEntrada,
+        'saida-$n',
+      ),
+    ]);
+    return saida;
   }
 }
