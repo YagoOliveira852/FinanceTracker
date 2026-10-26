@@ -77,6 +77,7 @@ Class | Method | HTTP request | Description
 [*FaturasApi*](doc/FaturasApi.md) | [**editar**](doc/FaturasApi.md#editar) | **PUT** /cartoes/{conta_id}/faturas/{competencia} | Editar
 [*FaturasApi*](doc/FaturasApi.md) | [**listar**](doc/FaturasApi.md#listar) | **GET** /cartoes/{conta_id}/faturas | Listar
 [*FaturasApi*](doc/FaturasApi.md) | [**obter**](doc/FaturasApi.md#obter) | **GET** /cartoes/{conta_id}/faturas/{competencia} | Obter
+[*FaturasApi*](doc/FaturasApi.md) | [**pagar**](doc/FaturasApi.md#pagar) | **POST** /cartoes/{conta_id}/faturas/{competencia}/pagamentos | Pagar
 [*FaturasApi*](doc/FaturasApi.md) | [**paraCompra**](doc/FaturasApi.md#paracompra) | **GET** /cartoes/{conta_id}/faturas/para-compra | Para Compra
 [*SaudeApi*](doc/SaudeApi.md) | [**saude**](doc/SaudeApi.md#saude) | **GET** /saude | Saude
 [*TransacoesApi*](doc/TransacoesApi.md) | [**lancar**](doc/TransacoesApi.md#lancar) | **POST** /transacoes | Lancar
@@ -110,6 +111,7 @@ Class | Method | HTTP request | Description
  - [ListaFaturasSaida](doc/ListaFaturasSaida.md)
  - [LocationInner](doc/LocationInner.md)
  - [LoginEntrada](doc/LoginEntrada.md)
+ - [PagamentoEntrada](doc/PagamentoEntrada.md)
  - [ParcelaSaida](doc/ParcelaSaida.md)
  - [RefreshEntrada](doc/RefreshEntrada.md)
  - [RespostaErro](doc/RespostaErro.md)

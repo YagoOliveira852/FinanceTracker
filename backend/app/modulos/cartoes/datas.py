@@ -16,6 +16,7 @@ import calendar
 from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from datetime import date, timedelta
+from decimal import Decimal
 from enum import StrEnum
 
 _SABADO = 5
@@ -24,6 +25,7 @@ _SABADO = 5
 class StatusFatura(StrEnum):
     aberta = "aberta"
     fechada = "fechada"
+    paga = "paga"
 
 
 @dataclass(frozen=True)
@@ -93,9 +95,19 @@ def competencia_da_compra(dia: date, fechamento_de: Callable[[date], date]) -> d
     raise ValueError(f"Nenhuma fatura fecha depois de {dia} nos meses próximos.")
 
 
-def status_da_fatura(data_fechamento: date, hoje: date) -> StatusFatura:
-    """Aberta antes do fechamento; fechada a partir dele."""
-    return StatusFatura.aberta if hoje < data_fechamento else StatusFatura.fechada
+def status_da_fatura(
+    data_fechamento: date, hoje: date, valor: Decimal, pago: Decimal
+) -> StatusFatura:
+    """Aberta antes do fechamento; a partir dele, paga se os pagamentos cobrem o
+    valor da fatura, senão fechada.
+
+    Aberta nunca vira paga, mesmo com tudo pago adiantado: ainda recebe compras.
+    """
+    if hoje < data_fechamento:
+        return StatusFatura.aberta
+    if pago > 0 and pago >= valor:
+        return StatusFatura.paga
+    return StatusFatura.fechada
 
 
 def _dia_no_mes(competencia: date, dia: int) -> date:

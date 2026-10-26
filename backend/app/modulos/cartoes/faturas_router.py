@@ -21,6 +21,7 @@ from app.modulos.cartoes.schemas import (
     FaturaDetalheSaida,
     FaturaEdicao,
     ListaFaturasSaida,
+    PagamentoEntrada,
     detalhe_saida,
     lista_saida,
 )
@@ -122,6 +123,27 @@ def ajustar(
         _competencia(competencia),
         valor_real=dados.valor_real,
         descricao=dados.descricao,
+        hoje=hoje,
+    )
+    return detalhe_saida(detalhe)
+
+
+@router.post("/{competencia}/pagamentos", status_code=status.HTTP_201_CREATED)
+def pagar(
+    competencia: Competencia,
+    dados: PagamentoEntrada,
+    cartao: CartaoDep,
+    sessao: SessaoDep,
+    hoje: HojeDep,
+) -> FaturaDetalheSaida:
+    """Registra um pagamento da fatura (não é gasto); devolve o detalhe."""
+    detalhe = faturas.pagar(
+        sessao,
+        cartao,
+        _competencia(competencia),
+        conta_id=dados.conta_id,
+        valor=dados.valor,
+        data=dados.data,
         hoje=hoje,
     )
     return detalhe_saida(detalhe)

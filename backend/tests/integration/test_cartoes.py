@@ -140,6 +140,7 @@ def test_cria_cartao_devolve_fatura_atual(api, corrente):
             "valor": "0.00",
             "valor_calculado": "0.00",
             "valor_informado": None,
+            "valor_pago": "0.00",
         },
     }
 
