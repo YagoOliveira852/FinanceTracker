@@ -50,6 +50,9 @@ export 'package:api_client/src/model/tipo_transacao.dart';
 export 'package:api_client/src/model/tokens.dart';
 export 'package:api_client/src/model/transacao_entrada.dart';
 export 'package:api_client/src/model/transacao_saida.dart';
+export 'package:api_client/src/model/transferencia_entrada.dart';
+export 'package:api_client/src/model/transferencia_par_saida.dart';
+export 'package:api_client/src/model/transferencia_saida.dart';
 export 'package:api_client/src/model/usuario_saida.dart';
 export 'package:api_client/src/model/validation_error.dart';
 

@@ -247,7 +247,7 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 | fatura_id | uuid FK null | obrigatório se a conta é cartão (regra no service); lançamento manual em cartão só aceita `despesa` |
 | compra_parcelada_id | uuid FK null | indexado; com `parcela_numero`, os dois juntos ou nenhum (`CHECK`) |
 | parcela_numero | smallint null | `CHECK >= 1`; até `qtd_parcelas` (regra no service). Sem unique com a compra: a mesma parcela pode chegar por duas fontes até a revisão decidir |
-| transferencia_par_id | uuid FK null | liga saída e entrada entre contas próprias |
+| transferencia_par_id | uuid FK null | liga saída e entrada entre contas próprias; unique, e cada lado aponta para o outro (regra no service). `CHECK`: só `transferencia_saida`/`transferencia_entrada` têm par, e nenhuma é par de si mesma |
 | investimento_id | uuid FK null | para `aporte`/`resgate` |
 | possivel_duplicata_de | uuid FK null | marcada quando outra fonte trouxe algo igual |
 | removida_na_origem_em | timestamptz null | transação confirmada que sumiu da Pluggy na janela de reconciliação; alerta na revisão |
@@ -261,7 +261,7 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 
 **Dados de fatura vindos do OFX do cartão:** `valor_informado` = −`BALAMT`; `data_fechamento` = `DTEND`. O arquivo não traz vencimento: ele continua calculado pela regra do cartão.
 
-**Por que `transferencia_par_id`:** um Pix entre duas contas próprias aparece como saída numa e entrada na outra. Ligadas, não contam como gasto nem como renda. O app sugere o par (mesmo valor, sentidos opostos, contas próprias diferentes, até ±2 dias) e só liga com confirmação na revisão; depósito de dinheiro físico (carteira → corrente) também é transferência.
+**Por que `transferencia_par_id`:** um Pix entre duas contas próprias aparece como saída numa e entrada na outra. Ligadas, não contam como gasto nem como renda. O app sugere o par (mesmo valor, sentidos opostos, contas próprias diferentes, até ±2 dias) e só liga com confirmação na revisão; depósito de dinheiro físico (carteira → corrente) também é transferência. No lançamento manual (`POST /transacoes/transferencias`), as duas linhas entram já ligadas, só entre correntes e carteiras ativas (pagar o cartão é pagamento de fatura); sem descrição, "Transferência". Spec `2026-10-24-pagamento-transferencia`.
 
 **Por que `pagamento_fatura` é tipo próprio:** sai dinheiro da conta corrente, mas o gasto já foi contado nas compras do cartão. Se contasse de novo, o gasto do mês dobraria.
 

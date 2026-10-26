@@ -47,6 +47,9 @@ import 'package:api_client/src/model/tipo_transacao.dart';
 import 'package:api_client/src/model/tokens.dart';
 import 'package:api_client/src/model/transacao_entrada.dart';
 import 'package:api_client/src/model/transacao_saida.dart';
+import 'package:api_client/src/model/transferencia_entrada.dart';
+import 'package:api_client/src/model/transferencia_par_saida.dart';
+import 'package:api_client/src/model/transferencia_saida.dart';
 import 'package:api_client/src/model/usuario_saida.dart';
 import 'package:api_client/src/model/validation_error.dart';
 
@@ -86,6 +89,9 @@ part 'serializers.g.dart';
   Tokens,
   TransacaoEntrada,
   TransacaoSaida,
+  TransferenciaEntrada,
+  TransferenciaParSaida,
+  TransferenciaSaida,
   UsuarioSaida,
   ValidationError,
 ])

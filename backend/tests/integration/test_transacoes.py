@@ -296,6 +296,10 @@ def test_lancamento_comum_nao_e_parcela(api, cartao):
     assert _lancar(api, cartao["id"])["parcela"] is None
 
 
+def test_lancamento_comum_nao_e_transferencia(api, conta):
+    assert _lancar(api, conta["id"])["transferencia"] is None
+
+
 def test_receita_no_cartao_e_recusada(api, cartao):
     campos = _campos(api.post("/transacoes", json=_dados(cartao["id"], tipo="receita")))
 

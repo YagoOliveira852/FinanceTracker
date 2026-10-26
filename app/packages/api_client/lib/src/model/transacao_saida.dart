@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:api_client/src/model/transferencia_par_saida.dart';
 import 'package:api_client/src/model/status_transacao.dart';
 import 'package:api_client/src/model/tipo_transacao.dart';
 import 'package:api_client/src/model/parcela_saida.dart';
@@ -27,6 +28,7 @@ part 'transacao_saida.g.dart';
 /// * [fonte] 
 /// * [faturaId] - Fatura da transação, se a conta é cartão.
 /// * [parcela] - Número da parcela, se é compra parcelada.
+/// * [transferencia] - O par e as duas contas, se é transferência ligada.
 @BuiltValue()
 abstract class TransacaoSaida implements Built<TransacaoSaida, TransacaoSaidaBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -66,6 +68,10 @@ abstract class TransacaoSaida implements Built<TransacaoSaida, TransacaoSaidaBui
   /// Número da parcela, se é compra parcelada.
   @BuiltValueField(wireName: r'parcela')
   ParcelaSaida? get parcela;
+
+  /// O par e as duas contas, se é transferência ligada.
+  @BuiltValueField(wireName: r'transferencia')
+  TransferenciaParSaida? get transferencia;
 
   TransacaoSaida._();
 
@@ -144,6 +150,11 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
     yield object.parcela == null ? null : serializers.serialize(
       object.parcela,
       specifiedType: const FullType.nullable(ParcelaSaida),
+    );
+    yield r'transferencia';
+    yield object.transferencia == null ? null : serializers.serialize(
+      object.transferencia,
+      specifiedType: const FullType.nullable(TransferenciaParSaida),
     );
   }
 
@@ -246,6 +257,14 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
           ) as ParcelaSaida?;
           if (valueDes == null) continue;
           result.parcela.replace(valueDes);
+          break;
+        case r'transferencia':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(TransferenciaParSaida),
+          ) as TransferenciaParSaida?;
+          if (valueDes == null) continue;
+          result.transferencia.replace(valueDes);
           break;
         default:
           unhandled.add(key);

@@ -51,6 +51,9 @@ lib/src/model/tipo_transacao.dart
 lib/src/model/tokens.dart
 lib/src/model/transacao_entrada.dart
 lib/src/model/transacao_saida.dart
+lib/src/model/transferencia_entrada.dart
+lib/src/model/transferencia_par_saida.dart
+lib/src/model/transferencia_saida.dart
 lib/src/model/usuario_saida.dart
 lib/src/model/validation_error.dart
 lib/src/serializers.dart
