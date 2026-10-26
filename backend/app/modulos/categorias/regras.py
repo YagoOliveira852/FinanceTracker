@@ -3,11 +3,13 @@ aprendizado na confirmação da categoria (spec `2026-10-19-revisao-classificaca
 
 import uuid
 from dataclasses import dataclass
+from enum import StrEnum
 
 from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from app.core.erros import CampoInvalido
+from app.modulos.categorias import service as categorias_service
 from app.modulos.categorias.classificacao import (
     escolher_regra,
     grupos_do_tipo,
@@ -29,6 +31,27 @@ _TIPOS_COM_CATEGORIA = [tipo.value for tipo in TipoTransacao if grupos_do_tipo(t
 
 class RegraNaoEncontrada(Exception):
     pass
+
+
+class NaoEhRascunho(Exception):
+    """Só rascunho tem a categoria confirmada (e ensina regras)."""
+
+
+class EfeitoAprendizado(StrEnum):
+    """O que a confirmação de uma categoria fez com as regras."""
+
+    criada = "criada"  # nenhuma regra sugeria: nasceu uma aprendida
+    reforcada = "reforcada"  # a sugestão foi confirmada como veio
+    corrigida = "corrigida"  # aprendida com o mesmo padrão: trocou a categoria
+    especializada = "especializada"  # aprendida mais curta: nasceu uma mais longa
+    manual_mantida = "manual_mantida"  # regra manual não muda na revisão
+    nenhuma = "nenhuma"  # a descrição só tinha termos genéricos
+
+
+@dataclass
+class Aprendizado:
+    efeito: EfeitoAprendizado
+    regra: RegraClassificacao | None
 
 
 @dataclass
@@ -126,6 +149,65 @@ def rascunhos_casados(sessao: Session, regra: RegraClassificacao) -> RascunhosCa
     )
     casados = [t for t in rascunhos if _sugerida(t, regras) is regra]
     return RascunhosCasados(quantidade=len(casados), exemplo=casados[0] if casados else None)
+
+
+def confirmar_categoria(
+    sessao: Session, transacao_id: uuid.UUID, categoria_id: uuid.UUID
+) -> Aprendizado:
+    """Confirma o rascunho com a categoria escolhida e ensina as regras.
+
+    Usado pela revisão. A categoria precisa estar ativa e combinar com o tipo.
+    """
+    transacao = transacoes_service.obter(sessao, transacao_id)
+    if transacao.status != StatusTransacao.rascunho:
+        raise NaoEhRascunho
+    categoria = categorias_service.categoria_para_tipo(
+        sessao, categoria_id, TipoTransacao(transacao.tipo)
+    )
+    aprendizado = aprender(sessao, transacao, categoria)
+    transacao.categoria = categoria
+    transacao.status = StatusTransacao.confirmada
+    sessao.commit()
+    return aprendizado
+
+
+def aprender(sessao: Session, transacao: Transacao, categoria: Categoria) -> Aprendizado:
+    """Ajusta as regras pela categoria escolhida para a transação, sem commit
+    (a revisão pode juntar isto a outras mudanças).
+
+    1. Nenhuma regra sugeria → nasce uma aprendida com o padrão da transação.
+    2. A sugestão foi confirmada como veio → `vezes_aplicada` + 1.
+    3. Correção de aprendida: com o mesmo padrão, a categoria é trocada e a
+       contagem zera; mais curta, ela fica e nasce uma aprendida mais longa,
+       que passa a vencer.
+    4. Correção de manual → a regra não muda.
+    5. Padrão vazio → nada.
+    """
+    sugerida = regra_sugerida(sessao, transacao)
+    padrao = normalizar(transacao.descricao_original)
+    if sugerida is not None and sugerida.categoria_id == categoria.id:
+        sugerida.vezes_aplicada += 1
+        return Aprendizado(EfeitoAprendizado.reforcada, sugerida)
+    if sugerida is not None and sugerida.origem == OrigemRegra.manual:
+        return Aprendizado(EfeitoAprendizado.manual_mantida, sugerida)
+    if not padrao:
+        return Aprendizado(EfeitoAprendizado.nenhuma, None)
+
+    if sugerida is None:
+        efeito = EfeitoAprendizado.criada
+    elif sugerida.padrao == padrao:
+        efeito = EfeitoAprendizado.corrigida
+    else:
+        efeito = EfeitoAprendizado.especializada
+    # Uma regra com o mesmo padrão pode existir sem ter sugerido (a categoria
+    # dela foi desativada): é reaproveitada, para o padrão não se repetir.
+    regra = _repetida(sessao, padrao, None, categoria)
+    if regra is None:
+        regra = RegraClassificacao(padrao=padrao, origem=OrigemRegra.aprendida, vezes_aplicada=0)
+        sessao.add(regra)
+    regra.categoria = categoria
+    regra.vezes_aplicada = 0
+    return Aprendizado(efeito, regra)
 
 
 def _sugerida(transacao: Transacao, regras: list[RegraClassificacao]) -> RegraClassificacao | None:
