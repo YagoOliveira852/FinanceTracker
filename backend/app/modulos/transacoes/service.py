@@ -1,4 +1,5 @@
-"""Regras de transações: lançamento manual (à vista ou parcelado) e consulta."""
+"""Regras de transações: lançamento manual (à vista ou parcelado), transferência
+entre contas próprias e consulta."""
 
 import uuid
 from datetime import date
@@ -21,6 +22,7 @@ from app.modulos.transacoes.models import (
 from app.modulos.transacoes.parcelas import data_da_parcela, dividir_em_parcelas
 
 _CENTAVO = Decimal("0.01")
+DESCRICAO_TRANSFERENCIA = "Transferência"
 
 
 class TransacaoNaoEncontrada(Exception):
@@ -40,7 +42,7 @@ def lancar(
 
     Em cartão de crédito, só despesa (compra à vista), ligada à fatura da data.
     """
-    conta = _conta_ativa(sessao, conta_id)
+    conta = conta_ativa(sessao, conta_id)
     fatura_id = None
     if conta.tipo == TipoConta.cartao_credito:
         if tipo != TipoTransacao.despesa:
@@ -81,7 +83,7 @@ def lancar_parcelada(
     fechamento em dia útil, a data avançada poderia pular uma fatura). Entra
     tudo ou nada.
     """
-    conta = _conta_ativa(sessao, conta_id)
+    conta = conta_ativa(sessao, conta_id)
     if conta.tipo != TipoConta.cartao_credito:
         raise CampoInvalido("conta_id", "Só compra no cartão de crédito pode ser parcelada.")
     if valor_total < _CENTAVO * qtd_parcelas:
@@ -122,6 +124,51 @@ def lancar_parcelada(
     return compra
 
 
+def transferir(
+    sessao: Session,
+    *,
+    conta_origem_id: uuid.UUID,
+    conta_destino_id: uuid.UUID,
+    valor: Decimal,
+    data: date,
+    descricao: str | None,
+) -> tuple[Transacao, Transacao]:
+    """Transferência entre contas próprias: uma saída na origem e uma entrada no
+    destino, ligadas pelo par. Muda os saldos, mas não é gasto nem renda.
+
+    Só corrente e carteira: pagar o cartão é pagamento de fatura. Devolve
+    (saída, entrada); entra o par inteiro ou nada.
+    """
+    _conta_de_transferencia(sessao, conta_origem_id, "conta_origem_id")
+    _conta_de_transferencia(sessao, conta_destino_id, "conta_destino_id")
+    if conta_destino_id == conta_origem_id:
+        raise CampoInvalido("conta_destino_id", "Escolha uma conta diferente da de origem.")
+
+    descricao = descricao or DESCRICAO_TRANSFERENCIA
+    lados = [
+        Transacao(
+            conta_id=conta_id,
+            tipo=tipo,
+            valor=valor,
+            data=data,
+            descricao_original=descricao,
+            descricao=descricao,
+            status=StatusTransacao.confirmada,
+            fonte=FonteTransacao.manual,
+        )
+        for conta_id, tipo in (
+            (conta_origem_id, TipoTransacao.transferencia_saida),
+            (conta_destino_id, TipoTransacao.transferencia_entrada),
+        )
+    ]
+    saida, entrada = lados
+    saida.transferencia_par = entrada
+    entrada.transferencia_par = saida
+    sessao.add_all(lados)
+    sessao.commit()
+    return saida, entrada
+
+
 def listar(
     sessao: Session,
     *,
@@ -149,10 +196,18 @@ def obter(sessao: Session, transacao_id: uuid.UUID) -> Transacao:
     return transacao
 
 
-def _conta_ativa(sessao: Session, conta_id: uuid.UUID) -> Conta:
+def conta_ativa(sessao: Session, conta_id: uuid.UUID, campo: str = "conta_id") -> Conta:
+    """A conta, se existe e está ativa; senão, recusa no `campo` do corpo."""
     conta = sessao.get(Conta, conta_id)
     if conta is None:
-        raise CampoInvalido("conta_id", "Conta não encontrada.")
+        raise CampoInvalido(campo, "Conta não encontrada.")
     if not conta.ativa:
-        raise CampoInvalido("conta_id", "Esta conta está desativada.")
+        raise CampoInvalido(campo, "Esta conta está desativada.")
+    return conta
+
+
+def _conta_de_transferencia(sessao: Session, conta_id: uuid.UUID, campo: str) -> Conta:
+    conta = conta_ativa(sessao, conta_id, campo)
+    if conta.tipo == TipoConta.cartao_credito:
+        raise CampoInvalido(campo, "Para pagar o cartão, use Pagamento de fatura.")
     return conta

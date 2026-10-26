@@ -83,6 +83,7 @@ Class | Method | HTTP request | Description
 [*TransacoesApi*](doc/TransacoesApi.md) | [**lancarParcelada**](doc/TransacoesApi.md#lancarparcelada) | **POST** /transacoes/parceladas | Lancar Parcelada
 [*TransacoesApi*](doc/TransacoesApi.md) | [**listar**](doc/TransacoesApi.md#listar) | **GET** /transacoes | Listar
 [*TransacoesApi*](doc/TransacoesApi.md) | [**obter**](doc/TransacoesApi.md#obter) | **GET** /transacoes/{transacao_id} | Obter
+[*TransacoesApi*](doc/TransacoesApi.md) | [**transferir**](doc/TransacoesApi.md#transferir) | **POST** /transacoes/transferencias | Transferir
 
 
 ## Documentation For Models
@@ -120,6 +121,9 @@ Class | Method | HTTP request | Description
  - [Tokens](doc/Tokens.md)
  - [TransacaoEntrada](doc/TransacaoEntrada.md)
  - [TransacaoSaida](doc/TransacaoSaida.md)
+ - [TransferenciaEntrada](doc/TransferenciaEntrada.md)
+ - [TransferenciaParSaida](doc/TransferenciaParSaida.md)
+ - [TransferenciaSaida](doc/TransferenciaSaida.md)
  - [UsuarioSaida](doc/UsuarioSaida.md)
  - [ValidationError](doc/ValidationError.md)
 

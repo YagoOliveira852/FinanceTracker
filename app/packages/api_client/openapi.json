@@ -522,6 +522,63 @@
         ]
       }
     },
+    "/transacoes/transferencias": {
+      "post": {
+        "tags": [
+          "transacoes"
+        ],
+        "summary": "Transferir",
+        "description": "Transferência entre contas próprias: saída na origem e entrada no destino.",
+        "operationId": "transacoes_transferir",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferenciaEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferenciaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/transacoes/{transacao_id}": {
       "get": {
         "tags": [
@@ -2320,6 +2377,17 @@
               }
             ],
             "description": "Número da parcela, se é compra parcelada."
+          },
+          "transferencia": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransferenciaParSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O par e as duas contas, se é transferência ligada."
           }
         },
         "type": "object",
@@ -2334,9 +2402,102 @@
           "status",
           "fonte",
           "fatura_id",
-          "parcela"
+          "parcela",
+          "transferencia"
         ],
         "title": "TransacaoSaida"
+      },
+      "TransferenciaEntrada": {
+        "properties": {
+          "conta_origem_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Origem Id"
+          },
+          "conta_destino_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Destino Id"
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor"
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao",
+            "description": "Vazia ou nula: \"Transferência\"."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "conta_origem_id",
+          "conta_destino_id",
+          "valor",
+          "data"
+        ],
+        "title": "TransferenciaEntrada",
+        "description": "Transferência entre contas próprias (corrente ou carteira): gera a saída\nna origem e a entrada no destino, ligadas."
+      },
+      "TransferenciaParSaida": {
+        "properties": {
+          "par_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Par Id",
+            "description": "O outro lado da transferência."
+          },
+          "conta_origem_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Origem Id"
+          },
+          "conta_destino_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Destino Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "par_id",
+          "conta_origem_id",
+          "conta_destino_id"
+        ],
+        "title": "TransferenciaParSaida"
+      },
+      "TransferenciaSaida": {
+        "properties": {
+          "saida": {
+            "$ref": "#/components/schemas/TransacaoSaida",
+            "description": "O lado da conta de origem."
+          },
+          "entrada": {
+            "$ref": "#/components/schemas/TransacaoSaida",
+            "description": "O lado da conta de destino."
+          }
+        },
+        "type": "object",
+        "required": [
+          "saida",
+          "entrada"
+        ],
+        "title": "TransferenciaSaida"
       },
       "UsuarioSaida": {
         "properties": {

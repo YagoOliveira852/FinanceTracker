@@ -14,6 +14,8 @@ from app.modulos.transacoes.schemas import (
     CompraParceladaSaida,
     TransacaoEntrada,
     TransacaoSaida,
+    TransferenciaEntrada,
+    TransferenciaSaida,
 )
 
 router = APIRouter(
@@ -50,6 +52,23 @@ def lancar_parcelada(dados: CompraParceladaEntrada, sessao: SessaoDep) -> Compra
         descricao=dados.descricao,
     )
     return CompraParceladaSaida.model_validate(compra)
+
+
+@router.post("/transferencias", status_code=status.HTTP_201_CREATED)
+def transferir(dados: TransferenciaEntrada, sessao: SessaoDep) -> TransferenciaSaida:
+    """Transferência entre contas próprias: saída na origem e entrada no destino."""
+    saida, entrada = service.transferir(
+        sessao,
+        conta_origem_id=dados.conta_origem_id,
+        conta_destino_id=dados.conta_destino_id,
+        valor=dados.valor,
+        data=dados.data,
+        descricao=dados.descricao,
+    )
+    return TransferenciaSaida(
+        saida=TransacaoSaida.model_validate(saida),
+        entrada=TransacaoSaida.model_validate(entrada),
+    )
 
 
 @router.get("")
