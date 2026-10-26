@@ -13,6 +13,7 @@ from app.core.erros import RespostaErro, registrar_tratadores_de_erro
 from app.modulos.auth.router import router as auth_router
 from app.modulos.cartoes.faturas_router import router as faturas_router
 from app.modulos.cartoes.router import router as cartoes_router
+from app.modulos.categorias.router import router as categorias_router
 from app.modulos.contas.router import router as contas_router
 from app.modulos.transacoes.router import router as transacoes_router
 
@@ -41,6 +42,7 @@ app.include_router(contas_router)
 app.include_router(transacoes_router)
 app.include_router(cartoes_router)
 app.include_router(faturas_router)
+app.include_router(categorias_router)
 
 
 class Saude(BaseModel):
