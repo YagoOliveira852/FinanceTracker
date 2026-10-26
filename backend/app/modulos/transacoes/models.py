@@ -109,6 +109,14 @@ class Transacao(ComTimestamps, Base):
         CheckConstraint(
             "(compra_parcelada_id IS NULL) = (parcela_numero IS NULL)", name="parcela_completa"
         ),
+        # Só transferência tem par, e ninguém é par de si mesmo. Que os dois
+        # lados apontem um para o outro é regra do service.
+        CheckConstraint(
+            "transferencia_par_id IS NULL"
+            " OR tipo IN ('transferencia_saida', 'transferencia_entrada')",
+            name="par_so_em_transferencia",
+        ),
+        CheckConstraint("transferencia_par_id <> id", name="par_nao_e_ela_mesma"),
         # Coração da idempotência: a mesma transação da mesma fonte não entra
         # duas vezes. Lançamento manual tem id_externo nulo e não colide.
         UniqueConstraint(
@@ -137,7 +145,17 @@ class Transacao(ComTimestamps, Base):
     )
     # Até `compra_parcelada.qtd_parcelas` (regra no service).
     parcela_numero: Mapped[int | None] = mapped_column(SmallInteger)
+    # Liga saída e entrada de uma transferência entre contas próprias; cada
+    # lado aponta para o outro (no máximo um par por transação).
+    transferencia_par_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("transacao.id"), unique=True
+    )
 
     compra_parcelada: Mapped[CompraParcelada | None] = relationship(
         back_populates="parcelas", lazy="joined"
+    )
+    # As duas FKs se cruzam: `post_update` grava as linhas primeiro e liga os
+    # pares num UPDATE depois.
+    transferencia_par: Mapped["Transacao | None"] = relationship(
+        remote_side=[id], foreign_keys=[transferencia_par_id], post_update=True, lazy="joined"
     )
