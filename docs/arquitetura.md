@@ -210,9 +210,11 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
-| nome | text unique | Alimentação, Transporte, Mercado Livre... |
-| grupo | text | `essencial` \| `variavel` \| `renda` \| `investimento` |
-| ativa | bool | |
+| nome | text | único sem diferenciar maiúsculas (índice em `lower(nome)`); ex.: Alimentação, Transporte |
+| grupo | text | `essencial` \| `variavel` \| `renda` \| `investimento`; editável (para fora de essencial/variável, só sem transações) |
+| ativa | bool | desativada sai das opções e as regras dela não sugerem; nunca é excluída |
+
+Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; variável: Alimentação, Assinaturas, Compras, Educação, Lazer; renda: Salário, Outras receitas; investimento: Investimento). Sem ícone: o ícone vem do tipo da transação. O grupo diz com que tipo de transação a categoria combina: `despesa`/`estorno` ↔ essencial e variável, `receita` ↔ renda, `aporte`/`resgate` ↔ investimento; transferência, pagamento de fatura e ajuste não têm categoria.
 
 **importacao** (um arquivo importado ou uma execução do sync)
 | coluna | tipo | nota |
@@ -239,7 +241,7 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 | data | date | data da operação (compra/Pix) |
 | descricao_original | text | como veio do banco, nunca editada |
 | descricao | text | editável pelo usuário |
-| categoria_id | uuid FK null | |
+| categoria_id | uuid FK null | preenchida ao confirmar na revisão ou no lançamento manual; a sugestão das regras não é gravada |
 | status | text | `rascunho` \| `confirmada` \| `ignorada` |
 | fonte | text | `manual` \| `ofx` \| `csv_mercadopago` \| `pluggy` |
 | id_externo | text null | FITID, id da Pluggy ou hash gerado |
@@ -269,12 +271,15 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
-| padrao | text | descrição original normalizada (sem acentos, números, datas, códigos e termos genéricos como "pix enviado") |
-| conta_id | uuid FK null | restringe a uma conta |
+| padrao | text | descrição original normalizada (sem acentos, números, datas, códigos e termos genéricos como "pix enviado"); não vazio (`CHECK`) |
+| conta_id | uuid FK null | restringe a uma conta; nulo = todas |
 | categoria_id | uuid FK | |
-| prioridade | int | maior vence |
-| origem | text | `manual` \| `aprendida` (criada na 1ª confirmação de categoria; uma correção sobrescreve a categoria e zera `vezes_aplicada`) |
-| vezes_aplicada | int | |
+| origem | text | `manual` \| `aprendida` (criada na 1ª confirmação de categoria; editar pelo app a torna manual) |
+| vezes_aplicada | int | `>= 0`; sugestões confirmadas como vieram; zera quando uma correção troca a categoria |
+
+**Sem coluna `prioridade`:** a regra casa quando o padrão aparece como palavras inteiras na descrição normalizada (funções puras em `categorias/classificacao.py`); entre as que casam, manual antes de aprendida, restrita a uma conta antes de geral, padrão mais longo antes, e por fim a ordem alfabética. Só sugere regra de categoria ativa e compatível com o tipo da transação. A sugestão é calculada na leitura, não gravada. Na confirmação: sem regra, nasce uma aprendida; sugestão confirmada soma 1 em `vezes_aplicada`; correção de aprendida com o mesmo padrão troca a categoria e zera a contagem (com padrão mais curto, nasce uma aprendida mais longa); regra manual não muda na revisão. Sem unique no banco: duas regras com o mesmo padrão podem coexistir se uma for de renda e outra de gasto; o service recusa as demais repetições. Spec `2026-10-19-revisao-classificacao`.
+
+**par_recusado** (card da revisão) — `saida_id`, `entrada_id` (FKs para `transacao`), unique no par. "Não é par" na revisão grava aqui; a sugestão daquele par não volta, mas cada lado ainda pode parear com outra transação.
 
 ### 7.4 Planejamento
 
@@ -369,7 +374,7 @@ O estado do sync aparece na tela Open Finance e, só quando há problema, num ca
 
 ```
 instituicao 1─N conta 1─1 cartao 1─N fatura
-conta 1─N transacao N─1 categoria
+conta 1─N transacao N─1 categoria 1─N regra_classificacao N─0..1 conta
 fatura 1─N transacao
 compra_parcelada 1─N transacao
 transacao 1─1 transacao (transferencia_par_id)
