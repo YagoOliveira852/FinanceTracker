@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/categorias/cubit/editar_categoria_cubit.dart';
+import '../features/categorias/data/categoria.dart';
+import '../features/categorias/data/categorias_repositorio.dart';
+import '../features/categorias/ui/categorias_regras_tela.dart';
+import '../features/categorias/ui/editar_categoria_tela.dart';
 import '../features/configuracoes/ui/mais_tela.dart';
 import '../features/contas/cubit/editar_cartao_cubit.dart';
 import '../features/contas/cubit/nova_conta_cubit.dart';
@@ -255,6 +260,33 @@ GoRouter criarRouter(SessaoCubit sessao) {
                             ],
                           ),
                         ],
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'categorias',
+                    builder: (_, _) => const CategoriasRegrasTela(),
+                    routes: [
+                      GoRoute(
+                        path: 'nova',
+                        parentNavigatorKey: chaveRaiz,
+                        builder: (context, _) => BlocProvider(
+                          create: (context) => EditarCategoriaCubit(
+                            context.read<CategoriasRepositorio>(),
+                          ),
+                          child: const EditarCategoriaTela(),
+                        ),
+                      ),
+                      GoRoute(
+                        path: ':id/editar',
+                        parentNavigatorKey: chaveRaiz,
+                        builder: (context, state) => BlocProvider(
+                          create: (context) => EditarCategoriaCubit(
+                            context.read<CategoriasRepositorio>(),
+                            existente: state.extra! as Categoria,
+                          ),
+                          child: const EditarCategoriaTela(),
+                        ),
                       ),
                     ],
                   ),

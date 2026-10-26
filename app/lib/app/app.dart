@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/categorias/cubit/categorias_cubit.dart';
 import '../features/contas/cubit/contas_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import 'injecao.dart';
@@ -14,7 +15,8 @@ import 'tema.dart';
 ///
 /// O [ContasCubit] fica aqui em cima porque Início, Contas e Lançamento
 /// mostram as mesmas contas: criar uma conta ou lançar uma transação
-/// recarrega um cubit só, e todas as telas veem o saldo novo.
+/// recarrega um cubit só, e todas as telas veem o saldo novo. O
+/// [CategoriasCubit] pelo mesmo motivo: Categorias e Lançamento.
 class FinancasApp extends StatefulWidget {
   const FinancasApp(this.dependencias, {super.key});
 
@@ -42,6 +44,7 @@ class _FinancasAppState extends State<FinancasApp> {
         RepositoryProvider.value(value: dependencias.contas),
         RepositoryProvider.value(value: dependencias.transacoes),
         RepositoryProvider.value(value: dependencias.faturas),
+        RepositoryProvider.value(value: dependencias.categorias),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -58,12 +61,25 @@ class _FinancasAppState extends State<FinancasApp> {
               return contas;
             },
           ),
+          BlocProvider(
+            lazy: false,
+            create: (_) {
+              final categorias = CategoriasCubit(dependencias.categorias);
+              if (dependencias.sessao.state is SessaoConectada) {
+                categorias.carregar();
+              }
+              return categorias;
+            },
+          ),
         ],
         child: BlocListener<SessaoCubit, SessaoEstado>(
-          // Recarrega as contas a cada login.
+          // Recarrega contas e categorias a cada login.
           listenWhen: (antes, depois) =>
               antes is! SessaoConectada && depois is SessaoConectada,
-          listener: (context, _) => context.read<ContasCubit>().carregar(),
+          listener: (context, _) {
+            context.read<ContasCubit>().carregar();
+            context.read<CategoriasCubit>().carregar();
+          },
           child: MaterialApp.router(
             title: 'Finanças',
             debugShowCheckedModeBanner: false,

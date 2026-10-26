@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../apoio/categorias_falso.dart';
 import '../../apoio/contas_falso.dart';
 import '../../apoio/faturas_falso.dart';
 import '../../apoio/transacoes_falso.dart';
@@ -24,11 +25,13 @@ final _hoje = DateTime(2026, 10, 20);
 
 /// App mínimo. A tela de Transações ouve o ContasCubit do topo do app; aqui
 /// ele fica parado, e os testes que precisam dele passam o próprio.
-Widget _app(Widget tela) => MaterialApp(
-  theme: temaClaro(),
-  home: BlocProvider(
-    create: (_) => ContasCubit(ContasRepositorioFalso()),
-    child: tela,
+Widget _app(Widget tela) => comCategorias(
+  MaterialApp(
+    theme: temaClaro(),
+    home: BlocProvider(
+      create: (_) => ContasCubit(ContasRepositorioFalso()),
+      child: tela,
+    ),
   ),
 );
 
@@ -148,7 +151,7 @@ void main() {
     expect(chip('Receita').onSelected, isNotNull);
     expect(chip('Transferência').onSelected, isNotNull);
     expect(chip('Pagamento de fatura').onSelected, isNotNull);
-    expect(find.text('Categorias: em breve.'), findsOneWidget);
+    expect(find.text('Categoria (opcional)'), findsOneWidget);
 
     await tester.tap(find.text('Salvar'));
     await tester.pump();
@@ -242,7 +245,9 @@ void main() {
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(
-      MaterialApp.router(theme: temaClaro(), routerConfig: router),
+      comCategorias(
+        MaterialApp.router(theme: temaClaro(), routerConfig: router),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -296,6 +301,7 @@ void main() {
     required List<Conta> contas,
     String? contaInicial,
     FaturasRepositorioFalso? faturas,
+    TransacoesRepositorioFalso? transacoes,
   }) => _app(
     MultiBlocProvider(
       providers: [
@@ -305,7 +311,7 @@ void main() {
         ),
         BlocProvider(
           create: (_) => LancamentoCubit(
-            TransacoesRepositorioFalso(),
+            transacoes ?? TransacoesRepositorioFalso(),
             faturas ?? FaturasRepositorioFalso(),
           ),
         ),
@@ -342,6 +348,100 @@ void main() {
     await tester.tap(find.text('Conta principal · Banco Exemplo'));
     await tester.pumpAndSettle();
     expect(find.text('Cartão Exemplo · Banco Exemplo'), findsNothing);
+  });
+
+  testWidgets('Lançamento: categoria pelo tipo, e a escolha vai no envio', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final transacoes = TransacoesRepositorioFalso();
+    final router = GoRouter(
+      initialLocation: '/lancar',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Text('Fechou'),
+          routes: [
+            GoRoute(
+              path: 'lancar',
+              builder: (_, _) => lancamento(
+                contas: [contaExemplo()],
+                contaInicial: 'c1',
+                transacoes: transacoes,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      comCategorias(
+        MaterialApp.router(theme: temaClaro(), routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Despesa: só as de gasto ativas (Educação está desativada).
+    await tester.tap(find.text('Sem categoria'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mercado'), findsOneWidget);
+    expect(find.text('Alimentação'), findsOneWidget);
+    expect(find.text('Educação'), findsNothing);
+    expect(find.text('Salário'), findsNothing);
+    await tester.tap(find.text('Mercado'));
+    await tester.pumpAndSettle();
+
+    // Receita descarta a escolha: Mercado não é opção dela.
+    await tester.tap(find.text('Receita'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mercado'), findsNothing);
+    await tester.tap(find.text('Sem categoria'));
+    await tester.pumpAndSettle();
+    expect(find.text('Salário'), findsOneWidget);
+    await tester.tap(find.text('Salário'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Valor'), '5000');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Descrição'),
+      'Salário de outubro',
+    );
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(transacoes.lancados.single.tipo, TipoTransacao.receita);
+    expect(transacoes.lancados.single.categoriaId, 'cat-salario');
+    expect(find.text('Fechou'), findsOneWidget);
+  });
+
+  testWidgets('Transações mostra a categoria antes da conta', (tester) async {
+    final contas = ContasRepositorioFalso(contas: [contaExemplo()]);
+    final transacoes = TransacoesRepositorioFalso(
+      transacoes: [
+        transacaoExemplo(
+          categoria: const CategoriaDaTransacao(
+            id: 'cat-mercado',
+            nome: 'Mercado',
+          ),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      _app(
+        BlocProvider(
+          create: (_) =>
+              TransacoesCubit(transacoes, contas, hoje: () => _hoje)
+                ..carregar(),
+          child: const TransacoesTela(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mercado · Conta principal'), findsOneWidget);
   });
 
   testWidgets('Lançamento no cartão: entra na fatura e tem parcelas', (
@@ -427,7 +527,9 @@ void main() {
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(
-      MaterialApp.router(theme: temaClaro(), routerConfig: router),
+      comCategorias(
+        MaterialApp.router(theme: temaClaro(), routerConfig: router),
+      ),
     );
     await tester.pumpAndSettle();
   }
@@ -582,7 +684,9 @@ void main() {
       );
       addTearDown(router.dispose);
       await tester.pumpWidget(
-        MaterialApp.router(theme: temaClaro(), routerConfig: router),
+        comCategorias(
+          MaterialApp.router(theme: temaClaro(), routerConfig: router),
+        ),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Transferência'));
@@ -761,7 +865,9 @@ void main() {
         BlocProvider(
           create: (_) =>
               ContasCubit(ContasRepositorioFalso(contas: contas))..carregar(),
-          child: MaterialApp.router(theme: temaClaro(), routerConfig: router),
+          child: comCategorias(
+            MaterialApp.router(theme: temaClaro(), routerConfig: router),
+          ),
         ),
       );
       await tester.pumpAndSettle();

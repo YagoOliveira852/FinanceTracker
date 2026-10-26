@@ -75,6 +75,43 @@ void main() {
     });
   });
 
+  test('lançar com categoria manda o id; a saída traz a categoria', () async {
+    responder((
+      status: 201,
+      corpo: {
+        ..._transacaoJson(),
+        'categoria': {
+          'id': '6f1c2b3a-0000-4000-8000-0000000000ca',
+          'nome': 'Salário',
+          'grupo': 'renda',
+        },
+      },
+    ));
+
+    final transacao = await repositorio.lancar(
+      NovoLancamento(
+        contaId: _contaId,
+        tipo: TipoTransacao.receita,
+        valor: Decimal.parse('5000'),
+        data: DateTime(2026, 10, 5),
+        descricao: 'Salário',
+        categoriaId: '6f1c2b3a-0000-4000-8000-0000000000ca',
+      ),
+    );
+
+    expect(
+      corpoDe(adaptador.requisicoes.single)['categoria_id'],
+      '6f1c2b3a-0000-4000-8000-0000000000ca',
+    );
+    expect(
+      transacao.categoria,
+      const CategoriaDaTransacao(
+        id: '6f1c2b3a-0000-4000-8000-0000000000ca',
+        nome: 'Salário',
+      ),
+    );
+  });
+
   test('transação sem compra parcelada não tem parcela', () async {
     responder((status: 200, corpo: [_transacaoJson()]));
 
@@ -84,6 +121,7 @@ void main() {
     );
 
     expect(transacoes.single.parcela, isNull);
+    expect(transacoes.single.categoria, isNull);
   });
 
   test('lançar parcelada manda o total e devolve as parcelas', () async {

@@ -59,7 +59,8 @@ class TransacoesRepositorioApi implements TransacoesRepositorio {
         }
         ..valor = dinheiroParaApi(dados.valor)
         ..data = dados.data.toDate()
-        ..descricao = dados.descricao,
+        ..descricao = dados.descricao
+        ..categoriaId = dados.categoriaId,
     );
     try {
       final resposta = await _cliente.getTransacoesApi().lancar(
@@ -79,7 +80,8 @@ class TransacoesRepositorioApi implements TransacoesRepositorio {
         ..valorTotal = dinheiroParaApi(dados.valorTotal)
         ..qtdParcelas = dados.qtdParcelas
         ..dataCompra = dados.dataCompra.toDate()
-        ..descricao = dados.descricao,
+        ..descricao = dados.descricao
+        ..categoriaId = dados.categoriaId,
     );
     try {
       final resposta = await _cliente.getTransacoesApi().lancarParcelada(
@@ -123,6 +125,10 @@ Transacao transacaoDaApi(api.TransacaoSaida t) => Transacao(
   data: t.data.toDateTime(),
   descricao: t.descricao,
   status: StatusTransacao.values.byName(t.status.name),
+  categoria: switch (t.categoria) {
+    final c? => CategoriaDaTransacao(id: c.id, nome: c.nome),
+    null => null,
+  },
   faturaId: t.faturaId,
   parcela: switch (t.parcela) {
     final p? => Parcela(numero: p.numero, total: p.total),

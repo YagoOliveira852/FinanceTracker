@@ -10,7 +10,11 @@ import '../../login/cubit/sessao_cubit.dart';
 /// Rota da tela Contas, dentro da aba Mais.
 const rotaContas = '/mais/contas';
 
-/// Aba Mais: Contas e os itens que ainda não têm tela ("em breve").
+/// Rota de Categorias e regras, dentro da aba Mais.
+const rotaCategorias = '/mais/categorias';
+
+/// Aba Mais: Contas, Categorias e regras e os itens que ainda não têm tela
+/// ("em breve").
 class MaisTela extends StatelessWidget {
   const MaisTela({super.key});
 
@@ -67,19 +71,21 @@ class MaisTela extends StatelessWidget {
           ),
           const SizedBox(height: Espaco.x4),
           const TituloSecao('Ajustes', pequeno: true),
-          const GrupoLista(
+          GrupoLista(
             itens: [
-              _EmBreve(
+              const _EmBreve(
                 icone: Icons.tune_rounded,
                 titulo: 'Planejamento',
                 subtitulo: 'Salário, colchão e meta da reserva',
               ),
-              _EmBreve(
+              ItemLista(
                 icone: Icons.category_rounded,
                 titulo: 'Categorias e regras',
-                subtitulo: 'Como os rascunhos são classificados',
+                subtitulo: const Text('Como os rascunhos são classificados'),
+                direita: seta,
+                aoTocar: () => context.go(rotaCategorias),
               ),
-              _EmBreve(
+              const _EmBreve(
                 icone: Icons.fingerprint_rounded,
                 titulo: 'Segurança',
                 subtitulo: 'Desbloqueio por biometria',

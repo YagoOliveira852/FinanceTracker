@@ -19,7 +19,7 @@ abstract class LancamentoEstado with _$LancamentoEstado {
     @Default(false) bool enviando,
 
     /// Erro por campo, com os nomes do formulário: `conta_id`, `valor`,
-    /// `data`, `parcelas`, `descricao` (os da compra parcelada na API,
+    /// `data`, `parcelas`, `descricao`, `categoria_id` (os da compra parcelada na API,
     /// `valor_total`, `data_compra` e `qtd_parcelas`, viram os do formulário).
     @Default({}) Map<String, String> erros,
     String? erroGeral,
@@ -55,6 +55,7 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
     'data_compra': 'data',
     'qtd_parcelas': 'parcelas',
     'descricao': 'descricao',
+    'categoria_id': 'categoria_id',
   };
 
   /// O usuário mexeu no campo: o erro dele some até o próximo envio.
@@ -110,6 +111,9 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
 
     /// 2 ou mais: compra parcelada (só em cartão, a tela garante).
     int parcelas = 1,
+
+    /// Opcional; a tela só oferece as que combinam com o tipo.
+    String? categoriaId,
   }) async {
     final erros = <String, String>{
       if (contaId == null) 'conta_id': 'Escolha uma conta.',
@@ -132,6 +136,7 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
                 qtdParcelas: parcelas,
                 dataCompra: somenteData(data),
                 descricao: descricao.trim(),
+                categoriaId: categoriaId,
               ),
             )).first
           : await _transacoes.lancar(
@@ -141,6 +146,7 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
                 valor: lerDinheiro(valor)!,
                 data: somenteData(data),
                 descricao: descricao.trim(),
+                categoriaId: categoriaId,
               ),
             );
       if (isClosed) return;
