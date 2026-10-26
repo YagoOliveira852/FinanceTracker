@@ -18,6 +18,7 @@ part 'transacao_entrada.g.dart';
 /// * [valor] - Sempre positivo; o sentido vem do `tipo`.
 /// * [data] 
 /// * [descricao] 
+/// * [categoriaId] - Ativa e do grupo que combina com o tipo; não cria regra.
 @BuiltValue()
 abstract class TransacaoEntrada implements Built<TransacaoEntrada, TransacaoEntradaBuilder> {
   @BuiltValueField(wireName: r'conta_id')
@@ -36,6 +37,10 @@ abstract class TransacaoEntrada implements Built<TransacaoEntrada, TransacaoEntr
 
   @BuiltValueField(wireName: r'descricao')
   String get descricao;
+
+  /// Ativa e do grupo que combina com o tipo; não cria regra.
+  @BuiltValueField(wireName: r'categoria_id')
+  String? get categoriaId;
 
   TransacaoEntrada._();
 
@@ -85,6 +90,13 @@ class _$TransacaoEntradaSerializer implements PrimitiveSerializer<TransacaoEntra
       object.descricao,
       specifiedType: const FullType(String),
     );
+    if (object.categoriaId != null) {
+      yield r'categoria_id';
+      yield serializers.serialize(
+        object.categoriaId,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
   }
 
   @override
@@ -142,6 +154,14 @@ class _$TransacaoEntradaSerializer implements PrimitiveSerializer<TransacaoEntra
             specifiedType: const FullType(String),
           ) as String;
           result.descricao = valueDes;
+          break;
+        case r'categoria_id':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.categoriaId = valueDes;
           break;
         default:
           unhandled.add(key);

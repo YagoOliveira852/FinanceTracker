@@ -6,6 +6,7 @@ lib/api_client.dart
 lib/src/api.dart
 lib/src/api/auth_api.dart
 lib/src/api/cartoes_api.dart
+lib/src/api/categorias_api.dart
 lib/src/api/contas_api.dart
 lib/src/api/faturas_api.dart
 lib/src/api/saude_api.dart
@@ -22,6 +23,10 @@ lib/src/model/ajuste_entrada.dart
 lib/src/model/cartao_edicao.dart
 lib/src/model/cartao_entrada.dart
 lib/src/model/cartao_saida.dart
+lib/src/model/categoria_edicao.dart
+lib/src/model/categoria_entrada.dart
+lib/src/model/categoria_resumo.dart
+lib/src/model/categoria_saida.dart
 lib/src/model/compra_parcelada_entrada.dart
 lib/src/model/compra_parcelada_saida.dart
 lib/src/model/conta_entrada.dart
@@ -35,6 +40,7 @@ lib/src/model/fatura_edicao.dart
 lib/src/model/fatura_resumo.dart
 lib/src/model/feriado_saida.dart
 lib/src/model/fonte_transacao.dart
+lib/src/model/grupo_categoria.dart
 lib/src/model/http_validation_error.dart
 lib/src/model/instituicao_saida.dart
 lib/src/model/lista_faturas_saida.dart

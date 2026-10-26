@@ -17,6 +17,7 @@ part 'compra_parcelada_entrada.g.dart';
 /// * [qtdParcelas] 
 /// * [dataCompra] 
 /// * [descricao] 
+/// * [categoriaId] - De gasto e ativa; vale para todas as parcelas.
 @BuiltValue()
 abstract class CompraParceladaEntrada implements Built<CompraParceladaEntrada, CompraParceladaEntradaBuilder> {
   @BuiltValueField(wireName: r'conta_id')
@@ -34,6 +35,10 @@ abstract class CompraParceladaEntrada implements Built<CompraParceladaEntrada, C
 
   @BuiltValueField(wireName: r'descricao')
   String get descricao;
+
+  /// De gasto e ativa; vale para todas as parcelas.
+  @BuiltValueField(wireName: r'categoria_id')
+  String? get categoriaId;
 
   CompraParceladaEntrada._();
 
@@ -83,6 +88,13 @@ class _$CompraParceladaEntradaSerializer implements PrimitiveSerializer<CompraPa
       object.descricao,
       specifiedType: const FullType(String),
     );
+    if (object.categoriaId != null) {
+      yield r'categoria_id';
+      yield serializers.serialize(
+        object.categoriaId,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
   }
 
   @override
@@ -140,6 +152,14 @@ class _$CompraParceladaEntradaSerializer implements PrimitiveSerializer<CompraPa
             specifiedType: const FullType(String),
           ) as String;
           result.descricao = valueDes;
+          break;
+        case r'categoria_id':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.categoriaId = valueDes;
           break;
         default:
           unhandled.add(key);

@@ -36,6 +36,7 @@ def lancar(dados: TransacaoEntrada, sessao: SessaoDep) -> TransacaoSaida:
         valor=dados.valor,
         data=dados.data,
         descricao=dados.descricao,
+        categoria_id=dados.categoria_id,
     )
     return TransacaoSaida.model_validate(transacao)
 
@@ -50,6 +51,7 @@ def lancar_parcelada(dados: CompraParceladaEntrada, sessao: SessaoDep) -> Compra
         qtd_parcelas=dados.qtd_parcelas,
         data_compra=dados.data_compra,
         descricao=dados.descricao,
+        categoria_id=dados.categoria_id,
     )
     return CompraParceladaSaida.model_validate(compra)
 

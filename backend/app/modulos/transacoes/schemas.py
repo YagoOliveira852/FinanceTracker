@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.dinheiro import Dinheiro, DinheiroPositivo
+from app.modulos.categorias.schemas import CategoriaResumo
 from app.modulos.transacoes.models import (
     FonteTransacao,
     StatusTransacao,
@@ -27,6 +28,9 @@ class TransacaoEntrada(BaseModel):
     valor: DinheiroPositivo = Field(description="Sempre positivo; o sentido vem do `tipo`.")
     data: date
     descricao: str = Field(min_length=1, max_length=200)
+    categoria_id: uuid.UUID | None = Field(
+        default=None, description="Ativa e do grupo que combina com o tipo; não cria regra."
+    )
 
 
 class CompraParceladaEntrada(BaseModel):
@@ -42,6 +46,9 @@ class CompraParceladaEntrada(BaseModel):
     qtd_parcelas: int = Field(ge=2, le=24)
     data_compra: date
     descricao: str = Field(min_length=1, max_length=200)
+    categoria_id: uuid.UUID | None = Field(
+        default=None, description="De gasto e ativa; vale para todas as parcelas."
+    )
 
 
 class TransferenciaEntrada(BaseModel):
@@ -81,6 +88,9 @@ class TransacaoSaida(BaseModel):
     data: date
     descricao: str
     descricao_original: str
+    categoria: CategoriaResumo | None = Field(
+        description="Confirmada na revisão ou escolhida no lançamento; a sugestão não vem aqui."
+    )
     status: StatusTransacao
     fonte: FonteTransacao
     fatura_id: uuid.UUID | None = Field(description="Fatura da transação, se a conta é cartão.")

@@ -309,3 +309,29 @@ def test_dias_novos_do_cartao_movem_a_compra_parcelada(api, sessao, cartao, corr
     assert resposta.status_code == 200, resposta.json()
     # Dezembro passa a fechar seg 14/12 (12/12 é sábado): a compra de 13/12 entra nele.
     assert _competencias(sessao, compra) == [date(2026, 12, 1), date(2027, 1, 1)]
+
+
+def _id_categoria(api, nome: str) -> str:
+    return next(c["id"] for c in api.get("/categorias").json() if c["nome"] == nome)
+
+
+def test_categoria_vale_para_todas_as_parcelas(api, cartao):
+    compras = _id_categoria(api, "Compras")
+
+    compra = _parcelar(api, cartao, categoria_id=compras)
+
+    assert {p["categoria"]["nome"] for p in compra["parcelas"]} == {"Compras"}
+
+
+def test_parcelada_com_categoria_de_renda_e_recusada(api, sessao, cartao):
+    antes = _contagem(sessao)
+
+    resposta = api.post(
+        "/transacoes/parceladas",
+        json=_dados(cartao, categoria_id=_id_categoria(api, "Salário")),
+    )
+
+    assert _campos(resposta) == {
+        "body.categoria_id": "Escolha uma categoria de gasto (essencial ou variável)."
+    }
+    assert _contagem(sessao) == antes

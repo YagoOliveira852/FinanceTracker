@@ -70,6 +70,70 @@ def _campos(resposta) -> dict:
     return {erro["campo"]: erro["mensagem"] for erro in resposta.json()["campos"]}
 
 
+# --- categoria ---------------------------------------------------------------
+
+
+def _categoria(api, nome: str) -> dict:
+    return next(c for c in api.get("/categorias").json() if c["nome"] == nome)
+
+
+def test_lancamento_sem_categoria_sai_sem_categoria(api, conta):
+    assert _lancar(api, conta["id"])["categoria"] is None
+
+
+def test_lancamento_com_categoria(api, conta):
+    mercado = _categoria(api, "Mercado")
+
+    transacao = _lancar(api, conta["id"], categoria_id=mercado["id"])
+
+    assert transacao["categoria"] == {"id": mercado["id"], "nome": "Mercado", "grupo": "essencial"}
+    assert api.get(f"/transacoes/{transacao['id']}").json()["categoria"]["nome"] == "Mercado"
+    assert _categoria(api, "Mercado")["qtd_transacoes"] == 1
+
+
+def test_receita_com_categoria_de_renda(api, conta):
+    salario = _categoria(api, "Salário")
+
+    transacao = _lancar(api, conta["id"], tipo="receita", categoria_id=salario["id"])
+
+    assert transacao["categoria"]["nome"] == "Salário"
+
+
+@pytest.mark.parametrize(
+    ("tipo", "nome", "mensagem"),
+    [
+        ("receita", "Mercado", "Escolha uma categoria de renda."),
+        ("despesa", "Salário", "Escolha uma categoria de gasto (essencial ou variável)."),
+        ("despesa", "Investimento", "Escolha uma categoria de gasto (essencial ou variável)."),
+    ],
+)
+def test_categoria_que_nao_combina_com_o_tipo_e_recusada(api, conta, tipo, nome, mensagem):
+    resposta = api.post(
+        "/transacoes",
+        json=_dados(conta["id"], tipo=tipo, categoria_id=_categoria(api, nome)["id"]),
+    )
+
+    assert _campos(resposta) == {"body.categoria_id": mensagem}
+
+
+def test_categoria_desativada_e_recusada(api, conta):
+    educacao = _categoria(api, "Educação")
+    api.put(
+        f"/categorias/{educacao['id']}",
+        json={"nome": "Educação", "grupo": "variavel", "ativa": False},
+    )
+
+    resposta = api.post("/transacoes", json=_dados(conta["id"], categoria_id=educacao["id"]))
+
+    assert _campos(resposta) == {"body.categoria_id": "Esta categoria está desativada."}
+
+
+def test_categoria_inexistente_e_recusada(api, conta):
+    resposta = api.post("/transacoes", json=_dados(conta["id"], categoria_id=str(uuid.uuid4())))
+
+    assert _campos(resposta) == {"body.categoria_id": "Categoria não encontrada."}
+
+
 # --- lançamento --------------------------------------------------------------
 
 

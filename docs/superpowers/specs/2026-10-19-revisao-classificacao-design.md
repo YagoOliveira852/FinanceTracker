@@ -1,6 +1,6 @@
 # Revisão: classificação, transferências, feriados e amostras de importação
 
-**Status:** decidida em 2026-10-19.
+**Status:** decidida em 2026-10-19; atualizada em 2026-10-26 com as decisões do design da revisão (categorias, regras, par recusado, duplicata).
 
 ## Contexto
 
@@ -10,20 +10,46 @@ A tela de revisão é o coração do app: tudo que não é lançamento manual en
 
 ### Regras de classificação aprendidas
 
-- **Padrão = descrição original normalizada**, por uma função pura e testável: minúsculas, sem acentos, sem números, datas e códigos, sem termos genéricos do banco ("pix enviado", "compra", "pagamento", ...). Ex.: `PIX ENVIADO 12/11 PADARIA SAO JOSE LTDA 0349` → `padaria sao jose ltda`.
-- A regra é **aprendida na 1ª confirmação** de categoria (`origem = aprendida`). O app só sugere; a revisão confirma.
-- **Correção sobrescreve:** se uma regra sugerir errado e o usuário corrigir, a categoria da regra é trocada e `vezes_aplicada` volta a zero.
-- Regras manuais e aprendidas convivem; vence a de maior `prioridade`.
+- **Padrão = descrição original normalizada**, por uma função pura e testável (`modulos/categorias/classificacao.py`): sem acentos, minúsculas; saem datas (`12/11`, `12/11/2026`, `2026-11-12`) e toda palavra com dígito (números e códigos como `0349`, `24h`, `*1234`); pontuação vira espaço; saem os termos genéricos dos bancos, como palavra ou expressão inteira ("transferencia enviada pelo pix", "pix enviado", "compra no debito", "pagamento de fatura", "pagamento", "compra", "pix", "estorno", ...; a lista fica no código, com teste). Ex.: `PIX ENVIADO 12/11 PADARIA SAO JOSE LTDA 0349` → `padaria sao jose ltda`. O padrão digitado numa regra manual passa pela mesma função; padrão vazio depois dela é recusado.
+- **Casamento:** a regra casa quando o padrão aparece **como palavras inteiras** na descrição normalizada: `posto` casa `posto ficticio`, `bar` não casa `barbearia`.
+- **Ordem derivada, sem coluna `prioridade`:** entre as regras que casam, vence a manual antes da aprendida; depois a restrita a uma conta antes da geral; depois o padrão mais longo; por fim a ordem alfabética do padrão (só para o resultado ser sempre o mesmo). A ordem sai dos dados, como o status `paga` da fatura: não há número para manter em dia.
+- **Compatibilidade com o tipo:** a regra só sugere se a categoria está ativa e o grupo combina com o tipo da transação: `despesa` e `estorno` ↔ `essencial`/`variavel`; `receita` ↔ `renda`; `aporte` e `resgate` ↔ `investimento`. Transferência, pagamento de fatura e ajuste não têm categoria. O estorno usa a categoria do gasto (o estorno de uma compra no mercado é Mercado). Isso evita o vaivém do Pix com a mesma pessoa nos dois sentidos ("pix enviado fulano" e "pix recebido fulano" viram `fulano`): pode haver uma regra `fulano` de renda e outra de gasto.
+- **A sugestão não é gravada:** a revisão a calcula na leitura, então editar uma regra muda as sugestões dos rascunhos na hora. `transacao.categoria_id` só é preenchido quando a categoria é confirmada na revisão ou escolhida no lançamento manual.
+- **Confirmar a categoria** de um rascunho (serviço `confirmar_categoria`, usado pela revisão; o "Confirmar em lote" é o caso 2 para cada rascunho):
+  1. Nenhuma regra sugeria e o padrão da transação não é vazio → cria a regra **aprendida** com esse padrão, para todas as contas, `vezes_aplicada` = 0. A folha da revisão mostra: "Próximas de '<padrão>' vão sugerir X".
+  2. Confirmou a sugestão como veio → `vezes_aplicada` + 1.
+  3. **Correção de regra aprendida:** se o padrão da regra é o da transação, a categoria da regra é trocada e `vezes_aplicada` volta a zero ("A regra de '<padrão>' muda de A para B"). Se a regra casou só parte da descrição (padrão mais curto), ela fica como está e nasce uma aprendida com o padrão da transação, que passa a vencer por ser mais longa: corrigir um rascunho não muda a sugestão de todas as outras descrições que contêm o padrão curto.
+  4. **Correção de regra manual:** a regra não muda; só a transação fica com a categoria escolhida, e a folha avisa que a regra manual continua (edita-se em Categorias e regras). Regra manual é decisão explícita do usuário.
+  5. Padrão vazio (a descrição só tinha termos genéricos, ex.: "Pagamento recebido") → nenhuma regra.
+- **Regras manuais** são criadas e editadas em Mais → Categorias e regras. Editar uma aprendida a torna manual (`vezes_aplicada` continua). Excluir apaga a regra: não é dado financeiro, e as transações já classificadas não mudam. Não pode haver duas regras com o mesmo padrão, a mesma conta (ou ambas gerais) e categorias do mesmo tipo de transação; o cadastro recusa no padrão.
+- **"Casa com N rascunhos agora":** a tela da regra mostra quantos rascunhos sem categoria ela sugeriria hoje (é a vencedora para eles) e um exemplo; criar ou salvar uma regra devolve o mesmo número.
 
-### Categorias iniciais
+### Categorias
 
-Seed versionado com uma lista genérica, sem nada pessoal: Alimentação, Mercado, Transporte, Moradia, Saúde, Lazer, Assinaturas, Compras, Educação (`essencial`/`variavel`), Salário, Outras receitas (`renda`) e Investimento (`investimento`). O usuário renomeia ou cria outras pelo app.
+- Seed versionado com uma lista genérica, sem nada pessoal: **essencial** Mercado, Moradia, Saúde, Transporte; **variável** Alimentação, Assinaturas, Compras, Educação, Lazer; **renda** Salário, Outras receitas; **investimento** Investimento. O usuário renomeia, troca o grupo ou cria outras pelo app.
+- **Nome único sem diferenciar maiúsculas.** Sem ícone próprio: o ícone da linha vem do tipo da transação.
+- **Grupo editável.** Entre `essencial` e `variavel` (os dois são gasto) a troca é livre; para outro tipo de transação (renda, investimento) só enquanto nenhuma transação usa a categoria, para não deixar uma despesa com categoria de renda.
+- **Desativar** tira a categoria das opções (revisão, lançamento, regras novas) e as regras dela param de sugerir; as transações antigas continuam com ela. Categoria nunca é excluída; reativar devolve tudo.
+- **Lançamento manual** aceita categoria opcional (ativa e compatível com o tipo), à vista ou parcelada; não cria regra, porque a descrição é do usuário, não do banco.
 
 ### Transferências entre contas próprias
 
 - **Sugestão automática de par:** mesmo valor, sentidos opostos, contas próprias diferentes, datas até ±2 dias. O par aparece na revisão e só é ligado (`transferencia_par_id`) com confirmação.
 - Depósito de dinheiro físico (`carteira` → `corrente`) também é transferência.
 - Nunca fundir automaticamente; mesmo princípio da deduplicação entre fontes.
+
+### Decisões do design da revisão (2026-10-26)
+
+Telas aprovadas na página "Revisão" do canvas. Valem para o card da tela de revisão:
+
+- **Lista:** decisões no topo ("Precisam de você": par, pagamento de fatura, duplicata, sumiu da origem) e os rascunhos comuns por data. O contador (aba e cabeçalho) conta linhas: um par conta 1.
+- **Lote:** "Confirmar N sugeridos" confirma só os rascunhos com categoria sugerida; sem categoria e decisões ficam para um a um.
+- **Ignorar, remover e descartar** são sempre `status = ignorada`, nunca DELETE: a linha fica no histórico e a idempotência (`conta_id, fonte, id_externo`) impede que volte na próxima importação.
+- **Par de transferência:** "Ligar" confirma os dois lados e grava `transferencia_par_id`; "Não é par" grava em `par_recusado` (`saida_id`, `entrada_id`, unique no par) e a sugestão não volta, mas a saída ainda pode parear com outra entrada. Um booleano na transação não serviria: ele bloquearia todos os pares dela, não só aquele.
+- **Rascunho marcado como transferência** (campo "Para"): para uma conta sem Open Finance (ex.: carteira), o app cria o outro lado, confirmado e ligado; para uma conta com Open Finance, liga com o rascunho que veio de lá, sem criar (senão o outro lado chegaria duplicado). O critério exato para contas alimentadas só por OFX fica para o card da revisão.
+- **Pagamento vindo das fontes:** o usuário escolhe a fatura (sugerida: a fechada do cartão pago por aquela conta, com o vencimento mais próximo) e vê se ela fica paga; "É outra coisa" abre a folha comum.
+- **Possível duplicata:** o usuário escolhe qual fica. Ficando com o rascunho, ele entra confirmado com a categoria e a descrição da que foi descartada (que vira `ignorada`).
+- **Sumiu da origem:** "Manter" limpa `removida_na_origem_em`; "Remover" a torna `ignorada`.
 
 ### Feriados
 
@@ -65,6 +91,11 @@ Lidos pela estrutura mascarada e por comparações agregadas (contagens e sim/n�
 
 - **Padrão = descrição inteira:** nunca casa de novo por causa de datas e códigos.
 - **Aprender só após 2 confirmações iguais:** menos sugestões erradas, mais trabalho manual no começo do uso.
+- **Coluna `prioridade` nas regras:** o usuário teria de numerar regras e manter os números; a ordem derivada (manual > uma conta > mais longa) resolve os casos reais sem manutenção.
+- **Casamento por trecho de texto (substring):** `bar` casaria `barbearia`; por palavras inteiras, não.
+- **Gravar a sugestão na transação ao importar:** ficaria velha quando uma regra mudasse; calculada na leitura, está sempre em dia.
+- **Correção de regra manual também mudar a regra:** uma escolha pontual na revisão desfaria uma regra que o usuário escreveu de propósito.
+- **Booleano "não é par" na transação:** bloquearia todos os pares dela; `par_recusado` recusa só aquele par.
 - **Pares de transferência ligados manualmente:** mais trabalhoso e fácil de esquecer, o que dobra gasto e renda.
 - **Feriados de Ceará e Fortaleza:** não afetam o vencimento de bancos digitais.
 - **Lista de feriados à mão:** sem dependência nova, mas precisa ser mantida todo ano.
@@ -72,6 +103,7 @@ Lidos pela estrutura mascarada e por comparações agregadas (contagens e sim/n�
 ## Consequências
 
 - Normalização e pareamento são funções puras com testes de tabela.
+- Novas tabelas: `categoria`, `regra_classificacao` (sem `prioridade`) e, no card da revisão, `par_recusado`; `transacao.categoria_id`.
 - `holidays` é dependência nova do backend.
 - O cartão do Nubank tem exportação estruturada (OFX), então não depende só da Pluggy; o do Mercado Pago ainda será verificado.
 - Um único parser OFX atende conta e cartão do Nubank, o que reduz parsers e fixtures na fase de importação.

@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, pool
 
 import app.modulos.auth.models  # noqa: F401
 import app.modulos.cartoes.models  # noqa: F401
+import app.modulos.categorias.models  # noqa: F401
 import app.modulos.contas.models  # noqa: F401
 import app.modulos.transacoes.models  # noqa: F401
 from app.core.config import get_settings
