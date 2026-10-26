@@ -4,10 +4,12 @@ os saldos sem contar como gasto nem renda."""
 import uuid
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 
 from app.modulos.contas.models import Conta
+from app.modulos.transacoes import service
 from app.modulos.transacoes.models import Transacao
+from app.modulos.transacoes.schemas import TransacaoSaida
 
 
 def _criar_conta(api, **dados) -> dict:
@@ -161,6 +163,28 @@ def test_listagem_traz_o_par(api, corrente, carteira):
     assert all(t["transferencia"] is not None for t in todas)
     assert [t["id"] for t in da_carteira] == [corpo["entrada"]["id"]]
     assert da_carteira[0]["transferencia"]["conta_origem_id"] == corrente["id"]
+
+
+def test_listagem_filtrada_carrega_o_par_sem_consulta_por_linha(api, sessao, corrente, carteira):
+    for _ in range(3):
+        _transferir(api, corrente, carteira)
+    sessao.expunge_all()
+    consultas = []
+
+    def contar(*_):
+        consultas.append(1)
+
+    motor = sessao.get_bind()
+    event.listen(motor, "before_cursor_execute", contar)
+    try:
+        transacoes = service.listar(sessao, conta_id=uuid.UUID(carteira["id"]))
+        saidas = [TransacaoSaida.model_validate(t) for t in transacoes]
+    finally:
+        event.remove(motor, "before_cursor_execute", contar)
+
+    assert len(saidas) == 3
+    assert all(s.transferencia.conta_origem_id == uuid.UUID(corrente["id"]) for s in saidas)
+    assert len(consultas) == 1
 
 
 def test_transferencia_exige_token(client):
