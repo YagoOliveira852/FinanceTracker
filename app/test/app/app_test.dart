@@ -95,6 +95,46 @@ void main() {
     expect(find.widgetWithText(InputDecorator, 'Para'), findsOneWidget);
   });
 
+  testWidgets('Pagamento sem cartão: cadastrar o cartão e voltar ao '
+      'formulário com ele', (tester) async {
+    final dependencias = await _abrir(tester);
+    (dependencias.transacoes as TransacoesRepositorioFalso).transacoes.add(
+      transacaoExemplo(data: DateTime.now()),
+    );
+    await tester.tap(find.text('Transações'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pagamento de fatura'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cadastrar cartão'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nome do cartão'),
+      'Cartão Exemplo',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Instituição'),
+      'Banco Exemplo',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Dia de fechamento'),
+      '3',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Dia de vencimento'),
+      '10',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar cartão'));
+    await tester.pumpAndSettle();
+
+    // De volta ao pagamento, já com o cartão novo.
+    expect(find.text('Nova transação'), findsOneWidget);
+    expect(find.text('Cadastrar cartão'), findsNothing);
+    expect(find.text('Cartão Exemplo · Banco Exemplo'), findsOneWidget);
+  });
+
   testWidgets('aba Revisão mostra em breve', (tester) async {
     await _abrir(tester);
 

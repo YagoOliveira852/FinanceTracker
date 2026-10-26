@@ -3,6 +3,9 @@ import 'package:financas/features/contas/cubit/contas_cubit.dart';
 import 'package:financas/features/contas/data/conta.dart';
 import 'package:financas/features/transacoes/cubit/lancamento_cubit.dart';
 import 'package:financas/core/api/erro_api.dart';
+import 'package:financas/core/formatacao/datas.dart';
+import 'package:financas/features/faturas/cubit/pagamento_cubit.dart';
+import 'package:financas/features/faturas/data/pagamento.dart';
 import 'package:financas/features/transacoes/cubit/transacoes_cubit.dart';
 import 'package:financas/features/transacoes/cubit/transferencia_cubit.dart';
 import 'package:financas/features/transacoes/data/transacao.dart';
@@ -110,7 +113,7 @@ void main() {
     expect(find.text('Lançar transação'), findsOneWidget);
   });
 
-  testWidgets('Lançamento: transferência habilitada, pagamento em breve', (
+  testWidgets('Lançamento: transferência e pagamento habilitados', (
     tester,
   ) async {
     // Tela de celular (390 × 844), para o formulário caber inteiro.
@@ -144,7 +147,7 @@ void main() {
     expect(chip('Despesa').selected, isTrue);
     expect(chip('Receita').onSelected, isNotNull);
     expect(chip('Transferência').onSelected, isNotNull);
-    expect(chip('Pagamento de fatura').onSelected, isNull);
+    expect(chip('Pagamento de fatura').onSelected, isNotNull);
     expect(find.text('Categorias: em breve.'), findsOneWidget);
 
     await tester.tap(find.text('Salvar'));
@@ -704,5 +707,156 @@ void main() {
     expect(find.text('R\$ 200,00'), findsOneWidget);
     // A conta desativada aparece no subtítulo, mas não vira filtro.
     expect(find.widgetWithText(FilterChip, 'Carteira'), findsNothing);
+  });
+
+  group('pagamento de fatura', () {
+    Future<FaturasRepositorioFalso> abrirPagamento(
+      WidgetTester tester, {
+      required List<Conta> contas,
+    }) async {
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final faturas = FaturasRepositorioFalso();
+      TipoConta? tipoDaNovaConta;
+      final router = GoRouter(
+        initialLocation: '/lancar',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Text('Fechou'),
+            routes: [
+              GoRoute(
+                path: 'lancar',
+                builder: (_, _) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create: (_) => LancamentoCubit(
+                        TransacoesRepositorioFalso(),
+                        faturas,
+                      ),
+                    ),
+                    BlocProvider(
+                      create: (_) =>
+                          TransferenciaCubit(TransacoesRepositorioFalso()),
+                    ),
+                    BlocProvider(create: (_) => PagamentoCubit(faturas)),
+                  ],
+                  child: const LancamentoTela(),
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/mais/contas/nova',
+            builder: (_, state) {
+              tipoDaNovaConta = state.extra as TipoConta?;
+              return Text('Nova conta: $tipoDaNovaConta');
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        BlocProvider(
+          create: (_) =>
+              ContasCubit(ContasRepositorioFalso(contas: contas))..carregar(),
+          child: MaterialApp.router(theme: temaClaro(), routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pagamento de fatura'));
+      await tester.pumpAndSettle();
+      return faturas;
+    }
+
+    testWidgets('padrões da fatura, trocar de fatura e salvar', (tester) async {
+      final faturas = await abrirPagamento(
+        tester,
+        contas: [
+          contaExemplo(),
+          contaExemplo(id: 'c3', nome: 'Carteira', tipo: TipoConta.carteira),
+          cartaoExemplo(),
+        ],
+      );
+
+      expect(find.text('Cartão Exemplo · Banco Exemplo'), findsOneWidget);
+      expect(
+        find.text('Outubro · fechada · vence ter, 13 out'),
+        findsOneWidget,
+      );
+      expect(find.text('Valor da fatura: R\$ 1.032,15.'), findsOneWidget);
+      expect(find.text('Conta principal · Banco Exemplo'), findsOneWidget);
+      expect(
+        find.text('Conta de pagamento do cartão; dá para trocar.'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(TextField, '1.032,15'), findsOneWidget);
+      expect(find.text('13/10/2026'), findsOneWidget);
+
+      await tester.tap(find.text('Outubro · fechada · vence ter, 13 out'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Novembro · aberta · vence ter, 10 nov').last);
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(TextField, '544,80'), findsOneWidget);
+      expect(
+        find.text(
+          formatarData(dataPadraoDoPagamento(novembroExemplo, DateTime.now())),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('Não conta como gasto: as compras já entraram no cartão.'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Salvar pagamento'));
+      await tester.pumpAndSettle();
+
+      final pago = faturas.pagamentos.single;
+      expect(pago.cartaoId, 'k1');
+      expect(pago.competencia, DateTime(2026, 11));
+      expect(pago.dados.contaId, 'c1');
+      expect(pago.dados.valor.toString(), '544.8');
+      expect(find.text('Fechou'), findsOneWidget);
+    });
+
+    testWidgets('trocar de tipo e voltar mantém valor e data da fatura', (
+      tester,
+    ) async {
+      await abrirPagamento(tester, contas: [contaExemplo(), cartaoExemplo()]);
+
+      await tester.tap(find.text('Despesa'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pagamento de fatura'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(TextField, '1.032,15'), findsOneWidget);
+      expect(find.text('13/10/2026'), findsOneWidget);
+    });
+
+    testWidgets('sem cartão ativo: aviso, cadastrar e salvar desabilitado', (
+      tester,
+    ) async {
+      await abrirPagamento(tester, contas: [contaExemplo()]);
+
+      expect(
+        find.text(
+          'Para registrar um pagamento de fatura, cadastre o cartão primeiro.',
+        ),
+        findsOneWidget,
+      );
+      final salvar = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Salvar pagamento'),
+      );
+      expect(salvar.onPressed, isNull);
+
+      await tester.tap(find.text('Cadastrar cartão'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nova conta: TipoConta.cartaoCredito'), findsOneWidget);
+    });
   });
 }

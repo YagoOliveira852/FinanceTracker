@@ -31,6 +31,13 @@ abstract interface class FaturasRepositorio {
 
   /// Em que fatura do cartão [contaId] entra uma compra feita em [data].
   Future<DatasFatura> paraCompra(String contaId, DateTime data);
+
+  /// Registra um pagamento da fatura e devolve o detalhe atualizado.
+  Future<DetalheFatura> pagar(
+    String contaId,
+    DateTime competencia,
+    NovoPagamento dados,
+  );
 }
 
 class FaturasRepositorioApi implements FaturasRepositorio {
@@ -122,6 +129,26 @@ class FaturasRepositorioApi implements FaturasRepositorio {
         return datasFaturaDaApi(resposta.data!);
       });
 
+  @override
+  Future<DetalheFatura> pagar(
+    String contaId,
+    DateTime competencia,
+    NovoPagamento dados,
+  ) => _chamar((faturas) async {
+    final entrada = api.PagamentoEntrada(
+      (b) => b
+        ..contaId = dados.contaId
+        ..valor = dinheiroParaApi(dados.valor)
+        ..data = dados.data.toDate(),
+    );
+    final resposta = await faturas.pagar(
+      contaId: contaId,
+      competencia: competenciaParaApi(competencia),
+      pagamentoEntrada: entrada,
+    );
+    return _detalhe(resposta.data!);
+  });
+
   static DetalheFatura _detalhe(api.FaturaDetalheSaida d) => DetalheFatura(
     resumo: ResumoFatura(
       competencia: d.competencia.toDateTime(),
@@ -133,12 +160,14 @@ class FaturasRepositorioApi implements FaturasRepositorio {
       valorInformado: d.valorInformado == null
           ? null
           : Decimal.parse(d.valorInformado!),
+      valorPago: Decimal.parse(d.valorPago),
     ),
     fechamentoCalculado: d.fechamentoCalculado.toDateTime(),
     vencimentoCalculado: d.vencimentoCalculado.toDateTime(),
     ajusteFechamento: _ajuste(d.ajusteFechamento),
     ajusteVencimento: _ajuste(d.ajusteVencimento),
     transacoes: d.transacoes.map(transacaoDaApi).toList(),
+    pagamentos: d.pagamentos.map(transacaoDaApi).toList(),
   );
 
   static AjusteData? _ajuste(api.AjusteDataSaida? a) => a == null
@@ -169,4 +198,5 @@ ResumoFatura resumoFaturaDaApi(api.FaturaResumo f) => ResumoFatura(
   valorInformado: f.valorInformado == null
       ? null
       : Decimal.parse(f.valorInformado!),
+  valorPago: Decimal.parse(f.valorPago),
 );

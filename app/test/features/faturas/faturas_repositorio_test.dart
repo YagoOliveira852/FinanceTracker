@@ -1,6 +1,8 @@
 import 'package:decimal/decimal.dart';
 import 'package:financas/core/api/cliente_api.dart';
+import 'package:financas/features/faturas/data/fatura.dart';
 import 'package:financas/features/faturas/data/faturas_repositorio.dart';
+import 'package:financas/features/transacoes/data/transacao.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../apoio/adaptador_falso.dart';
@@ -110,5 +112,61 @@ void main() {
     });
     expect(detalhe.transacoes.single.valor, Decimal.parse('150.00'));
     expect(detalhe.transacoes.single.faturaId, 'f1');
+  });
+
+  test('pagar manda conta, valor e data e lê o status paga', () async {
+    responder((
+      status: 201,
+      corpo: {
+        'competencia': '2026-10-01',
+        'data_fechamento': '2026-10-05',
+        'data_vencimento': '2026-10-13',
+        'status': 'paga',
+        'valor': '1032.15',
+        'valor_calculado': '1032.15',
+        'valor_informado': null,
+        'valor_pago': '1032.15',
+        'fechamento_calculado': '2026-10-05',
+        'vencimento_calculado': '2026-10-13',
+        'ajuste_fechamento': null,
+        'ajuste_vencimento': null,
+        'transacoes': [],
+        'pagamentos': [
+          {
+            'id': 'p1',
+            'conta_id': 'c1',
+            'tipo': 'pagamento_fatura',
+            'valor': '1032.15',
+            'data': '2026-10-13',
+            'descricao': 'Pagamento de fatura · Cartão Exemplo',
+            'descricao_original': 'Pagamento de fatura · Cartão Exemplo',
+            'status': 'confirmada',
+            'fonte': 'manual',
+            'fatura_id': 'f1',
+          },
+        ],
+      },
+    ));
+
+    final detalhe = await repositorio.pagar(
+      'k1',
+      DateTime(2026, 10),
+      NovoPagamento(
+        contaId: 'c1',
+        valor: Decimal.parse('1032.15'),
+        data: DateTime(2026, 10, 13),
+      ),
+    );
+
+    final requisicao = adaptador.requisicoes.single;
+    expect(requisicao.path, '/cartoes/k1/faturas/2026-10/pagamentos');
+    expect(corpoDe(requisicao), {
+      'conta_id': 'c1',
+      'valor': '1032.15',
+      'data': '2026-10-13',
+    });
+    expect(detalhe.resumo.status, StatusFatura.paga);
+    expect(detalhe.resumo.valorPago, Decimal.parse('1032.15'));
+    expect(detalhe.pagamentos.single.tipo, TipoTransacao.pagamentoFatura);
   });
 }

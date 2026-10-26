@@ -82,6 +82,7 @@ void main() {
         status: StatusFatura.fechada,
         valor: Decimal.parse('1032.15'),
         valorCalculado: Decimal.parse('986.25'),
+        valorPago: Decimal.zero,
       );
 
       expect(base.diferenca, isNull);

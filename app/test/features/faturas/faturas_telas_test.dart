@@ -1,8 +1,16 @@
 import 'package:financas/app/tema.dart';
 import 'package:financas/features/contas/cubit/contas_cubit.dart';
 import 'package:financas/features/faturas/cubit/fatura_cubit.dart';
+import 'package:decimal/decimal.dart';
 import 'package:financas/features/faturas/cubit/faturas_cubit.dart';
+import 'package:financas/features/faturas/cubit/pagamento_cubit.dart';
+import 'package:financas/features/faturas/data/fatura.dart';
+import 'package:financas/features/transacoes/cubit/lancamento_cubit.dart';
+import 'package:financas/features/transacoes/cubit/transferencia_cubit.dart';
+import 'package:financas/features/transacoes/ui/lancamento_tela.dart';
+import 'package:go_router/go_router.dart';
 import 'package:financas/features/faturas/ui/fatura_tela.dart';
+import 'package:financas/features/faturas/ui/formulario_pagamento.dart';
 import 'package:financas/features/faturas/ui/faturas_tela.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../apoio/contas_falso.dart';
 import '../../apoio/faturas_falso.dart';
+import '../../apoio/transacoes_falso.dart';
 
 Widget _app(Widget tela) => MaterialApp(
   theme: temaClaro(),
@@ -68,16 +77,18 @@ void main() {
     expect(find.byTooltip('Editar cartão'), findsOneWidget);
   });
 
-  Widget detalhe(DateTime competencia) => _app(
-    BlocProvider(
-      create: (_) => FaturaCubit(FaturasRepositorioFalso(), 'k1'),
-      child: FaturaTela(
-        contaId: 'k1',
-        competencia: competencia,
-        ordem: listaExemplo.emOrdem.map((f) => f.competencia).toList(),
-      ),
-    ),
-  );
+  Widget detalhe(DateTime competencia, {FaturasRepositorioFalso? faturas}) =>
+      _app(
+        BlocProvider(
+          create: (_) =>
+              FaturaCubit(faturas ?? FaturasRepositorioFalso(), 'k1'),
+          child: FaturaTela(
+            contaId: 'k1',
+            competencia: competencia,
+            ordem: listaExemplo.emOrdem.map((f) => f.competencia).toList(),
+          ),
+        ),
+      );
 
   testWidgets('Fatura aberta: total até agora e banco sem valor', (
     tester,
@@ -132,18 +143,10 @@ void main() {
       ),
       findsOneWidget,
     );
-    await tester.scrollUntilVisible(
-      find.text('Registrar pagamento'),
-      300,
-      scrollable: find.byType(Scrollable).last,
+    final pagamento = tester.widget<FloatingActionButton>(
+      find.widgetWithText(FloatingActionButton, 'Registrar pagamento'),
     );
-    final pagamento = tester.widget<ButtonStyleButton>(
-      find.ancestor(
-        of: find.text('Registrar pagamento'),
-        matching: find.byWidgetPredicate((w) => w is OutlinedButton),
-      ),
-    );
-    expect(pagamento.onPressed, isNull);
+    expect(pagamento.onPressed, isNotNull);
   });
 
   testWidgets('Setas navegam pelas faturas da lista e somem nas pontas', (
@@ -164,5 +167,180 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Fatura de dezembro de 2026'), findsOneWidget);
     expect(find.byTooltip('Próxima fatura'), findsNothing);
+  });
+
+  /// Repositório falso com outubro trocado por [outubro] e novembro por
+  /// [novembro].
+  FaturasRepositorioFalso com({
+    ResumoFatura? outubro,
+    ResumoFatura? novembro,
+  }) => FaturasRepositorioFalso()
+    ..lista = ListaFaturas(
+      atual: novembro ?? novembroExemplo,
+      proximas: [dezembroExemplo],
+      anteriores: [outubro ?? outubroExemplo],
+    );
+
+  testWidgets('Fatura paga: chip, quadro do pagamento e sem botão', (
+    tester,
+  ) async {
+    _telaAlta(tester);
+    final paga = outubroExemplo.copyWith(
+      status: StatusFatura.paga,
+      valorCalculado: Decimal.parse('1032.15'),
+      valorPago: Decimal.parse('1032.15'),
+    );
+    await tester.pumpWidget(
+      detalhe(DateTime(2026, 10), faturas: com(outubro: paga)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Paga'), findsOneWidget);
+    expect(find.text('Valor da fatura'), findsOneWidget);
+    expect(
+      find.text('Confere com o valor informado pelo banco.'),
+      findsOneWidget,
+    );
+    expect(find.text('Paga em ter, 13 out'), findsOneWidget);
+    expect(find.text('Conta principal · Banco Exemplo'), findsOneWidget);
+    expect(find.text('Venceu'), findsOneWidget);
+    expect(find.text('Registrar pagamento'), findsNothing);
+  });
+
+  testWidgets('Fatura fechada com pagamento parcial: falta pagar', (
+    tester,
+  ) async {
+    _telaAlta(tester);
+    final parcial = outubroExemplo.copyWith(
+      valorCalculado: Decimal.parse('1032.15'),
+      valorPago: Decimal.parse('1000.00'),
+    );
+    await tester.pumpWidget(
+      detalhe(DateTime(2026, 10), faturas: com(outubro: parcial)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fechada · a pagar'), findsOneWidget);
+    expect(find.text('Falta pagar'), findsOneWidget);
+    expect(find.text('R\$ 32,15'), findsOneWidget);
+    expect(
+      find.text(
+        'De R\$ 1.032,15 da fatura. Pagando o restante, ela fica paga.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Pagamento em ter, 13 out'), findsOneWidget);
+    expect(
+      find.widgetWithText(FloatingActionButton, 'Registrar pagamento'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Fatura aberta com pagamento adiantado', (tester) async {
+    _telaAlta(tester);
+    final adiantada = novembroExemplo.copyWith(
+      valorPago: Decimal.parse('300.00'),
+    );
+    await tester.pumpWidget(
+      detalhe(DateTime(2026, 11), faturas: com(novembro: adiantada)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aberta'), findsOneWidget);
+    expect(find.text('Total até agora'), findsOneWidget);
+    expect(
+      find.text(
+        'Falta pagar R\$ 244,80 até agora. Compras novas ainda entram nesta '
+        'fatura.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Pagamento adiantado em ter, 10 nov'), findsOneWidget);
+    expect(find.text('Registrar pagamento'), findsNothing);
+  });
+
+  testWidgets('Lista de faturas mostra o chip Paga', (tester) async {
+    _telaAlta(tester);
+    final faturas = com(
+      outubro: outubroExemplo.copyWith(
+        status: StatusFatura.paga,
+        valorPago: Decimal.parse('1032.15'),
+      ),
+    );
+    await tester.pumpWidget(
+      _app(
+        BlocProvider(
+          create: (_) => FaturasCubit(faturas, 'k1')..carregar(),
+          child: const FaturasTela(contaId: 'k1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Paga'), findsOneWidget);
+  });
+
+  testWidgets('Registrar pagamento abre o formulário com cartão e fatura', (
+    tester,
+  ) async {
+    _telaAlta(tester);
+    final faturas = FaturasRepositorioFalso();
+    final router = GoRouter(
+      initialLocation: rotaFatura('k1', DateTime(2026, 10)),
+      routes: [
+        GoRoute(
+          path: '/mais/contas/cartao/:id/fatura/:competencia',
+          builder: (_, _) => BlocProvider(
+            create: (_) => FaturaCubit(faturas, 'k1'),
+            child: FaturaTela(contaId: 'k1', competencia: DateTime(2026, 10)),
+          ),
+          routes: [
+            GoRoute(
+              path: 'pagar',
+              builder: (_, _) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) =>
+                        LancamentoCubit(TransacoesRepositorioFalso(), faturas),
+                  ),
+                  BlocProvider(
+                    create: (_) =>
+                        TransferenciaCubit(TransacoesRepositorioFalso()),
+                  ),
+                  BlocProvider(create: (_) => PagamentoCubit(faturas)),
+                ],
+                child: LancamentoTela(
+                  pagamentoInicial: PagamentoInicial(
+                    cartaoId: 'k1',
+                    competencia: DateTime(2026, 10),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      BlocProvider(
+        create: (_) => ContasCubit(
+          ContasRepositorioFalso(contas: [contaExemplo(), cartaoExemplo()]),
+        )..carregar(),
+        child: MaterialApp.router(theme: temaClaro(), routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Registrar pagamento'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cartão Exemplo · Banco Exemplo'), findsOneWidget);
+    expect(find.text('Outubro · fechada · vence ter, 13 out'), findsOneWidget);
+    await tester.tap(find.text('Salvar pagamento'));
+    await tester.pumpAndSettle();
+
+    expect(faturas.pagamentos.single.competencia, DateTime(2026, 10));
+    expect(find.text('Fatura de outubro de 2026'), findsOneWidget);
   });
 }

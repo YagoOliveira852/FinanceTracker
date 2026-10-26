@@ -12,6 +12,7 @@ import '../../../core/formatacao/dinheiro.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
 import '../../faturas/data/fatura.dart';
+import '../../faturas/ui/formulario_pagamento.dart';
 import '../cubit/lancamento_cubit.dart';
 import '../data/transacao.dart';
 import 'formulario_transferencia.dart';
@@ -21,15 +22,19 @@ import 'textos.dart';
 const _maximoDeParcelas = 24;
 
 /// Lançamento manual: despesa ou receita (despesa num cartão é uma compra, à
-/// vista ou parcelada, e mostra em que fatura entra) e transferência entre
-/// contas próprias, cada uma com o seu formulário. Pagamento de fatura e
-/// categoria aparecem desabilitados ("em breve"). Fecha devolvendo `true`
+/// vista ou parcelada, e mostra em que fatura entra), transferência entre
+/// contas próprias e pagamento de fatura, cada um com o seu formulário.
+/// Categoria aparece desabilitada ("em breve"). Fecha devolvendo `true`
 /// quando salvou.
 class LancamentoTela extends StatefulWidget {
-  const LancamentoTela({super.key, this.contaInicial});
+  const LancamentoTela({super.key, this.contaInicial, this.pagamentoInicial});
 
   /// Conta já escolhida (o filtro ativo em Transações).
   final String? contaInicial;
+
+  /// Aberto pela tela de uma fatura: começa em Pagamento de fatura, com o
+  /// cartão e a fatura dela.
+  final PagamentoInicial? pagamentoInicial;
 
   @override
   State<LancamentoTela> createState() => _LancamentoTelaState();
@@ -45,6 +50,16 @@ class _LancamentoTelaState extends State<LancamentoTela> {
 
   /// Escolha do campo Parcelas; só vale com cartão (ver [_parcelasDa]).
   var _parcelas = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.pagamentoInicial != null) {
+      context.read<LancamentoCubit>().escolherTipo(
+        TipoTransacao.pagamentoFatura,
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -91,6 +106,9 @@ class _LancamentoTelaState extends State<LancamentoTela> {
     final tipo = context.select((LancamentoCubit c) => c.state.tipo);
     if (tipo == TipoTransacao.transferenciaSaida) {
       return FormularioTransferencia(contaInicial: widget.contaInicial);
+    }
+    if (tipo == TipoTransacao.pagamentoFatura) {
+      return FormularioPagamento(inicial: widget.pagamentoInicial);
     }
     final estadoContas = context.watch<ContasCubit>().state;
     final contas = switch (estadoContas) {
@@ -371,26 +389,8 @@ class _ChipsDeTipo extends StatelessWidget {
             chip('Despesa', TipoTransacao.despesa),
             chip('Receita', TipoTransacao.receita),
             chip('Transferência', TipoTransacao.transferenciaSaida),
-            const ChipOpcao(
-              rotulo: 'Pagamento de fatura',
-              selecionado: false,
-              aoTocar: null,
-            ),
+            chip('Pagamento de fatura', TipoTransacao.pagamentoFatura),
           ],
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            Espaco.x4,
-            Espaco.x1,
-            Espaco.x4,
-            0,
-          ),
-          child: Text(
-            'Pagamento de fatura: em breve.',
-            style: context.textos.bodySmall?.copyWith(
-              fontWeight: FontWeight.w400,
-            ),
-          ),
         ),
       ],
     );
