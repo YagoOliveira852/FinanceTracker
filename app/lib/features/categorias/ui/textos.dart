@@ -24,3 +24,26 @@ String textoDoUso({required int regras, required int transacoes}) {
     _ => throw StateError('Mais de duas partes.'),
   };
 }
+
+/// "Usada 3 vezes", "Usada 1 vez" ou "Ainda não usada", na linha da regra
+/// aprendida.
+String textoDoUsoDaRegra(int vezes) => switch (vezes) {
+  0 => 'Ainda não usada',
+  1 => 'Usada 1 vez',
+  _ => 'Usada $vezes vezes',
+};
+
+/// "Casa com 1 rascunho agora: Padaria Pão Quente, 25 out." no Editar regra.
+String textoDosRascunhos(int quantidade, {String? exemplo}) =>
+    switch (quantidade) {
+      0 => 'Não casa com nenhum rascunho agora.',
+      1 => 'Casa com 1 rascunho agora: $exemplo.',
+      _ => 'Casa com $quantidade rascunhos agora; o mais recente: $exemplo.',
+    };
+
+/// Aviso depois de salvar: "Regra salva; sugere 2 rascunhos agora."
+String textoRegraSalva(int rascunhos) => switch (rascunhos) {
+  0 => 'Regra salva; não casa com nenhum rascunho agora.',
+  1 => 'Regra salva; sugere 1 rascunho agora.',
+  _ => 'Regra salva; sugere $rascunhos rascunhos agora.',
+};
