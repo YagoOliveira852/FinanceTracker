@@ -2,7 +2,10 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/categorias/cubit/categorias_cubit.dart';
 import 'package:financas/features/categorias/cubit/editar_categoria_cubit.dart';
+import 'package:financas/features/categorias/cubit/editar_regra_cubit.dart';
+import 'package:financas/features/categorias/cubit/regras_cubit.dart';
 import 'package:financas/features/categorias/data/categoria.dart';
+import 'package:financas/features/categorias/data/regra.dart';
 import 'package:financas/features/transacoes/data/transacao.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -132,6 +135,115 @@ void main() {
         const EditarCategoriaEstado(enviando: true),
         const EditarCategoriaEstado(erroGeral: ErroApi.semConexao),
       ],
+    );
+  });
+
+  group('RegrasCubit', () {
+    blocTest<RegrasCubit, RegrasEstado>(
+      'carrega as regras',
+      build: () => RegrasCubit(CategoriasRepositorioFalso()),
+      act: (cubit) => cubit.carregar(),
+      expect: () => [
+        const RegrasEstado.carregando(),
+        isA<RegrasCarregado>().having((e) => e.regras.length, 'quantidade', 3),
+      ],
+    );
+  });
+
+  group('EditarRegraCubit', () {
+    late CategoriasRepositorioFalso repositorio;
+
+    setUp(() => repositorio = CategoriasRepositorioFalso());
+
+    blocTest<EditarRegraCubit, EditarRegraEstado>(
+      'regra existente carrega os rascunhos que ela sugere',
+      build: () =>
+          EditarRegraCubit(repositorio, existente: repositorio.regras.last),
+      act: (cubit) => cubit.carregar(),
+      expect: () => [
+        isA<EditarRegraEstado>().having(
+          (e) => e.detalhe?.rascunhos,
+          'rascunhos',
+          1,
+        ),
+      ],
+    );
+
+    blocTest<EditarRegraCubit, EditarRegraEstado>(
+      'falha ao contar os rascunhos não trava o formulário',
+      build: () => EditarRegraCubit(
+        repositorio..erro = const ErroApi(ErroApi.semConexao),
+        existente: repositorio.regras.last,
+      ),
+      act: (cubit) => cubit.carregar(),
+      expect: () => [const EditarRegraEstado(erroDetalhe: ErroApi.semConexao)],
+    );
+
+    blocTest<EditarRegraCubit, EditarRegraEstado>(
+      'valida padrão e categoria sem chamar a API',
+      build: () => EditarRegraCubit(repositorio),
+      act: (cubit) =>
+          cubit.salvar(padrao: ' ', categoriaId: null, contaId: null),
+      expect: () => [
+        const EditarRegraEstado(
+          erros: {
+            'padrao': 'Escreva o que procurar, por exemplo: padaria.',
+            'categoria_id': 'Escolha a categoria.',
+          },
+        ),
+      ],
+      verify: (_) => expect(repositorio.regrasCriadas, isEmpty),
+    );
+
+    blocTest<EditarRegraCubit, EditarRegraEstado>(
+      'editar manda os campos; padrão repetido volta no campo',
+      build: () =>
+          EditarRegraCubit(repositorio, existente: repositorio.regras.last),
+      act: (cubit) async {
+        repositorio.erro = const ErroApi(
+          'Dados inválidos.',
+          campos: {'padrao': 'Já existe uma regra com esse padrão.'},
+        );
+        await cubit.salvar(
+          padrao: 'posto',
+          categoriaId: 'cat-mercado',
+          contaId: 'k1',
+        );
+        repositorio.erro = null;
+        await cubit.salvar(
+          padrao: ' padaria ',
+          categoriaId: 'cat-alimentacao',
+          contaId: null,
+        );
+      },
+      expect: () => [
+        const EditarRegraEstado(enviando: true),
+        const EditarRegraEstado(
+          erros: {'padrao': 'Já existe uma regra com esse padrão.'},
+        ),
+        const EditarRegraEstado(enviando: true),
+        isA<EditarRegraEstado>().having(
+          (e) => e.salva?.regra.origem,
+          'origem',
+          OrigemRegra.manual,
+        ),
+      ],
+      verify: (_) => expect(
+        repositorio.regrasEditadas.single.dados,
+        const DadosRegra(padrao: 'padaria', categoriaId: 'cat-alimentacao'),
+      ),
+    );
+
+    blocTest<EditarRegraCubit, EditarRegraEstado>(
+      'excluir',
+      build: () =>
+          EditarRegraCubit(repositorio, existente: repositorio.regras.first),
+      act: (cubit) => cubit.excluir(),
+      expect: () => [
+        const EditarRegraEstado(enviando: true),
+        const EditarRegraEstado(excluida: true),
+      ],
+      verify: (_) => expect(repositorio.regrasExcluidas, ['r-posto']),
     );
   });
 }

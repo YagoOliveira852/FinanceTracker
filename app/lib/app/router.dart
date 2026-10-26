@@ -5,10 +5,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/categorias/cubit/editar_categoria_cubit.dart';
+import '../features/categorias/cubit/editar_regra_cubit.dart';
+import '../features/categorias/cubit/regras_cubit.dart';
 import '../features/categorias/data/categoria.dart';
 import '../features/categorias/data/categorias_repositorio.dart';
+import '../features/categorias/data/regra.dart';
 import '../features/categorias/ui/categorias_regras_tela.dart';
 import '../features/categorias/ui/editar_categoria_tela.dart';
+import '../features/categorias/ui/editar_regra_tela.dart';
 import '../features/configuracoes/ui/mais_tela.dart';
 import '../features/contas/cubit/editar_cartao_cubit.dart';
 import '../features/contas/cubit/nova_conta_cubit.dart';
@@ -265,8 +269,34 @@ GoRouter criarRouter(SessaoCubit sessao) {
                   ),
                   GoRoute(
                     path: 'categorias',
-                    builder: (_, _) => const CategoriasRegrasTela(),
+                    builder: (context, _) => BlocProvider(
+                      create: (context) =>
+                          RegrasCubit(context.read<CategoriasRepositorio>())
+                            ..carregar(),
+                      child: const CategoriasRegrasTela(),
+                    ),
                     routes: [
+                      GoRoute(
+                        path: 'regras/nova',
+                        parentNavigatorKey: chaveRaiz,
+                        builder: (context, _) => BlocProvider(
+                          create: (context) => EditarRegraCubit(
+                            context.read<CategoriasRepositorio>(),
+                          ),
+                          child: const EditarRegraTela(),
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'regras/:id/editar',
+                        parentNavigatorKey: chaveRaiz,
+                        builder: (context, state) => BlocProvider(
+                          create: (context) => EditarRegraCubit(
+                            context.read<CategoriasRepositorio>(),
+                            existente: state.extra! as Regra,
+                          )..carregar(),
+                          child: const EditarRegraTela(),
+                        ),
+                      ),
                       GoRoute(
                         path: 'nova',
                         parentNavigatorKey: chaveRaiz,
