@@ -25,11 +25,13 @@ import 'package:api_client/src/model/categoria_resumo.dart';
 import 'package:api_client/src/model/categoria_saida.dart';
 import 'package:api_client/src/model/compra_parcelada_entrada.dart';
 import 'package:api_client/src/model/compra_parcelada_saida.dart';
+import 'package:api_client/src/model/conta_da_regra.dart';
 import 'package:api_client/src/model/conta_entrada.dart';
 import 'package:api_client/src/model/conta_saida.dart';
 import 'package:api_client/src/model/contas_resumo.dart';
 import 'package:api_client/src/model/datas_fatura_saida.dart';
 import 'package:api_client/src/model/erro_campo.dart';
+import 'package:api_client/src/model/exemplo_rascunho.dart';
 import 'package:api_client/src/model/fatura_detalhe_saida.dart';
 import 'package:api_client/src/model/fatura_edicao.dart';
 import 'package:api_client/src/model/fatura_resumo.dart';
@@ -41,9 +43,14 @@ import 'package:api_client/src/model/instituicao_saida.dart';
 import 'package:api_client/src/model/lista_faturas_saida.dart';
 import 'package:api_client/src/model/location_inner.dart';
 import 'package:api_client/src/model/login_entrada.dart';
+import 'package:api_client/src/model/origem_regra.dart';
 import 'package:api_client/src/model/pagamento_entrada.dart';
 import 'package:api_client/src/model/parcela_saida.dart';
+import 'package:api_client/src/model/rascunhos_casados_saida.dart';
 import 'package:api_client/src/model/refresh_entrada.dart';
+import 'package:api_client/src/model/regra_detalhe_saida.dart';
+import 'package:api_client/src/model/regra_entrada.dart';
+import 'package:api_client/src/model/regra_saida.dart';
 import 'package:api_client/src/model/resposta_erro.dart';
 import 'package:api_client/src/model/saude.dart';
 import 'package:api_client/src/model/status_fatura.dart';
@@ -73,11 +80,13 @@ part 'serializers.g.dart';
   CategoriaSaida,
   CompraParceladaEntrada,
   CompraParceladaSaida,
+  ContaDaRegra,
   ContaEntrada,
   ContaSaida,
   ContasResumo,
   DatasFaturaSaida,
   ErroCampo,
+  ExemploRascunho,
   FaturaDetalheSaida,
   FaturaEdicao,
   FaturaResumo,
@@ -89,9 +98,14 @@ part 'serializers.g.dart';
   ListaFaturasSaida,
   LocationInner,
   LoginEntrada,
+  OrigemRegra,
   PagamentoEntrada,
   ParcelaSaida,
+  RascunhosCasadosSaida,
   RefreshEntrada,
+  RegraDetalheSaida,
+  RegraEntrada,
+  RegraSaida,
   RespostaErro,
   Saude,
   StatusFatura,
@@ -131,6 +145,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ValidationError)]),
         () => ListBuilder<ValidationError>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RegraSaida)]),
+        () => ListBuilder<RegraSaida>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ErroCampo)]),

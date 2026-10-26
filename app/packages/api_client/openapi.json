@@ -1528,6 +1528,308 @@
         }
       }
     },
+    "/regras": {
+      "get": {
+        "tags": [
+          "regras"
+        ],
+        "summary": "Listar",
+        "description": "Manuais primeiro, depois as aprendidas mais usadas.",
+        "operationId": "regras_listar",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RegraSaida"
+                  },
+                  "type": "array",
+                  "title": "Response Regras Listar"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "regras"
+        ],
+        "summary": "Criar",
+        "description": "Regra manual; a resposta diz quantos rascunhos ela sugere agora.",
+        "operationId": "regras_criar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegraEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegraDetalheSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/regras/{regra_id}": {
+      "get": {
+        "tags": [
+          "regras"
+        ],
+        "summary": "Obter",
+        "description": "A regra e os rascunhos sem categoria que ela sugere agora.",
+        "operationId": "regras_obter",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "regra_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Regra Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegraDetalheSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "regras"
+        ],
+        "summary": "Editar",
+        "description": "Edita a regra e a torna manual; a resposta diz quantos rascunhos ela\nsugere agora.",
+        "operationId": "regras_editar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "regra_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Regra Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegraEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegraDetalheSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "regras"
+        ],
+        "summary": "Excluir",
+        "description": "Apaga a regra; as transações já classificadas não mudam.",
+        "operationId": "regras_excluir",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "regra_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Regra Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -2001,6 +2303,25 @@
         ],
         "title": "CompraParceladaSaida"
       },
+      "ContaDaRegra": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome"
+        ],
+        "title": "ContaDaRegra"
+      },
       "ContaEntrada": {
         "properties": {
           "nome": {
@@ -2192,6 +2513,25 @@
           "mensagem"
         ],
         "title": "ErroCampo"
+      },
+      "ExemploRascunho": {
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descricao",
+          "data"
+        ],
+        "title": "ExemploRascunho"
       },
       "FaturaDetalheSaida": {
         "properties": {
@@ -2542,6 +2882,14 @@
         ],
         "title": "LoginEntrada"
       },
+      "OrigemRegra": {
+        "type": "string",
+        "enum": [
+          "manual",
+          "aprendida"
+        ],
+        "title": "OrigemRegra"
+      },
       "PagamentoEntrada": {
         "properties": {
           "conta_id": {
@@ -2595,6 +2943,32 @@
         ],
         "title": "ParcelaSaida"
       },
+      "RascunhosCasadosSaida": {
+        "properties": {
+          "quantidade": {
+            "type": "integer",
+            "title": "Quantidade",
+            "description": "Rascunhos sem categoria para os quais ela é a sugestão."
+          },
+          "exemplo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExemploRascunho"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O mais recente deles."
+          }
+        },
+        "type": "object",
+        "required": [
+          "quantidade",
+          "exemplo"
+        ],
+        "title": "RascunhosCasadosSaida"
+      },
       "RefreshEntrada": {
         "properties": {
           "refresh_token": {
@@ -2609,6 +2983,151 @@
           "refresh_token"
         ],
         "title": "RefreshEntrada"
+      },
+      "RegraDetalheSaida": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "padrao": {
+            "type": "string",
+            "title": "Padrao"
+          },
+          "categoria": {
+            "$ref": "#/components/schemas/CategoriaResumo"
+          },
+          "conta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContaDaRegra"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A conta a que a regra se restringe."
+          },
+          "origem": {
+            "$ref": "#/components/schemas/OrigemRegra",
+            "description": "Aprendida na revisão ou manual (editar torna manual)."
+          },
+          "vezes_aplicada": {
+            "type": "integer",
+            "title": "Vezes Aplicada",
+            "description": "Sugestões confirmadas como vieram."
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "rascunhos": {
+            "$ref": "#/components/schemas/RascunhosCasadosSaida"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "padrao",
+          "categoria",
+          "conta",
+          "origem",
+          "vezes_aplicada",
+          "criado_em",
+          "rascunhos"
+        ],
+        "title": "RegraDetalheSaida"
+      },
+      "RegraEntrada": {
+        "properties": {
+          "padrao": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Padrao",
+            "description": "Normalizado ao salvar: sem acentos, números, datas e termos genéricos como \"pix enviado\". Não pode ficar vazio depois disso."
+          },
+          "categoria_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Categoria Id",
+            "description": "Categoria ativa."
+          },
+          "conta_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conta Id",
+            "description": "Restringe a regra a uma conta ativa; nulo = todas."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "padrao",
+          "categoria_id"
+        ],
+        "title": "RegraEntrada"
+      },
+      "RegraSaida": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "padrao": {
+            "type": "string",
+            "title": "Padrao"
+          },
+          "categoria": {
+            "$ref": "#/components/schemas/CategoriaResumo"
+          },
+          "conta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContaDaRegra"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A conta a que a regra se restringe."
+          },
+          "origem": {
+            "$ref": "#/components/schemas/OrigemRegra",
+            "description": "Aprendida na revisão ou manual (editar torna manual)."
+          },
+          "vezes_aplicada": {
+            "type": "integer",
+            "title": "Vezes Aplicada",
+            "description": "Sugestões confirmadas como vieram."
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "padrao",
+          "categoria",
+          "conta",
+          "origem",
+          "vezes_aplicada",
+          "criado_em"
+        ],
+        "title": "RegraSaida"
       },
       "RespostaErro": {
         "properties": {

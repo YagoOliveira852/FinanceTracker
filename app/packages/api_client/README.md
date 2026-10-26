@@ -82,6 +82,11 @@ Class | Method | HTTP request | Description
 [*FaturasApi*](doc/FaturasApi.md) | [**obter**](doc/FaturasApi.md#obter) | **GET** /cartoes/{conta_id}/faturas/{competencia} | Obter
 [*FaturasApi*](doc/FaturasApi.md) | [**pagar**](doc/FaturasApi.md#pagar) | **POST** /cartoes/{conta_id}/faturas/{competencia}/pagamentos | Pagar
 [*FaturasApi*](doc/FaturasApi.md) | [**paraCompra**](doc/FaturasApi.md#paracompra) | **GET** /cartoes/{conta_id}/faturas/para-compra | Para Compra
+[*RegrasApi*](doc/RegrasApi.md) | [**criar**](doc/RegrasApi.md#criar) | **POST** /regras | Criar
+[*RegrasApi*](doc/RegrasApi.md) | [**editar**](doc/RegrasApi.md#editar) | **PUT** /regras/{regra_id} | Editar
+[*RegrasApi*](doc/RegrasApi.md) | [**excluir**](doc/RegrasApi.md#excluir) | **DELETE** /regras/{regra_id} | Excluir
+[*RegrasApi*](doc/RegrasApi.md) | [**listar**](doc/RegrasApi.md#listar) | **GET** /regras | Listar
+[*RegrasApi*](doc/RegrasApi.md) | [**obter**](doc/RegrasApi.md#obter) | **GET** /regras/{regra_id} | Obter
 [*SaudeApi*](doc/SaudeApi.md) | [**saude**](doc/SaudeApi.md#saude) | **GET** /saude | Saude
 [*TransacoesApi*](doc/TransacoesApi.md) | [**lancar**](doc/TransacoesApi.md#lancar) | **POST** /transacoes | Lancar
 [*TransacoesApi*](doc/TransacoesApi.md) | [**lancarParcelada**](doc/TransacoesApi.md#lancarparcelada) | **POST** /transacoes/parceladas | Lancar Parcelada
@@ -103,11 +108,13 @@ Class | Method | HTTP request | Description
  - [CategoriaSaida](doc/CategoriaSaida.md)
  - [CompraParceladaEntrada](doc/CompraParceladaEntrada.md)
  - [CompraParceladaSaida](doc/CompraParceladaSaida.md)
+ - [ContaDaRegra](doc/ContaDaRegra.md)
  - [ContaEntrada](doc/ContaEntrada.md)
  - [ContaSaida](doc/ContaSaida.md)
  - [ContasResumo](doc/ContasResumo.md)
  - [DatasFaturaSaida](doc/DatasFaturaSaida.md)
  - [ErroCampo](doc/ErroCampo.md)
+ - [ExemploRascunho](doc/ExemploRascunho.md)
  - [FaturaDetalheSaida](doc/FaturaDetalheSaida.md)
  - [FaturaEdicao](doc/FaturaEdicao.md)
  - [FaturaResumo](doc/FaturaResumo.md)
@@ -119,9 +126,14 @@ Class | Method | HTTP request | Description
  - [ListaFaturasSaida](doc/ListaFaturasSaida.md)
  - [LocationInner](doc/LocationInner.md)
  - [LoginEntrada](doc/LoginEntrada.md)
+ - [OrigemRegra](doc/OrigemRegra.md)
  - [PagamentoEntrada](doc/PagamentoEntrada.md)
  - [ParcelaSaida](doc/ParcelaSaida.md)
+ - [RascunhosCasadosSaida](doc/RascunhosCasadosSaida.md)
  - [RefreshEntrada](doc/RefreshEntrada.md)
+ - [RegraDetalheSaida](doc/RegraDetalheSaida.md)
+ - [RegraEntrada](doc/RegraEntrada.md)
+ - [RegraSaida](doc/RegraSaida.md)
  - [RespostaErro](doc/RespostaErro.md)
  - [Saude](doc/Saude.md)
  - [StatusFatura](doc/StatusFatura.md)
