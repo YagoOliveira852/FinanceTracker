@@ -292,12 +292,13 @@ def _resumo(
     hoje: date,
     fatura: Fatura | None,
 ) -> ResumoFatura:
+    valor = calculado if informado is None else max(informado, calculado)
     return ResumoFatura(
         competencia=competencia,
         data_fechamento=fechamento,
         data_vencimento=vencimento,
-        status=status_da_fatura(fechamento, hoje),
-        valor=calculado if informado is None else max(informado, calculado),
+        status=status_da_fatura(fechamento, hoje, valor, _ZERO),
+        valor=valor,
         valor_calculado=calculado,
         valor_informado=informado,
         fatura=fatura,

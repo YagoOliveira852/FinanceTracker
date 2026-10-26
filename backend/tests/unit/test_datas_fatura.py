@@ -1,6 +1,7 @@
 """Regra das datas da fatura: dia útil, competência e status (spec 2026-10-23)."""
 
 from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -167,15 +168,21 @@ def test_competencia_da_compra_respeita_fechamento_editado():
 
 
 @pytest.mark.parametrize(
-    ("hoje", "status"),
+    ("hoje", "valor", "pago", "status"),
     [
-        (date(2026, 10, 4), StatusFatura.aberta),
-        (date(2026, 10, 5), StatusFatura.fechada),
-        (date(2026, 10, 20), StatusFatura.fechada),
+        # Aberta nunca vira paga, nem com tudo pago adiantado.
+        (date(2026, 10, 4), "100.00", "100.00", StatusFatura.aberta),
+        (date(2026, 10, 5), "100.00", "0.00", StatusFatura.fechada),
+        (date(2026, 10, 5), "100.00", "100.00", StatusFatura.paga),
+        (date(2026, 10, 20), "100.00", "150.00", StatusFatura.paga),
+        # Pagamento menor que a fatura não a marca como paga.
+        (date(2026, 10, 20), "100.00", "99.99", StatusFatura.fechada),
+        (date(2026, 10, 20), "0.00", "0.00", StatusFatura.fechada),
+        (date(2026, 10, 20), "0.00", "10.00", StatusFatura.paga),
     ],
 )
-def test_status_da_fatura(hoje, status):
-    assert status_da_fatura(date(2026, 10, 5), hoje) == status
+def test_status_da_fatura(hoje, valor, pago, status):
+    assert status_da_fatura(date(2026, 10, 5), hoje, Decimal(valor), Decimal(pago)) == status
 
 
 def test_mes_seguinte_e_anterior_viram_o_ano():
