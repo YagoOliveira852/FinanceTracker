@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.erros import CampoInvalido
 from app.modulos.cartoes import service as cartoes_service
 from app.modulos.cartoes.datas import mes_seguinte
+from app.modulos.categorias import service as categorias_service
 from app.modulos.contas.models import Conta, TipoConta
 from app.modulos.transacoes.models import (
     CompraParcelada,
@@ -37,16 +38,21 @@ def lancar(
     valor: Decimal,
     data: date,
     descricao: str,
+    categoria_id: uuid.UUID | None = None,
 ) -> Transacao:
     """Lançamento manual: entra confirmado e já conta no saldo da conta.
 
     Em cartão de crédito, só despesa (compra à vista), ligada à fatura da data.
+    A categoria é opcional e não cria regra: a descrição é do usuário, não do banco.
     """
     conta = conta_ativa(sessao, conta_id)
+    em_cartao = conta.tipo == TipoConta.cartao_credito
+    if em_cartao and tipo != TipoTransacao.despesa:
+        raise CampoInvalido("conta_id", "Num cartão de crédito, lance só despesas.")
+    if categoria_id is not None:
+        categorias_service.categoria_para_tipo(sessao, categoria_id, tipo)
     fatura_id = None
-    if conta.tipo == TipoConta.cartao_credito:
-        if tipo != TipoTransacao.despesa:
-            raise CampoInvalido("conta_id", "Num cartão de crédito, lance só despesas.")
+    if em_cartao:
         cartao = cartoes_service.obter_cartao(sessao, conta_id)
         competencia = cartoes_service.competencia_para_data(sessao, cartao, data)
         fatura_id = cartoes_service.obter_ou_criar_fatura(sessao, cartao, competencia).id
@@ -58,6 +64,7 @@ def lancar(
         data=data,
         descricao_original=descricao,
         descricao=descricao,
+        categoria_id=categoria_id,
         status=StatusTransacao.confirmada,
         fonte=FonteTransacao.manual,
         fatura_id=fatura_id,
@@ -75,6 +82,7 @@ def lancar_parcelada(
     qtd_parcelas: int,
     data_compra: date,
     descricao: str,
+    categoria_id: uuid.UUID | None = None,
 ) -> CompraParcelada:
     """Compra parcelada num cartão: uma despesa confirmada por parcela.
 
@@ -88,6 +96,8 @@ def lancar_parcelada(
         raise CampoInvalido("conta_id", "Só compra no cartão de crédito pode ser parcelada.")
     if valor_total < _CENTAVO * qtd_parcelas:
         raise CampoInvalido("valor_total", "Cada parcela precisa ser de pelo menos R$ 0,01.")
+    if categoria_id is not None:
+        categorias_service.categoria_para_tipo(sessao, categoria_id, TipoTransacao.despesa)
 
     cartao = cartoes_service.obter_cartao(sessao, conta_id)
     compra = CompraParcelada(
@@ -109,6 +119,7 @@ def lancar_parcelada(
                     data=data_da_parcela(data_compra, numero),
                     descricao_original=descricao,
                     descricao=descricao,
+                    categoria_id=categoria_id,
                     status=StatusTransacao.confirmada,
                     fonte=FonteTransacao.manual,
                     fatura_id=fatura.id,
