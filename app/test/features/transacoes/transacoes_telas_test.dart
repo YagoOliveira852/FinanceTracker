@@ -2,7 +2,9 @@ import 'package:financas/app/tema.dart';
 import 'package:financas/features/contas/cubit/contas_cubit.dart';
 import 'package:financas/features/contas/data/conta.dart';
 import 'package:financas/features/transacoes/cubit/lancamento_cubit.dart';
+import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/transacoes/cubit/transacoes_cubit.dart';
+import 'package:financas/features/transacoes/cubit/transferencia_cubit.dart';
 import 'package:financas/features/transacoes/data/transacao.dart';
 import 'package:financas/features/transacoes/ui/lancamento_tela.dart';
 import 'package:financas/features/transacoes/ui/transacoes_tela.dart';
@@ -108,7 +110,7 @@ void main() {
     expect(find.text('Lançar transação'), findsOneWidget);
   });
 
-  testWidgets('Lançamento: transferência e pagamento desabilitados', (
+  testWidgets('Lançamento: transferência habilitada, pagamento em breve', (
     tester,
   ) async {
     // Tela de celular (390 × 844), para o formulário caber inteiro.
@@ -141,7 +143,7 @@ void main() {
         tester.widget<FilterChip>(find.widgetWithText(FilterChip, rotulo));
     expect(chip('Despesa').selected, isTrue);
     expect(chip('Receita').onSelected, isNotNull);
-    expect(chip('Transferência').onSelected, isNull);
+    expect(chip('Transferência').onSelected, isNotNull);
     expect(chip('Pagamento de fatura').onSelected, isNull);
     expect(find.text('Categorias: em breve.'), findsOneWidget);
 
@@ -528,5 +530,179 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Cartão Exemplo · Parcela 3/10'), findsOneWidget);
+  });
+
+  group('transferência', () {
+    final contas = [
+      contaExemplo(),
+      contaExemplo(id: 'c3', nome: 'Carteira', tipo: TipoConta.carteira),
+      cartaoExemplo(),
+    ];
+
+    Future<void> abrirTransferencia(
+      WidgetTester tester,
+      TransacoesRepositorioFalso transacoes,
+    ) async {
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final router = GoRouter(
+        initialLocation: '/lancar',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Text('Fechou'),
+            routes: [
+              GoRoute(
+                path: 'lancar',
+                builder: (_, _) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create: (_) =>
+                          ContasCubit(ContasRepositorioFalso(contas: contas))
+                            ..carregar(),
+                    ),
+                    BlocProvider(
+                      create: (_) => LancamentoCubit(
+                        transacoes,
+                        FaturasRepositorioFalso(),
+                      ),
+                    ),
+                    BlocProvider(create: (_) => TransferenciaCubit(transacoes)),
+                  ],
+                  child: const LancamentoTela(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(theme: temaClaro(), routerConfig: router),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Transferência'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> escolher(
+      WidgetTester tester,
+      String campo,
+      String opcao,
+    ) async {
+      await tester.tap(find.widgetWithText(InputDecorator, campo));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(opcao).last);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('De e Para sem cartão, inverter e salvar', (tester) async {
+      final transacoes = TransacoesRepositorioFalso();
+      await abrirTransferencia(tester, transacoes);
+
+      expect(
+        find.text(
+          'Entre contas próprias: não conta como gasto nem como renda. '
+          'Para pagar cartão, use Pagamento de fatura.',
+        ),
+        findsOneWidget,
+      );
+      await escolher(tester, 'De', 'Conta principal · Banco Exemplo');
+      await tester.tap(find.widgetWithText(InputDecorator, 'Para'));
+      await tester.pumpAndSettle();
+      // Para não oferece a conta de origem nem o cartão.
+      expect(find.text('Conta principal · Banco Exemplo'), findsOneWidget);
+      expect(find.text('Cartão Exemplo · Banco Exemplo'), findsNothing);
+      await tester.tap(find.text('Carteira').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Inverter origem e destino'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Valor'), '200');
+      await tester.tap(find.text('Salvar'));
+      await tester.pumpAndSettle();
+
+      final enviada = transacoes.transferencias.single;
+      expect(enviada.contaOrigemId, 'c3');
+      expect(enviada.contaDestinoId, 'c1');
+      expect(enviada.valor.toString(), '200');
+      expect(enviada.descricao, isNull);
+      expect(find.text('Fechou'), findsOneWidget);
+    });
+
+    testWidgets('erro da API no destino aparece no Para', (tester) async {
+      final transacoes = TransacoesRepositorioFalso()
+        ..erro = const ErroApi(
+          'Dados inválidos.',
+          status: 422,
+          campos: {'conta_destino_id': 'Esta conta está desativada.'},
+        );
+      await abrirTransferencia(tester, transacoes);
+      await escolher(tester, 'De', 'Conta principal · Banco Exemplo');
+      await escolher(tester, 'Para', 'Carteira');
+      await tester.enterText(find.widgetWithText(TextField, 'Valor'), '50');
+
+      await tester.tap(find.text('Salvar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Esta conta está desativada.'), findsOneWidget);
+    });
+  });
+
+  testWidgets('Transações mostra a transferência numa linha só', (
+    tester,
+  ) async {
+    const par = ParTransferencia(
+      parId: 'x',
+      contaOrigemId: 'c1',
+      contaDestinoId: 'c3',
+    );
+    final contas = ContasRepositorioFalso(
+      contas: [
+        contaExemplo(),
+        contaExemplo(
+          id: 'c3',
+          nome: 'Carteira',
+          tipo: TipoConta.carteira,
+          ativa: false,
+        ),
+      ],
+    );
+    final transacoes = TransacoesRepositorioFalso(
+      transacoes: [
+        transacaoExemplo(
+          id: 'saida',
+          tipo: TipoTransacao.transferenciaSaida,
+          valor: '200',
+          descricao: 'Transferência',
+          transferencia: par.copyWith(parId: 'entrada'),
+        ),
+        transacaoExemplo(
+          id: 'entrada',
+          contaId: 'c3',
+          tipo: TipoTransacao.transferenciaEntrada,
+          valor: '200',
+          descricao: 'Transferência',
+          transferencia: par.copyWith(parId: 'saida'),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      _app(
+        BlocProvider(
+          create: (_) =>
+              TransacoesCubit(transacoes, contas, hoje: () => _hoje)
+                ..carregar(),
+          child: const TransacoesTela(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Conta principal → Carteira'), findsOneWidget);
+    expect(find.text('R\$ 200,00'), findsOneWidget);
+    // A conta desativada aparece no subtítulo, mas não vira filtro.
+    expect(find.widgetWithText(FilterChip, 'Carteira'), findsNothing);
   });
 }

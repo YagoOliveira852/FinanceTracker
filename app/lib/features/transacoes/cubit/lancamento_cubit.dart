@@ -63,10 +63,20 @@ class LancamentoCubit extends Cubit<LancamentoEstado> {
     emit(state.copyWith(erros: {...state.erros}..remove(campo)));
   }
 
+  /// Despesa, receita ou um dos formulários próprios: transferência
+  /// (`transferenciaSaida`) e pagamento de fatura (`pagamentoFatura`). Só
+  /// despesa e receita são salvas por este cubit.
   void escolherTipo(TipoTransacao tipo) {
-    assert(tipo == TipoTransacao.despesa || tipo == TipoTransacao.receita);
+    assert(_tiposDoLancamento.contains(tipo));
     emit(state.copyWith(tipo: tipo));
   }
+
+  static const _tiposDoLancamento = {
+    TipoTransacao.despesa,
+    TipoTransacao.receita,
+    TipoTransacao.transferenciaSaida,
+    TipoTransacao.pagamentoFatura,
+  };
 
   /// Atualiza "Entra na fatura de …" para a conta e a data escolhidas. Conta
   /// que não é cartão (ou nenhuma) limpa a fatura sem chamar a API; erro da

@@ -9,6 +9,7 @@ import '../../../app/widgets/lista.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../cubit/transacoes_cubit.dart';
+import '../data/transacao.dart';
 import 'item_transacao.dart';
 
 /// Rota do Lançamento; recebe a conta do filtro em `extra` e devolve `true`
@@ -17,6 +18,16 @@ const rotaLancamento = '/transacoes/nova';
 
 class TransacoesTela extends StatelessWidget {
   const TransacoesTela({super.key});
+
+  /// A conta da transação; na transferência ligada, "Origem → Destino" (o
+  /// mesmo nos dois lados, com qualquer filtro).
+  static String _subtitulo(TransacoesEstado estado, Transacao t) {
+    String nome(String id) => estado.nomeDaConta(id) ?? '';
+    return switch (t.transferencia) {
+      final par? => '${nome(par.contaOrigemId)} → ${nome(par.contaDestinoId)}',
+      null => nome(t.contaId),
+    };
+  }
 
   Future<void> _lancar(BuildContext context) async {
     final contas = context.read<ContasCubit>();
@@ -86,7 +97,7 @@ class TransacoesTela extends StatelessWidget {
                             for (final t in dia.transacoes)
                               ItemTransacao(
                                 transacao: t,
-                                subtitulo: estado.nomeDaConta(t.contaId) ?? '',
+                                subtitulo: _subtitulo(estado, t),
                               ),
                           ],
                         ),
@@ -163,7 +174,7 @@ class _FiltroDeContas extends StatelessWidget {
             selecionado: estado.contaId == null,
             aoTocar: () => cubit.filtrar(null),
           ),
-          for (final conta in estado.contas)
+          for (final conta in estado.contas.where((c) => c.ativa))
             ChipOpcao(
               rotulo: conta.nome,
               selecionado: estado.contaId == conta.id,

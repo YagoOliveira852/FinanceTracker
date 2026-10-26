@@ -19,6 +19,9 @@ abstract interface class TransacoesRepositorio {
 
   /// Lança a compra parcelada e devolve as parcelas, da 1ª à última.
   Future<List<Transacao>> lancarParcelada(NovaCompraParcelada dados);
+
+  /// Transfere entre contas próprias e devolve o lado da saída.
+  Future<Transacao> transferir(NovaTransferencia dados);
 }
 
 class TransacoesRepositorioApi implements TransacoesRepositorio {
@@ -87,6 +90,27 @@ class TransacoesRepositorioApi implements TransacoesRepositorio {
       throw ErroApi.de(erro);
     }
   }
+
+  @override
+  Future<Transacao> transferir(NovaTransferencia dados) async {
+    final descricao = dados.descricao?.trim() ?? '';
+    final entrada = api.TransferenciaEntrada(
+      (b) => b
+        ..contaOrigemId = dados.contaOrigemId
+        ..contaDestinoId = dados.contaDestinoId
+        ..valor = dinheiroParaApi(dados.valor)
+        ..data = dados.data.toDate()
+        ..descricao = descricao.isEmpty ? null : descricao,
+    );
+    try {
+      final resposta = await _cliente.getTransacoesApi().transferir(
+        transferenciaEntrada: entrada,
+      );
+      return transacaoDaApi(resposta.data!.saida);
+    } catch (erro) {
+      throw ErroApi.de(erro);
+    }
+  }
 }
 
 /// Transação do cliente gerado no modelo do app; também usada pelo
@@ -102,6 +126,14 @@ Transacao transacaoDaApi(api.TransacaoSaida t) => Transacao(
   faturaId: t.faturaId,
   parcela: switch (t.parcela) {
     final p? => Parcela(numero: p.numero, total: p.total),
+    null => null,
+  },
+  transferencia: switch (t.transferencia) {
+    final p? => ParTransferencia(
+      parId: p.parId,
+      contaOrigemId: p.contaOrigemId,
+      contaDestinoId: p.contaDestinoId,
+    ),
     null => null,
   },
 );

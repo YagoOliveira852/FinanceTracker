@@ -44,7 +44,21 @@ abstract class Transacao with _$Transacao {
 
     /// Número da parcela, quando é compra parcelada.
     Parcela? parcela,
+
+    /// O outro lado e as duas contas, quando é transferência ligada.
+    ParTransferencia? transferencia,
   }) = _Transacao;
+}
+
+/// Transferência entre contas próprias: o outro lado ([parId]) e as contas
+/// de origem e destino, iguais nos dois lados.
+@freezed
+abstract class ParTransferencia with _$ParTransferencia {
+  const factory ParTransferencia({
+    required String parId,
+    required String contaOrigemId,
+    required String contaDestinoId,
+  }) = _ParTransferencia;
 }
 
 /// "Parcela 3/10": a [numero] de [total] parcelas de uma compra.
@@ -53,7 +67,8 @@ abstract class Parcela with _$Parcela {
   const factory Parcela({required int numero, required int total}) = _Parcela;
 }
 
-/// Lançamento manual: só despesa ou receita nesta versão.
+/// Lançamento manual de despesa ou receita (transferência e pagamento de
+/// fatura têm modelos próprios).
 @freezed
 abstract class NovoLancamento with _$NovoLancamento {
   const factory NovoLancamento({
@@ -75,4 +90,17 @@ abstract class NovaCompraParcelada with _$NovaCompraParcelada {
     required DateTime dataCompra,
     required String descricao,
   }) = _NovaCompraParcelada;
+}
+
+/// Transferência entre contas próprias: a API grava a saída na origem e a
+/// entrada no destino, ligadas. Sem [descricao], "Transferência".
+@freezed
+abstract class NovaTransferencia with _$NovaTransferencia {
+  const factory NovaTransferencia({
+    required String contaOrigemId,
+    required String contaDestinoId,
+    required Decimal valor,
+    required DateTime data,
+    String? descricao,
+  }) = _NovaTransferencia;
 }

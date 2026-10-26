@@ -3,6 +3,7 @@ import 'package:decimal/decimal.dart';
 import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/transacoes/cubit/lancamento_cubit.dart';
 import 'package:financas/features/transacoes/cubit/transacoes_cubit.dart';
+import 'package:financas/features/transacoes/cubit/transferencia_cubit.dart';
 import 'package:financas/features/transacoes/data/transacao.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -62,8 +63,8 @@ void main() {
       ]);
       expect(dias.first.transacoes.map((t) => t.id), ['a', 'c']);
       expect(cubit.state.carregando, isFalse);
-      // Só contas ativas viram filtro.
-      expect(cubit.state.contas.map((c) => c.id), ['c1']);
+      // Todas ficam no estado (nomes); a tela usa só as ativas nos filtros.
+      expect(cubit.state.contas.map((c) => c.id), ['c1', 'c2']);
     });
 
     test('mês anterior e próximo, sem passar do mês atual', () async {
@@ -94,6 +95,61 @@ void main() {
       expect(cubit.state.mes, DateTime(2026, 11));
       expect(cubit.state.hoje, DateTime(2026, 11, 1));
       expect(cubit.state.noMesAtual, isTrue);
+    });
+
+    group('transferência', () {
+      const par = ParTransferencia(
+        parId: 'x',
+        contaOrigemId: 'c1',
+        contaDestinoId: 'c3',
+      );
+      setUp(() {
+        transacoes.transacoes.addAll([
+          transacaoExemplo(
+            id: 'saida',
+            tipo: TipoTransacao.transferenciaSaida,
+            data: DateTime(2026, 10, 19),
+            transferencia: par.copyWith(parId: 'entrada'),
+          ),
+          transacaoExemplo(
+            id: 'entrada',
+            contaId: 'c3',
+            tipo: TipoTransacao.transferenciaEntrada,
+            data: DateTime(2026, 10, 19),
+            transferencia: par.copyWith(parId: 'saida'),
+          ),
+        ]);
+      });
+
+      List<String> ids(TransacoesEstado estado) => [
+        for (final dia in estado.dias)
+          for (final t in dia.transacoes) t.id,
+      ];
+
+      test('"Todas" mostra o par uma vez, pelo lado da saída', () async {
+        final cubit = criar();
+
+        await cubit.carregar();
+
+        expect(ids(cubit.state), contains('saida'));
+        expect(ids(cubit.state), isNot(contains('entrada')));
+      });
+
+      test('filtrando o destino, aparece o lado da entrada', () async {
+        final cubit = criar();
+
+        await cubit.filtrar('c3');
+
+        expect(ids(cubit.state), ['entrada']);
+      });
+    });
+
+    test('guarda também as contas desativadas, para os nomes', () async {
+      final cubit = criar();
+
+      await cubit.carregar();
+
+      expect(cubit.state.nomeDaConta('c2'), 'Antiga');
     });
 
     test('filtro por conta vai para a API', () async {
@@ -342,6 +398,85 @@ void main() {
         ),
       ],
       verify: (_) => expect(faturas.consultasParaCompra, hasLength(1)),
+    );
+  });
+
+  group('TransferenciaCubit', () {
+    late TransacoesRepositorioFalso transacoes;
+
+    setUp(() => transacoes = TransacoesRepositorioFalso());
+
+    blocTest<TransferenciaCubit, TransferenciaEstado>(
+      'valida origem, destino e valor no aparelho',
+      build: () => TransferenciaCubit(transacoes),
+      act: (cubit) => cubit.salvar(
+        origemId: null,
+        destinoId: null,
+        valor: '0,00',
+        data: hoje,
+        descricao: '',
+      ),
+      expect: () => [
+        const TransferenciaEstado(
+          erros: {
+            'origem': 'Escolha a conta de origem.',
+            'destino': 'Escolha a conta de destino.',
+            'valor': 'Informe um valor maior que zero.',
+          },
+        ),
+      ],
+      verify: (_) => expect(transacoes.transferencias, isEmpty),
+    );
+
+    blocTest<TransferenciaCubit, TransferenciaEstado>(
+      'transfere com Decimal, data sem horário e descrição em branco nula',
+      build: () => TransferenciaCubit(transacoes),
+      act: (cubit) => cubit.salvar(
+        origemId: 'c1',
+        destinoId: 'c3',
+        valor: '200,00',
+        data: hoje,
+        descricao: '   ',
+      ),
+      skip: 1,
+      expect: () => [
+        isA<TransferenciaEstado>().having((e) => e.salva, 'salva', isNotNull),
+      ],
+      verify: (_) {
+        final enviada = transacoes.transferencias.single;
+        expect(enviada.contaOrigemId, 'c1');
+        expect(enviada.contaDestinoId, 'c3');
+        expect(enviada.valor, Decimal.parse('200'));
+        expect(enviada.data, DateTime(2026, 10, 20));
+        expect(enviada.descricao, isNull);
+      },
+    );
+
+    blocTest<TransferenciaCubit, TransferenciaEstado>(
+      'conta recusada pela API aparece no campo dela',
+      build: () {
+        transacoes.erro = const ErroApi(
+          'Dados inválidos.',
+          status: 422,
+          campos: {
+            'conta_destino_id': 'Escolha uma conta diferente da de origem.',
+          },
+        );
+        return TransferenciaCubit(transacoes);
+      },
+      act: (cubit) => cubit.salvar(
+        origemId: 'c1',
+        destinoId: 'c1',
+        valor: '10',
+        data: hoje,
+        descricao: 'Saque',
+      ),
+      expect: () => [
+        const TransferenciaEstado(enviando: true),
+        const TransferenciaEstado(
+          erros: {'destino': 'Escolha uma conta diferente da de origem.'},
+        ),
+      ],
     );
   });
 }

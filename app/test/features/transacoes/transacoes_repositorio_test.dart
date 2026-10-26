@@ -144,4 +144,79 @@ void main() {
     expect(parcelas.last.valor, Decimal.parse('50.00'));
     expect(parcelas.last.data, DateTime(2026, 11, 20));
   });
+
+  test('listar lê o par da transferência', () async {
+    responder((
+      status: 200,
+      corpo: [
+        {
+          ..._transacaoJson(),
+          'transferencia': {
+            'par_id': 'p1',
+            'conta_origem_id': 'c1',
+            'conta_destino_id': _contaId,
+          },
+        },
+      ],
+    ));
+
+    final transacoes = await repositorio.listar(
+      de: DateTime(2026, 10, 1),
+      ate: DateTime(2026, 10, 31),
+    );
+
+    expect(
+      transacoes.single.transferencia,
+      const ParTransferencia(
+        parId: 'p1',
+        contaOrigemId: 'c1',
+        contaDestinoId: _contaId,
+      ),
+    );
+  });
+
+  test(
+    'transferir manda as duas contas e a descrição em branco nula',
+    () async {
+      final par = {
+        'par_id': 'p1',
+        'conta_origem_id': 'c1',
+        'conta_destino_id': _contaId,
+      };
+      responder((
+        status: 201,
+        corpo: {
+          'saida': {
+            ..._transacaoJson(),
+            'id': 's1',
+            'conta_id': 'c1',
+            'tipo': 'transferencia_saida',
+            'transferencia': {...par, 'par_id': 'e1'},
+          },
+          'entrada': {..._transacaoJson(), 'id': 'e1', 'transferencia': par},
+        },
+      ));
+
+      final saida = await repositorio.transferir(
+        NovaTransferencia(
+          contaOrigemId: 'c1',
+          contaDestinoId: _contaId,
+          valor: Decimal.parse('200'),
+          data: DateTime(2026, 10, 19),
+          descricao: '  ',
+        ),
+      );
+
+      final requisicao = adaptador.requisicoes.single;
+      expect(requisicao.uri.path, '/transacoes/transferencias');
+      final corpo = corpoDe(requisicao) as Map;
+      expect(corpo['conta_origem_id'], 'c1');
+      expect(corpo['conta_destino_id'], _contaId);
+      expect(corpo['valor'], '200.00');
+      expect(corpo['data'], '2026-10-19');
+      expect(corpo['descricao'], isNull);
+      expect(saida.id, 's1');
+      expect(saida.tipo, TipoTransacao.transferenciaSaida);
+    },
+  );
 }
