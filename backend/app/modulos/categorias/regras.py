@@ -199,10 +199,11 @@ def aprender(sessao: Session, transacao: Transacao, categoria: Categoria) -> Apr
         efeito = EfeitoAprendizado.corrigida
     else:
         efeito = EfeitoAprendizado.especializada
-    # Uma regra com o mesmo padrão pode existir sem ter sugerido (a categoria
-    # dela foi desativada): é reaproveitada, para o padrão não se repetir.
+    # Uma aprendida com o mesmo padrão pode existir sem ter sugerido (a
+    # categoria dela foi desativada): é reaproveitada, para o padrão não se
+    # repetir. Uma manual nessa situação fica como está.
     regra = _repetida(sessao, padrao, None, categoria)
-    if regra is None:
+    if regra is None or regra.origem == OrigemRegra.manual:
         regra = RegraClassificacao(padrao=padrao, origem=OrigemRegra.aprendida, vezes_aplicada=0)
         sessao.add(regra)
     regra.categoria = categoria

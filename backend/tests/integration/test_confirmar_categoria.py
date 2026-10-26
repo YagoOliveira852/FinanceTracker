@@ -215,6 +215,21 @@ def test_regra_de_categoria_desativada_e_reaproveitada(sessao, conta, categoria)
     assert len(_regras(sessao)) == 1
 
 
+def test_regra_manual_de_categoria_desativada_nao_e_reaproveitada(sessao, conta, categoria):
+    educacao = categoria("Educação")
+    manual = _regra(sessao, "curso exemplo", educacao, origem="manual", vezes=3)
+    educacao.ativa = False
+    sessao.flush()
+    transacao = _rascunho(sessao, conta, "CURSO EXEMPLO")
+
+    aprendizado = confirmar_categoria(sessao, transacao.id, categoria("Compras").id)
+
+    assert aprendizado.efeito == EfeitoAprendizado.criada
+    assert aprendizado.regra is not manual
+    assert (manual.categoria.nome, manual.vezes_aplicada) == ("Educação", 3)
+    assert regra_sugerida(sessao, _rascunho(sessao, conta, "CURSO EXEMPLO")) is aprendizado.regra
+
+
 def test_categoria_incompativel_e_recusada(sessao, conta, categoria):
     transacao = _rascunho(sessao, conta, "LANCHONETE EXEMPLO")
 
