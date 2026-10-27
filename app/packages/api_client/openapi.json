@@ -2085,6 +2085,609 @@
         ]
       }
     },
+    "/revisao/pares": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Ligar Par",
+        "description": "\"Ligar\": as duas viram transferência entre contas próprias, confirmadas.",
+        "operationId": "revisao_ligar_par",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/revisao/pares/recusados": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Recusar Par",
+        "description": "\"Não é par\": a sugestão deste par não volta; cada lado ainda pareia com outro.",
+        "operationId": "revisao_recusar_par",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParRecusaEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/revisao/transacoes/{transacao_id}/transferencia": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Transferir",
+        "description": "O rascunho é transferência com a outra conta: liga com o rascunho que veio\nde lá ou, se ela não recebe extrato nem Open Finance, cria o outro lado.",
+        "operationId": "revisao_transferir",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transacao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferenciaRevisaoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/revisao/transacoes/{transacao_id}/faturas": {
+      "get": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Faturas Do Pagamento",
+        "description": "As faturas que este pagamento pode ter pago, com a sugerida e se cada\numa fica paga com ele.",
+        "operationId": "revisao_faturas_do_pagamento",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transacao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FaturaCandidataSaida"
+                  },
+                  "title": "Response Revisao Faturas Do Pagamento"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/revisao/transacoes/{transacao_id}/pagamento": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Pagar",
+        "description": "Confirma o pagamento ligado à fatura escolhida.",
+        "operationId": "revisao_pagar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transacao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagamentoRevisaoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/revisao/transacoes/{transacao_id}/duplicata": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Resolver Duplicata",
+        "description": "Possível duplicata: escolhe qual fica; a outra fica ignorada.",
+        "operationId": "revisao_resolver_duplicata",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transacao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicataEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/revisao/transacoes/{transacao_id}/manter": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Manter",
+        "description": "A confirmada que sumiu da origem continua valendo; o alerta some.",
+        "operationId": "revisao_manter",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transacao Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/revisao/transacoes/{transacao_id}/remover": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Remover",
+        "description": "A confirmada que sumiu da origem fica ignorada (no histórico, fora do\nsaldo); se era transferência, o outro lado volta a rascunho.",
+        "operationId": "revisao_remover",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transacao Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -2840,6 +3443,20 @@
         "title": "DatasFaturaSaida",
         "description": "Competência e datas efetivas de uma fatura (ajustadas para dia útil)."
       },
+      "DuplicataEntrada": {
+        "properties": {
+          "manter": {
+            "$ref": "#/components/schemas/ManterDuplicata",
+            "description": "`rascunho`: fica o que chegou por último, confirmado no lugar da outra se ela estava confirmada; `outra`: fica a que já estava; `as_duas`: não é duplicata."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "manter"
+        ],
+        "title": "DuplicataEntrada"
+      },
       "DuplicataSaida": {
         "properties": {
           "rascunho": {
@@ -2907,6 +3524,68 @@
           "data"
         ],
         "title": "ExemploRascunho"
+      },
+      "FaturaCandidataSaida": {
+        "properties": {
+          "cartao_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cartao Id"
+          },
+          "cartao_nome": {
+            "type": "string",
+            "title": "Cartao Nome"
+          },
+          "competencia": {
+            "type": "string",
+            "format": "date",
+            "title": "Competencia",
+            "description": "Primeiro dia do mês do vencimento."
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusFatura",
+            "description": "Como está hoje, sem este pagamento."
+          },
+          "data_vencimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Vencimento"
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor"
+          },
+          "valor_pago": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor Pago",
+            "description": "Já pago, sem este pagamento."
+          },
+          "fica_paga": {
+            "type": "boolean",
+            "title": "Fica Paga",
+            "description": "Com este pagamento, a fatura fica paga."
+          },
+          "sugerida": {
+            "type": "boolean",
+            "title": "Sugerida",
+            "description": "A pré-selecionada (no máximo uma)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cartao_id",
+          "cartao_nome",
+          "competencia",
+          "status",
+          "data_vencimento",
+          "valor",
+          "valor_pago",
+          "fica_paga",
+          "sugerida"
+        ],
+        "title": "FaturaCandidataSaida"
       },
       "FaturaDetalheSaida": {
         "properties": {
@@ -3292,6 +3971,16 @@
         ],
         "title": "LoteSaida"
       },
+      "ManterDuplicata": {
+        "type": "string",
+        "enum": [
+          "rascunho",
+          "outra",
+          "as_duas"
+        ],
+        "title": "ManterDuplicata",
+        "description": "Qual fica numa possível duplicata."
+      },
       "OrigemRegra": {
         "type": "string",
         "enum": [
@@ -3328,6 +4017,83 @@
           "data"
         ],
         "title": "PagamentoEntrada"
+      },
+      "PagamentoRevisaoEntrada": {
+        "properties": {
+          "cartao_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cartao Id"
+          },
+          "competencia": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "Competencia",
+            "description": "Mês da fatura, `AAAA-MM`."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cartao_id",
+          "competencia"
+        ],
+        "title": "PagamentoRevisaoEntrada"
+      },
+      "ParEntrada": {
+        "properties": {
+          "saida_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Saida Id"
+          },
+          "entrada_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entrada Id"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao",
+            "description": "Vale para os dois lados; vazia mantém."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "saida_id",
+          "entrada_id"
+        ],
+        "title": "ParEntrada"
+      },
+      "ParRecusaEntrada": {
+        "properties": {
+          "saida_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Saida Id"
+          },
+          "entrada_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entrada Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "saida_id",
+          "entrada_id"
+        ],
+        "title": "ParRecusaEntrada"
       },
       "ParSaida": {
         "properties": {
@@ -4213,6 +4979,30 @@
           "conta_destino_id"
         ],
         "title": "TransferenciaParSaida"
+      },
+      "TransferenciaRevisaoEntrada": {
+        "properties": {
+          "conta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Id",
+            "description": "A outra conta: \"Para\" numa saída, \"De\" numa entrada. Corrente ou carteira ativa."
+          },
+          "descricao": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Descricao",
+            "description": "Vale para os dois lados."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "conta_id",
+          "descricao"
+        ],
+        "title": "TransferenciaRevisaoEntrada"
       },
       "TransferenciaSaida": {
         "properties": {

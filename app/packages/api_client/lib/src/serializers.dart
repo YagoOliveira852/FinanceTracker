@@ -33,10 +33,12 @@ import 'package:api_client/src/model/conta_na_revisao.dart';
 import 'package:api_client/src/model/conta_saida.dart';
 import 'package:api_client/src/model/contas_resumo.dart';
 import 'package:api_client/src/model/datas_fatura_saida.dart';
+import 'package:api_client/src/model/duplicata_entrada.dart';
 import 'package:api_client/src/model/duplicata_saida.dart';
 import 'package:api_client/src/model/efeito_aprendizado.dart';
 import 'package:api_client/src/model/erro_campo.dart';
 import 'package:api_client/src/model/exemplo_rascunho.dart';
+import 'package:api_client/src/model/fatura_candidata_saida.dart';
 import 'package:api_client/src/model/fatura_detalhe_saida.dart';
 import 'package:api_client/src/model/fatura_edicao.dart';
 import 'package:api_client/src/model/fatura_resumo.dart';
@@ -50,8 +52,12 @@ import 'package:api_client/src/model/location_inner.dart';
 import 'package:api_client/src/model/login_entrada.dart';
 import 'package:api_client/src/model/lote_entrada.dart';
 import 'package:api_client/src/model/lote_saida.dart';
+import 'package:api_client/src/model/manter_duplicata.dart';
 import 'package:api_client/src/model/origem_regra.dart';
 import 'package:api_client/src/model/pagamento_entrada.dart';
+import 'package:api_client/src/model/pagamento_revisao_entrada.dart';
+import 'package:api_client/src/model/par_entrada.dart';
+import 'package:api_client/src/model/par_recusa_entrada.dart';
 import 'package:api_client/src/model/par_saida.dart';
 import 'package:api_client/src/model/parcela_saida.dart';
 import 'package:api_client/src/model/rascunho_saida.dart';
@@ -74,6 +80,7 @@ import 'package:api_client/src/model/transacao_revisao.dart';
 import 'package:api_client/src/model/transacao_saida.dart';
 import 'package:api_client/src/model/transferencia_entrada.dart';
 import 'package:api_client/src/model/transferencia_par_saida.dart';
+import 'package:api_client/src/model/transferencia_revisao_entrada.dart';
 import 'package:api_client/src/model/transferencia_saida.dart';
 import 'package:api_client/src/model/usuario_saida.dart';
 import 'package:api_client/src/model/validation_error.dart';
@@ -100,10 +107,12 @@ part 'serializers.g.dart';
   ContaSaida,
   ContasResumo,
   DatasFaturaSaida,
+  DuplicataEntrada,
   DuplicataSaida,
   EfeitoAprendizado,
   ErroCampo,
   ExemploRascunho,
+  FaturaCandidataSaida,
   FaturaDetalheSaida,
   FaturaEdicao,
   FaturaResumo,
@@ -117,8 +126,12 @@ part 'serializers.g.dart';
   LoginEntrada,
   LoteEntrada,
   LoteSaida,
+  ManterDuplicata,
   OrigemRegra,
   PagamentoEntrada,
+  PagamentoRevisaoEntrada,
+  ParEntrada,
+  ParRecusaEntrada,
   ParSaida,
   ParcelaSaida,
   RascunhoSaida,
@@ -141,6 +154,7 @@ part 'serializers.g.dart';
   TransacaoSaida,
   TransferenciaEntrada,
   TransferenciaParSaida,
+  TransferenciaRevisaoEntrada,
   TransferenciaSaida,
   UsuarioSaida,
   ValidationError,
@@ -201,6 +215,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ErroCampo)]),
         () => ListBuilder<ErroCampo>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(FaturaCandidataSaida)]),
+        () => ListBuilder<FaturaCandidataSaida>(),
       )
       ..add(const OneOfSerializer())
       ..add(const AnyOfSerializer())

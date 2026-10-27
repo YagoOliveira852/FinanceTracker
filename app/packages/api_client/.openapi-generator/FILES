@@ -40,10 +40,12 @@ lib/src/model/conta_saida.dart
 lib/src/model/contas_resumo.dart
 lib/src/model/datas_fatura_saida.dart
 lib/src/model/date.dart
+lib/src/model/duplicata_entrada.dart
 lib/src/model/duplicata_saida.dart
 lib/src/model/efeito_aprendizado.dart
 lib/src/model/erro_campo.dart
 lib/src/model/exemplo_rascunho.dart
+lib/src/model/fatura_candidata_saida.dart
 lib/src/model/fatura_detalhe_saida.dart
 lib/src/model/fatura_edicao.dart
 lib/src/model/fatura_resumo.dart
@@ -57,8 +59,12 @@ lib/src/model/location_inner.dart
 lib/src/model/login_entrada.dart
 lib/src/model/lote_entrada.dart
 lib/src/model/lote_saida.dart
+lib/src/model/manter_duplicata.dart
 lib/src/model/origem_regra.dart
 lib/src/model/pagamento_entrada.dart
+lib/src/model/pagamento_revisao_entrada.dart
+lib/src/model/par_entrada.dart
+lib/src/model/par_recusa_entrada.dart
 lib/src/model/par_saida.dart
 lib/src/model/parcela_saida.dart
 lib/src/model/rascunho_saida.dart
@@ -81,6 +87,7 @@ lib/src/model/transacao_revisao.dart
 lib/src/model/transacao_saida.dart
 lib/src/model/transferencia_entrada.dart
 lib/src/model/transferencia_par_saida.dart
+lib/src/model/transferencia_revisao_entrada.dart
 lib/src/model/transferencia_saida.dart
 lib/src/model/usuario_saida.dart
 lib/src/model/validation_error.dart
