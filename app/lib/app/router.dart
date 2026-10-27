@@ -34,6 +34,7 @@ import '../features/login/cubit/login_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/login/data/auth_repositorio.dart';
 import '../features/login/ui/login_tela.dart';
+import '../features/revisao/cubit/revisao_cubit.dart';
 import '../features/revisao/ui/revisao_tela.dart';
 import '../features/transacoes/cubit/lancamento_cubit.dart';
 import '../features/transacoes/cubit/transacoes_cubit.dart';
@@ -348,26 +349,29 @@ class _EstruturaAbas extends StatelessWidget {
       body: abas,
       bottomNavigationBar: NavigationBar(
         selectedIndex: abas.currentIndex,
-        // Tocar na aba atual volta para a raiz dela.
-        onDestinationSelected: (indice) =>
-            abas.goBranch(indice, initialLocation: indice == abas.currentIndex),
-        destinations: const [
-          NavigationDestination(
+        // Tocar na aba atual volta para a raiz dela. Entrar na Revisão
+        // recarrega: regras editadas em Mais mudam as sugestões.
+        onDestinationSelected: (indice) {
+          if (indice == _abaRevisao) context.read<RevisaoCubit>().carregar();
+          abas.goBranch(indice, initialLocation: indice == abas.currentIndex);
+        },
+        destinations: [
+          const NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home_rounded),
             label: 'Início',
           ),
           NavigationDestination(
-            icon: Icon(Icons.fact_check_outlined),
-            selectedIcon: Icon(Icons.fact_check_rounded),
+            icon: _ComContador(const Icon(Icons.fact_check_outlined)),
+            selectedIcon: _ComContador(const Icon(Icons.fact_check_rounded)),
             label: 'Revisão',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined),
             selectedIcon: Icon(Icons.receipt_long_rounded),
             label: 'Transações',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.more_horiz_rounded),
             selectedIcon: Icon(Icons.more_horiz_rounded),
             label: 'Mais',
@@ -390,5 +394,25 @@ class _OuvinteDeStream extends ChangeNotifier {
   void dispose() {
     _inscricao.cancel();
     super.dispose();
+  }
+}
+
+/// Índice da aba Revisão na barra.
+const _abaRevisao = 1;
+
+/// Ícone da aba Revisão com o contador do que falta revisar.
+class _ComContador extends StatelessWidget {
+  const _ComContador(this.icone);
+
+  final Widget icone;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = context.select((RevisaoCubit cubit) => cubit.state.total);
+    return Badge(
+      isLabelVisible: total > 0,
+      label: Text('$total'),
+      child: icone,
+    );
   }
 }
