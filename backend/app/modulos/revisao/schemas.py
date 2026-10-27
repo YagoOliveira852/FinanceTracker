@@ -1,0 +1,105 @@
+"""Entrada e saída HTTP da revisão."""
+
+import uuid
+from datetime import date, datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.core.dinheiro import Dinheiro
+from app.modulos.categorias.models import OrigemRegra
+from app.modulos.categorias.regras import EfeitoAprendizado
+from app.modulos.categorias.schemas import CategoriaResumo
+from app.modulos.contas.models import TipoConta
+from app.modulos.transacoes.models import (
+    FonteTransacao,
+    StatusTransacao,
+    TipoTransacao,
+    Transacao,
+)
+
+
+class ContaNaRevisao(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    nome: str
+    tipo: TipoConta
+
+
+class TransacaoRevisao(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    conta: ContaNaRevisao
+    tipo: TipoTransacao
+    valor: Dinheiro
+    data: date
+    descricao: str
+    descricao_original: str = Field(description="Como veio do banco.")
+    fonte: FonteTransacao
+    status: StatusTransacao
+    categoria: CategoriaResumo | None = Field(description="Só a confirmada tem.")
+    fatura_competencia: date | None = Field(
+        description="Fatura em que a compra entra (cartão), ou a paga (pagamento de fatura)."
+    )
+    removida_na_origem_em: datetime | None = Field(
+        description="A confirmada que sumiu do Open Finance."
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _montar_da_transacao(cls, dados: Any) -> Any:
+        if not isinstance(dados, Transacao):
+            return dados
+        campos = {
+            campo: getattr(dados, campo)
+            for campo in cls.model_fields
+            if campo != "fatura_competencia"
+        }
+        competencia = None if dados.fatura is None else dados.fatura.competencia
+        return campos | {"fatura_competencia": competencia}
+
+
+class SugestaoSaida(BaseModel):
+    regra_id: uuid.UUID
+    padrao: str
+    origem: OrigemRegra
+    categoria: CategoriaResumo
+
+
+class RascunhoSaida(TransacaoRevisao):
+    padrao: str = Field(
+        description="A descrição original normalizada (vazia: só termos genéricos)."
+    )
+    sugestao: SugestaoSaida | None = Field(
+        description="Calculada agora pelas regras; não é gravada."
+    )
+    efeito_confirmando: EfeitoAprendizado = Field(
+        description="O que acontece com as regras se confirmar a sugestão (ou, sem sugestão, "
+        "qualquer categoria)."
+    )
+    efeito_corrigindo: EfeitoAprendizado = Field(
+        description="O que acontece com as regras se escolher outra categoria."
+    )
+
+
+class ParSaida(BaseModel):
+    saida: TransacaoRevisao
+    entrada: TransacaoRevisao
+    dias: int = Field(description="Diferença de dias entre as duas (até 2).")
+
+
+class DuplicataSaida(BaseModel):
+    rascunho: TransacaoRevisao = Field(description="O que chegou por último, marcado.")
+    outra: TransacaoRevisao = Field(description="A que já estava (confirmada ou rascunho).")
+
+
+class RevisaoSaida(BaseModel):
+    total: int = Field(description="Linhas para revisar (um par conta 1): o contador da aba.")
+    qtd_sugeridos: int = Field(description="Rascunhos comuns com categoria sugerida (o lote).")
+    pares: list[ParSaida]
+    pagamentos: list[TransacaoRevisao] = Field(description="Pagamentos de fatura das fontes.")
+    duplicatas: list[DuplicataSaida]
+    sumidas: list[TransacaoRevisao] = Field(description="Confirmadas que sumiram da origem.")
+    rascunhos: list[RascunhoSaida] = Field(description="Os comuns, da data mais recente.")

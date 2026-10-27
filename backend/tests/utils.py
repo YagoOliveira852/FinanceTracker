@@ -36,7 +36,7 @@ def criar_conta(sessao, nome: str = "Conta principal", tipo: str = "corrente"):
     return conta
 
 
-def criar_transacao(sessao, conta, descricao: str = "PADARIA PAO QUENTE", **mudancas):
+def criar_transacao(sessao, conta, descricao_original: str = "PADARIA PAO QUENTE", **mudancas):
     """Transação gravada direto no banco; por padrão, um rascunho de despesa
     vindo da Pluggy, como as fontes vão criar (importação e sync ainda não
     existem)."""
@@ -47,8 +47,8 @@ def criar_transacao(sessao, conta, descricao: str = "PADARIA PAO QUENTE", **muda
         "tipo": "despesa",
         "valor": Decimal("18.50"),
         "data": date(2026, 10, 19),
-        "descricao_original": descricao,
-        "descricao": descricao,
+        "descricao_original": descricao_original,
+        "descricao": descricao_original,
         "status": "rascunho",
         "fonte": "pluggy",
         "id_externo": str(uuid.uuid4()),

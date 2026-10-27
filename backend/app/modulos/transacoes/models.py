@@ -19,7 +19,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, ComTimestamps, check_enum
+from app.modulos.cartoes.models import Fatura
 from app.modulos.categorias.models import Categoria
+from app.modulos.contas.models import Conta
 
 
 class TipoTransacao(StrEnum):
@@ -166,6 +168,9 @@ class Transacao(ComTimestamps, Base):
     removida_na_origem_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     categoria: Mapped[Categoria | None] = relationship(lazy="joined")
+    # Carregadas só quando pedidas (a revisão usa selectinload).
+    conta: Mapped[Conta] = relationship()
+    fatura: Mapped[Fatura | None] = relationship()
     compra_parcelada: Mapped[CompraParcelada | None] = relationship(
         back_populates="parcelas", lazy="joined"
     )

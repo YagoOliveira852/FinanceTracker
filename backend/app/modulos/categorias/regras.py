@@ -135,6 +135,15 @@ def regra_sugerida(sessao: Session, transacao: Transacao) -> RegraClassificacao 
     return _sugerida(transacao, _regras_ativas(sessao))
 
 
+def sugestoes(
+    sessao: Session, transacoes: list[Transacao]
+) -> dict[uuid.UUID, RegraClassificacao | None]:
+    """{transacao_id: regra sugerida}, carregando as regras uma vez só (a
+    revisão calcula a sugestão de todos os rascunhos na leitura)."""
+    regras = _regras_ativas(sessao)
+    return {transacao.id: _sugerida(transacao, regras) for transacao in transacoes}
+
+
 def rascunhos_casados(sessao: Session, regra: RegraClassificacao) -> RascunhosCasados:
     """Rascunhos sem categoria para os quais a regra é a sugestão hoje (ela
     casa e vence as outras), e o mais recente deles."""
