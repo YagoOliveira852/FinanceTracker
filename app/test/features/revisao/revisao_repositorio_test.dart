@@ -3,6 +3,7 @@ import 'package:financas/core/api/cliente_api.dart';
 import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/categorias/data/regra.dart';
 import 'package:financas/features/contas/data/conta.dart';
+import 'package:financas/features/faturas/data/fatura.dart';
 import 'package:financas/features/revisao/data/revisao.dart';
 import 'package:financas/features/revisao/data/revisao_repositorio.dart';
 import 'package:financas/features/transacoes/data/transacao.dart';
@@ -199,5 +200,77 @@ void main() {
             ),
       ),
     );
+  });
+
+  test('faturas do pagamento convertem valor, status e sugerida', () async {
+    responder((
+      status: 200,
+      corpo: [
+        {
+          'cartao_id': 'k1',
+          'cartao_nome': 'Cartão Exemplo',
+          'competencia': '2026-10-01',
+          'status': 'fechada',
+          'data_vencimento': '2026-10-13',
+          'valor': '1032.15',
+          'valor_pago': '0.00',
+          'fica_paga': true,
+          'sugerida': true,
+        },
+      ],
+    ));
+
+    final fatura = (await repositorio.faturasDoPagamento(_id)).single;
+
+    expect(fatura.status, StatusFatura.fechada);
+    expect(fatura.valor, Decimal.parse('1032.15'));
+    expect(fatura.competencia, DateTime(2026, 10));
+    expect(fatura.ficaPaga && fatura.sugerida, isTrue);
+  });
+
+  test('pagar manda o cartão e a competência AAAA-MM', () async {
+    responder((status: 204, corpo: null));
+
+    await repositorio.pagar(
+      _id,
+      cartaoId: 'k1',
+      competencia: DateTime(2026, 10),
+    );
+
+    final requisicao = adaptador.requisicoes.single;
+    expect(requisicao.path, '/revisao/transacoes/$_id/pagamento');
+    expect(corpoDe(requisicao), {'cartao_id': 'k1', 'competencia': '2026-10'});
+  });
+
+  test('ligar par manda os dois lados e a descrição', () async {
+    responder((status: 204, corpo: null));
+
+    await repositorio.ligarPar('s', 'e', descricao: 'Reserva');
+
+    final requisicao = adaptador.requisicoes.single;
+    expect(requisicao.path, '/revisao/pares');
+    expect(corpoDe(requisicao), {
+      'saida_id': 's',
+      'entrada_id': 'e',
+      'descricao': 'Reserva',
+    });
+  });
+
+  test('duplicata manda a escolha no formato da API', () async {
+    responder((status: 204, corpo: null));
+
+    await repositorio.resolverDuplicata(_id, ManterDuplicata.asDuas);
+
+    expect(corpoDe(adaptador.requisicoes.single), {'manter': 'as_duas'});
+  });
+
+  test('transferir manda a outra conta e a descrição', () async {
+    responder((status: 204, corpo: null));
+
+    await repositorio.transferir(_id, contaId: 'cart', descricao: 'Saque');
+
+    final requisicao = adaptador.requisicoes.single;
+    expect(requisicao.path, '/revisao/transacoes/$_id/transferencia');
+    expect(corpoDe(requisicao), {'conta_id': 'cart', 'descricao': 'Saque'});
   });
 }

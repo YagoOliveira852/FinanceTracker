@@ -1,6 +1,9 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:financas/core/api/erro_api.dart';
+import 'package:financas/features/contas/data/conta.dart';
+import 'package:financas/features/revisao/cubit/decisao_cubit.dart';
 import 'package:financas/features/revisao/cubit/folha_rascunho_cubit.dart';
+import 'package:financas/features/revisao/cubit/pagamento_revisao_cubit.dart';
 import 'package:financas/features/revisao/cubit/revisao_cubit.dart';
 import 'package:financas/features/revisao/data/revisao.dart';
 import 'package:financas/features/transacoes/data/transacao.dart';
@@ -158,6 +161,32 @@ void main() {
       expect(cubit.efeito, EfeitoRegra.criada);
     });
 
+    test('tipos: transferência só fora do cartão', () {
+      expect(FolhaRascunhoCubit.tiposPara(itemExemplo()), [
+        TipoTransacao.despesa,
+        TipoTransacao.transferenciaSaida,
+      ]);
+      expect(
+        FolhaRascunhoCubit.tiposPara(
+          itemExemplo(
+            tipo: TipoTransacao.receita,
+            contaTipo: TipoConta.carteira,
+          ),
+        ),
+        [
+          TipoTransacao.receita,
+          TipoTransacao.estorno,
+          TipoTransacao.transferenciaEntrada,
+        ],
+      );
+      expect(
+        FolhaRascunhoCubit.tiposPara(
+          itemExemplo(contaTipo: TipoConta.cartaoCredito),
+        ),
+        [TipoTransacao.despesa],
+      );
+    });
+
     test('entrada troca entre receita e estorno, sem efeito', () {
       final cubit = FolhaRascunhoCubit(
         RevisaoRepositorioFalso(),
@@ -167,10 +196,6 @@ void main() {
       );
       addTearDown(cubit.close);
 
-      expect(FolhaRascunhoCubit.tiposPara(cubit.rascunho.item), [
-        TipoTransacao.receita,
-        TipoTransacao.estorno,
-      ]);
       cubit.escolherTipo(TipoTransacao.estorno);
 
       expect(cubit.state.categoriaId, isNull);
@@ -178,7 +203,39 @@ void main() {
       expect(cubit.efeito, isNull);
     });
 
-    test('rascunho de transferência abre como despesa', () {
+    test('pagamento das fontes abre como despesa', () {
+      final cubit = FolhaRascunhoCubit(
+        RevisaoRepositorioFalso(),
+        rascunhoSemSugestao().copyWith(item: pagamentoExemplo()),
+      );
+      addTearDown(cubit.close);
+
+      expect(cubit.state.tipo, TipoTransacao.despesa);
+    });
+
+    test('como transferência, pede a outra conta e não a categoria', () async {
+      final repositorio = RevisaoRepositorioFalso();
+      final cubit = FolhaRascunhoCubit(repositorio, rascunhoSugerido());
+      addTearDown(cubit.close);
+
+      cubit.escolherTipo(TipoTransacao.transferenciaSaida);
+      expect(cubit.podeConfirmar, isFalse);
+      expect(cubit.efeito, isNull);
+
+      cubit.escolherOutraConta('carteira');
+      expect(cubit.podeConfirmar, isTrue);
+      await cubit.confirmar();
+
+      expect(repositorio.decisoes, [
+        'transferir i1 carteira Padaria Pão Quente',
+      ]);
+      expect(
+        cubit.state.concluido,
+        'Padaria Pão Quente ligada como transferência.',
+      );
+    });
+
+    test('rascunho que já veio como transferência abre assim', () {
       final cubit = FolhaRascunhoCubit(
         RevisaoRepositorioFalso(),
         rascunhoSemSugestao().copyWith(
@@ -187,7 +244,7 @@ void main() {
       );
       addTearDown(cubit.close);
 
-      expect(cubit.state.tipo, TipoTransacao.despesa);
+      expect(cubit.state.tipo, TipoTransacao.transferenciaSaida);
     });
 
     blocTest<FolhaRascunhoCubit, FolhaRascunhoEstado>(
@@ -231,6 +288,94 @@ void main() {
 
       expect(repositorio.ignorados, ['i3']);
       expect(cubit.state.concluido, 'Posto Fictício ignorada.');
+    });
+  });
+
+  group('DecisaoCubit', () {
+    blocTest<DecisaoCubit, DecisaoEstado>(
+      'conclui com o aviso',
+      build: DecisaoCubit.new,
+      act: (cubit) => cubit.executar(() async {}, aviso: 'Par ligado.'),
+      expect: () => [
+        const DecisaoEstado(enviando: true),
+        const DecisaoEstado(concluido: 'Par ligado.'),
+      ],
+    );
+
+    blocTest<DecisaoCubit, DecisaoEstado>(
+      'erro fica na folha',
+      build: DecisaoCubit.new,
+      act: (cubit) => cubit.executar(
+        () async => throw const ErroApi(
+          'Dados inválidos.',
+          status: 422,
+          campos: {'entrada_id': 'O par precisa ter o mesmo valor.'},
+        ),
+        aviso: 'Par ligado.',
+      ),
+      expect: () => [
+        const DecisaoEstado(enviando: true),
+        const DecisaoEstado(erro: 'O par precisa ter o mesmo valor.'),
+      ],
+    );
+  });
+
+  group('PagamentoRevisaoCubit', () {
+    test('carrega as candidatas e começa na sugerida', () async {
+      final cubit = PagamentoRevisaoCubit(
+        RevisaoRepositorioFalso(),
+        pagamentoExemplo(),
+      );
+      addTearDown(cubit.close);
+
+      await cubit.carregar();
+
+      expect(cubit.state.carregando, isFalse);
+      expect(cubit.state.candidatas, hasLength(2));
+      expect(cubit.state.escolhida?.competencia, DateTime(2026, 10));
+    });
+
+    test('sem sugerida, espera a escolha', () async {
+      final repositorio = RevisaoRepositorioFalso()
+        ..candidatas = [
+          for (final f in candidatasExemplo()) f.copyWith(sugerida: false),
+        ];
+      final cubit = PagamentoRevisaoCubit(repositorio, pagamentoExemplo());
+      addTearDown(cubit.close);
+
+      await cubit.carregar();
+      await cubit.confirmar();
+
+      expect(cubit.state.escolhida, isNull);
+      expect(repositorio.decisoes, isEmpty);
+    });
+
+    test('confirma na escolhida', () async {
+      final repositorio = RevisaoRepositorioFalso();
+      final cubit = PagamentoRevisaoCubit(repositorio, pagamentoExemplo());
+      addTearDown(cubit.close);
+      await cubit.carregar();
+
+      cubit.escolher(cubit.state.candidatas.last);
+      await cubit.confirmar();
+
+      expect(repositorio.decisoes, ['pagar f1 k1 11']);
+      expect(
+        cubit.state.concluido,
+        'Pagamento ligado à fatura de Cartão Exemplo.',
+      );
+    });
+
+    test('erro ao carregar', () async {
+      final cubit = PagamentoRevisaoCubit(
+        RevisaoRepositorioFalso()..erro = const ErroApi(ErroApi.semConexao),
+        pagamentoExemplo(),
+      );
+      addTearDown(cubit.close);
+
+      await cubit.carregar();
+
+      expect(cubit.state.erro, ErroApi.semConexao);
     });
   });
 }
