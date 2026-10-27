@@ -3,10 +3,11 @@
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.deps import SessaoDep, get_usuario_atual
+from app.core.deps import HojeDep, SessaoDep, get_usuario_atual
 from app.core.erros import RespostaErro
 from app.modulos.categorias.schemas import CategoriaResumo
 from app.modulos.revisao import service
@@ -14,8 +15,10 @@ from app.modulos.revisao.schemas import (
     ConfirmacaoEntrada,
     ConfirmacaoSaida,
     DuplicataSaida,
+    FaturaCandidataSaida,
     LoteEntrada,
     LoteSaida,
+    PagamentoRevisaoEntrada,
     ParEntrada,
     ParRecusaEntrada,
     ParSaida,
@@ -29,6 +32,7 @@ from app.modulos.transacoes.service import TransacaoNaoEncontrada
 
 _NAO_ENCONTRADA = {status.HTTP_404_NOT_FOUND: {"model": RespostaErro}}
 _JA_REVISADA = {status.HTTP_409_CONFLICT: {"model": RespostaErro}}
+_NAO_E_PAGAMENTO = {status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": RespostaErro}}
 
 router = APIRouter(
     prefix="/revisao",
@@ -137,6 +141,47 @@ def transferir(
         service.transferir(sessao, transacao_id, conta_id=dados.conta_id, descricao=dados.descricao)
 
 
+@router.get(
+    "/transacoes/{transacao_id}/faturas",
+    responses=_NAO_ENCONTRADA | _JA_REVISADA | _NAO_E_PAGAMENTO,
+)
+def faturas_do_pagamento(
+    transacao_id: uuid.UUID, sessao: SessaoDep, hoje: HojeDep
+) -> list[FaturaCandidataSaida]:
+    """As faturas que este pagamento pode ter pago, com a sugerida e se cada
+    uma fica paga com ele."""
+    with _erros_da_acao():
+        candidatas = service.faturas_do_pagamento(sessao, transacao_id, hoje)
+    return [
+        FaturaCandidataSaida(
+            cartao_id=c.cartao.conta_id,
+            cartao_nome=c.cartao.conta.nome,
+            competencia=c.resumo.competencia,
+            status=c.resumo.status,
+            data_vencimento=c.resumo.data_vencimento,
+            valor=c.resumo.valor,
+            valor_pago=c.resumo.valor_pago,
+            fica_paga=c.fica_paga,
+            sugerida=c.sugerida,
+        )
+        for c in candidatas
+    ]
+
+
+@router.post(
+    "/transacoes/{transacao_id}/pagamento",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_NAO_ENCONTRADA | _JA_REVISADA | _NAO_E_PAGAMENTO,
+)
+def pagar(transacao_id: uuid.UUID, dados: PagamentoRevisaoEntrada, sessao: SessaoDep) -> None:
+    """Confirma o pagamento ligado à fatura escolhida."""
+    ano, mes = dados.competencia.split("-")
+    with _erros_da_acao():
+        service.pagar(
+            sessao, transacao_id, cartao_id=dados.cartao_id, competencia=date(int(ano), int(mes), 1)
+        )
+
+
 def _rascunho(rascunho: service.Rascunho) -> RascunhoSaida:
     regra = rascunho.sugerida
     sugestao = None
@@ -163,6 +208,10 @@ def _erros_da_acao() -> Iterator[None]:
         yield
     except TransacaoNaoEncontrada as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Transação não encontrada.") from exc
+    except service.NaoEhPagamento as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Este rascunho não é pagamento de fatura."
+        ) from exc
     except service.JaRevisada as exc:
         raise HTTPException(
             status.HTTP_409_CONFLICT, detail="Esta transação já foi revisada."

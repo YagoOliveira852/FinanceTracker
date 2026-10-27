@@ -4,17 +4,23 @@ revisão" e "Decisões do código da revisão")."""
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.erros import CampoInvalido
+from app.modulos.cartoes import faturas
+from app.modulos.cartoes import service as cartoes_service
+from app.modulos.cartoes.datas import StatusFatura, status_da_fatura
+from app.modulos.cartoes.faturas import ResumoFatura
+from app.modulos.cartoes.models import Cartao
 from app.modulos.categorias import regras
 from app.modulos.categorias import service as categorias_service
 from app.modulos.categorias.classificacao import grupos_do_tipo, normalizar
 from app.modulos.categorias.models import RegraClassificacao
 from app.modulos.categorias.regras import Aprendizado, EfeitoAprendizado, prever_efeito
-from app.modulos.contas.models import TipoConta
+from app.modulos.contas.models import Conta, TipoConta
 from app.modulos.revisao.models import ParRecusado
 from app.modulos.revisao.pareamento import DIAS_MAXIMOS, casam, sugerir_pares
 from app.modulos.transacoes import service as transacoes_service
@@ -42,6 +48,14 @@ _MENSAGEM_TIPO = {
     _CONFIRMAVEIS_ENTRADA: "Uma entrada é confirmada como receita ou estorno; transferência "
     "tem opção própria.",
 }
+
+
+# Quantas faturas fechadas antes da atual entram como candidatas a um pagamento.
+_FATURAS_ANTERIORES = 2
+
+
+class NaoEhPagamento(Exception):
+    """Só um rascunho de pagamento de fatura escolhe a fatura."""
 
 
 class JaRevisada(Exception):
@@ -76,6 +90,16 @@ class ParSugerido:
 class Duplicata:
     rascunho: Transacao
     outra: Transacao
+
+
+@dataclass(frozen=True)
+class FaturaCandidata:
+    """Uma fatura que o pagamento pode ter pago, como fica com ele."""
+
+    cartao: Cartao
+    resumo: ResumoFatura
+    fica_paga: bool
+    sugerida: bool
 
 
 @dataclass(frozen=True)
@@ -375,6 +399,76 @@ def _outro_lado_que_chegou(
         .order_by(distancia, Transacao.data, Transacao.id)
         .limit(1)
     ).first()
+
+
+def faturas_do_pagamento(
+    sessao: Session, transacao_id: uuid.UUID, hoje: date
+) -> list[FaturaCandidata]:
+    """As faturas que o pagamento pode ter pago: de cada cartão ativo, a atual
+    e as duas anteriores. Sugerida: a que a fonte já ligou ou, senão, a
+    fechada do cartão pago por esta conta com o vencimento mais perto da data
+    do pagamento."""
+    pagamento = _pagamento_para_revisar(sessao, transacao_id)
+    cartoes = sessao.scalars(
+        select(Cartao).join(Cartao.conta).where(Conta.ativa.is_(True)).order_by(Conta.nome)
+    )
+    candidatas: list[tuple[Cartao, ResumoFatura]] = []
+    for cartao in cartoes:
+        lista = faturas.listar(sessao, cartao, hoje)
+        candidatas += [(cartao, r) for r in [lista.atual, *lista.anteriores[:_FATURAS_ANTERIORES]]]
+
+    sugerida = next(
+        (r for _, r in candidatas if r.fatura is not None and r.fatura.id == pagamento.fatura_id),
+        None,
+    )
+    if sugerida is None:
+        sugerida = min(
+            (
+                r
+                for c, r in candidatas
+                if c.conta_pagamento_id == pagamento.conta_id and r.status == StatusFatura.fechada
+            ),
+            key=lambda r: abs((r.data_vencimento - pagamento.data).days),
+            default=None,
+        )
+    return [
+        FaturaCandidata(
+            cartao=cartao,
+            resumo=resumo,
+            fica_paga=_fica_paga(resumo, pagamento, hoje),
+            sugerida=resumo is sugerida,
+        )
+        for cartao, resumo in candidatas
+    ]
+
+
+def pagar(
+    sessao: Session, transacao_id: uuid.UUID, *, cartao_id: uuid.UUID, competencia: date
+) -> None:
+    """Confirma o pagamento ligado à fatura escolhida, gravando-a se ainda é só
+    calculada. Não é gasto: as compras já contaram no cartão."""
+    pagamento = _pagamento_para_revisar(sessao, transacao_id)
+    try:
+        cartao = cartoes_service.obter_cartao(sessao, cartao_id)
+    except cartoes_service.CartaoNaoEncontrado as exc:
+        raise CampoInvalido("cartao_id", "Cartão não encontrado.") from exc
+    fatura = cartoes_service.obter_ou_criar_fatura(sessao, cartao, competencia)
+    pagamento.fatura_id = fatura.id
+    pagamento.status = StatusTransacao.confirmada
+    sessao.commit()
+
+
+def _fica_paga(resumo: ResumoFatura, pagamento: Transacao, hoje: date) -> bool:
+    ja_ligado = resumo.fatura is not None and resumo.fatura.id == pagamento.fatura_id
+    pago = resumo.valor_pago + (0 if ja_ligado else pagamento.valor)
+    return status_da_fatura(resumo.data_fechamento, hoje, resumo.valor, pago) == StatusFatura.paga
+
+
+def _pagamento_para_revisar(sessao: Session, transacao_id: uuid.UUID) -> Transacao:
+    pagamento = _rascunho_para_revisar(sessao, transacao_id)
+    if pagamento.tipo != TipoTransacao.pagamento_fatura:
+        raise NaoEhPagamento
+    return pagamento
 
 
 def _ligar(saida: Transacao, entrada: Transacao, descricao: str | None) -> None:

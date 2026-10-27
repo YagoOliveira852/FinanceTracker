@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.dinheiro import Dinheiro
+from app.modulos.cartoes.datas import StatusFatura
 from app.modulos.categorias.models import OrigemRegra
 from app.modulos.categorias.regras import EfeitoAprendizado
 from app.modulos.categorias.schemas import CategoriaResumo
@@ -161,3 +162,24 @@ class TransferenciaRevisaoEntrada(BaseModel):
         "carteira ativa."
     )
     descricao: str = Field(min_length=1, max_length=200, description="Vale para os dois lados.")
+
+
+class FaturaCandidataSaida(BaseModel):
+    cartao_id: uuid.UUID
+    cartao_nome: str
+    competencia: date = Field(description="Primeiro dia do mês do vencimento.")
+    status: StatusFatura = Field(description="Como está hoje, sem este pagamento.")
+    data_vencimento: date
+    valor: Dinheiro
+    valor_pago: Dinheiro = Field(description="Já pago, sem este pagamento.")
+    fica_paga: bool = Field(description="Com este pagamento, a fatura fica paga.")
+    sugerida: bool = Field(description="A pré-selecionada (no máximo uma).")
+
+
+class PagamentoRevisaoEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cartao_id: uuid.UUID
+    competencia: str = Field(
+        pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="Mês da fatura, `AAAA-MM`."
+    )
