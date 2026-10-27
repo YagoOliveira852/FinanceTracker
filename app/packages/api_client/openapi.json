@@ -1830,6 +1830,261 @@
         }
       }
     },
+    "/revisao": {
+      "get": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Listar",
+        "description": "O que espera o usuário: as decisões (\"Precisam de você\") e os rascunhos\ncomuns com a categoria sugerida pelas regras agora.",
+        "operationId": "revisao_listar",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisaoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/revisao/transacoes/{transacao_id}/confirmar": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Confirmar",
+        "description": "Confirma o rascunho com a categoria e ensina as regras: cria, reforça ou\ncorrige a aprendida; a manual não muda.",
+        "operationId": "revisao_confirmar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transacao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmacaoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmacaoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/revisao/transacoes/{transacao_id}/ignorar": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Ignorar",
+        "description": "O rascunho fica ignorado (no histórico, fora do saldo e dos gastos) e não\nvolta numa nova importação.",
+        "operationId": "revisao_ignorar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Transacao Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/revisao/confirmar-lote": {
+      "post": {
+        "tags": [
+          "revisao"
+        ],
+        "summary": "Confirmar Lote",
+        "description": "Confirma com a categoria sugerida os rascunhos que ainda têm sugestão.",
+        "operationId": "revisao_confirmar_lote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoteEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoteSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -2303,6 +2558,72 @@
         ],
         "title": "CompraParceladaSaida"
       },
+      "ConfirmacaoEntrada": {
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Descricao"
+          },
+          "categoria_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Categoria Id",
+            "description": "Ativa e do grupo que combina com o tipo."
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "despesa",
+                  "receita",
+                  "estorno"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo",
+            "description": "Troca o tipo no mesmo sentido (saída: despesa; entrada: receita ou estorno); nulo mantém."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "descricao",
+          "categoria_id"
+        ],
+        "title": "ConfirmacaoEntrada"
+      },
+      "ConfirmacaoSaida": {
+        "properties": {
+          "efeito": {
+            "$ref": "#/components/schemas/EfeitoAprendizado",
+            "description": "O que a confirmação fez com as regras."
+          },
+          "regra_padrao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regra Padrao",
+            "description": "O padrão da regra criada, reforçada ou mantida."
+          }
+        },
+        "type": "object",
+        "required": [
+          "efeito",
+          "regra_padrao"
+        ],
+        "title": "ConfirmacaoSaida"
+      },
       "ContaDaRegra": {
         "properties": {
           "id": {
@@ -2374,6 +2695,29 @@
           "data_saldo_inicial"
         ],
         "title": "ContaEntrada"
+      },
+      "ContaNaRevisao": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoConta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "tipo"
+        ],
+        "title": "ContaNaRevisao"
       },
       "ContaSaida": {
         "properties": {
@@ -2495,6 +2839,37 @@
         ],
         "title": "DatasFaturaSaida",
         "description": "Competência e datas efetivas de uma fatura (ajustadas para dia útil)."
+      },
+      "DuplicataSaida": {
+        "properties": {
+          "rascunho": {
+            "$ref": "#/components/schemas/TransacaoRevisao",
+            "description": "O que chegou por último, marcado."
+          },
+          "outra": {
+            "$ref": "#/components/schemas/TransacaoRevisao",
+            "description": "A que já estava (confirmada ou rascunho)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "rascunho",
+          "outra"
+        ],
+        "title": "DuplicataSaida"
+      },
+      "EfeitoAprendizado": {
+        "type": "string",
+        "enum": [
+          "criada",
+          "reforcada",
+          "corrigida",
+          "especializada",
+          "manual_mantida",
+          "nenhuma"
+        ],
+        "title": "EfeitoAprendizado",
+        "description": "O que a confirmação de uma categoria fez com as regras."
       },
       "ErroCampo": {
         "properties": {
@@ -2882,6 +3257,41 @@
         ],
         "title": "LoginEntrada"
       },
+      "LoteEntrada": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Ids",
+            "description": "Os rascunhos com sugestão que o app mostrou."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "title": "LoteEntrada"
+      },
+      "LoteSaida": {
+        "properties": {
+          "confirmados": {
+            "type": "integer",
+            "title": "Confirmados",
+            "description": "Os que ainda tinham sugestão e foram confirmados."
+          }
+        },
+        "type": "object",
+        "required": [
+          "confirmados"
+        ],
+        "title": "LoteSaida"
+      },
       "OrigemRegra": {
         "type": "string",
         "enum": [
@@ -2919,6 +3329,28 @@
         ],
         "title": "PagamentoEntrada"
       },
+      "ParSaida": {
+        "properties": {
+          "saida": {
+            "$ref": "#/components/schemas/TransacaoRevisao"
+          },
+          "entrada": {
+            "$ref": "#/components/schemas/TransacaoRevisao"
+          },
+          "dias": {
+            "type": "integer",
+            "title": "Dias",
+            "description": "Diferença de dias entre as duas (até 2)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "saida",
+          "entrada",
+          "dias"
+        ],
+        "title": "ParSaida"
+      },
       "ParcelaSaida": {
         "properties": {
           "compra_parcelada_id": {
@@ -2942,6 +3374,127 @@
           "total"
         ],
         "title": "ParcelaSaida"
+      },
+      "RascunhoSaida": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "conta": {
+            "$ref": "#/components/schemas/ContaNaRevisao"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoTransacao"
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor"
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          },
+          "descricao_original": {
+            "type": "string",
+            "title": "Descricao Original",
+            "description": "Como veio do banco."
+          },
+          "fonte": {
+            "$ref": "#/components/schemas/FonteTransacao"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusTransacao"
+          },
+          "categoria": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoriaResumo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Só a confirmada tem."
+          },
+          "fatura_competencia": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fatura Competencia",
+            "description": "Fatura em que a compra entra (cartão), ou a paga (pagamento de fatura)."
+          },
+          "removida_na_origem_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removida Na Origem Em",
+            "description": "A confirmada que sumiu do Open Finance."
+          },
+          "padrao": {
+            "type": "string",
+            "title": "Padrao",
+            "description": "A descrição original normalizada (vazia: só termos genéricos)."
+          },
+          "sugestao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SugestaoSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Calculada agora pelas regras; não é gravada."
+          },
+          "efeito_confirmando": {
+            "$ref": "#/components/schemas/EfeitoAprendizado",
+            "description": "O que acontece com as regras se confirmar a sugestão (ou, sem sugestão, qualquer categoria)."
+          },
+          "efeito_corrigindo": {
+            "$ref": "#/components/schemas/EfeitoAprendizado",
+            "description": "O que acontece com as regras se escolher outra categoria."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "conta",
+          "tipo",
+          "valor",
+          "data",
+          "descricao",
+          "descricao_original",
+          "fonte",
+          "status",
+          "categoria",
+          "fatura_competencia",
+          "removida_na_origem_em",
+          "padrao",
+          "sugestao",
+          "efeito_confirmando",
+          "efeito_corrigindo"
+        ],
+        "title": "RascunhoSaida"
       },
       "RascunhosCasadosSaida": {
         "properties": {
@@ -3156,6 +3709,69 @@
         ],
         "title": "RespostaErro"
       },
+      "RevisaoSaida": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Linhas para revisar (um par conta 1): o contador da aba."
+          },
+          "qtd_sugeridos": {
+            "type": "integer",
+            "title": "Qtd Sugeridos",
+            "description": "Rascunhos comuns com categoria sugerida (o lote)."
+          },
+          "pares": {
+            "items": {
+              "$ref": "#/components/schemas/ParSaida"
+            },
+            "type": "array",
+            "title": "Pares"
+          },
+          "pagamentos": {
+            "items": {
+              "$ref": "#/components/schemas/TransacaoRevisao"
+            },
+            "type": "array",
+            "title": "Pagamentos",
+            "description": "Pagamentos de fatura das fontes."
+          },
+          "duplicatas": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicataSaida"
+            },
+            "type": "array",
+            "title": "Duplicatas"
+          },
+          "sumidas": {
+            "items": {
+              "$ref": "#/components/schemas/TransacaoRevisao"
+            },
+            "type": "array",
+            "title": "Sumidas",
+            "description": "Confirmadas que sumiram da origem."
+          },
+          "rascunhos": {
+            "items": {
+              "$ref": "#/components/schemas/RascunhoSaida"
+            },
+            "type": "array",
+            "title": "Rascunhos",
+            "description": "Os comuns, da data mais recente."
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "qtd_sugeridos",
+          "pares",
+          "pagamentos",
+          "duplicatas",
+          "sumidas",
+          "rascunhos"
+        ],
+        "title": "RevisaoSaida"
+      },
       "Saude": {
         "properties": {
           "status": {
@@ -3186,6 +3802,33 @@
           "ignorada"
         ],
         "title": "StatusTransacao"
+      },
+      "SugestaoSaida": {
+        "properties": {
+          "regra_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Regra Id"
+          },
+          "padrao": {
+            "type": "string",
+            "title": "Padrao"
+          },
+          "origem": {
+            "$ref": "#/components/schemas/OrigemRegra"
+          },
+          "categoria": {
+            "$ref": "#/components/schemas/CategoriaResumo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "regra_id",
+          "padrao",
+          "origem",
+          "categoria"
+        ],
+        "title": "SugestaoSaida"
       },
       "TipoConta": {
         "type": "string",
@@ -3299,6 +3942,99 @@
         ],
         "title": "TransacaoEntrada",
         "description": "Lançamento manual. Entra já confirmado: só o que vem de importação ou da\nPluggy passa pela revisão."
+      },
+      "TransacaoRevisao": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "conta": {
+            "$ref": "#/components/schemas/ContaNaRevisao"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoTransacao"
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor"
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          },
+          "descricao_original": {
+            "type": "string",
+            "title": "Descricao Original",
+            "description": "Como veio do banco."
+          },
+          "fonte": {
+            "$ref": "#/components/schemas/FonteTransacao"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusTransacao"
+          },
+          "categoria": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoriaResumo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Só a confirmada tem."
+          },
+          "fatura_competencia": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fatura Competencia",
+            "description": "Fatura em que a compra entra (cartão), ou a paga (pagamento de fatura)."
+          },
+          "removida_na_origem_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removida Na Origem Em",
+            "description": "A confirmada que sumiu do Open Finance."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "conta",
+          "tipo",
+          "valor",
+          "data",
+          "descricao",
+          "descricao_original",
+          "fonte",
+          "status",
+          "categoria",
+          "fatura_competencia",
+          "removida_na_origem_em"
+        ],
+        "title": "TransacaoRevisao"
       },
       "TransacaoSaida": {
         "properties": {

@@ -1,6 +1,6 @@
 # Revisão: classificação, transferências, feriados e amostras de importação
 
-**Status:** decidida em 2026-10-19; atualizada em 2026-10-26 com as decisões do design da revisão (categorias, regras, par recusado, duplicata).
+**Status:** decidida em 2026-10-19; atualizada em 2026-10-26 com as decisões do design da revisão (categorias, regras, par recusado, duplicata) e em 2026-10-27 com as decisões do código da revisão.
 
 ## Contexto
 
@@ -50,6 +50,19 @@ Telas aprovadas na página "Revisão" do canvas. Valem para o card da tela de re
 - **Pagamento vindo das fontes:** o usuário escolhe a fatura (sugerida: a fechada do cartão pago por aquela conta, com o vencimento mais próximo) e vê se ela fica paga; "É outra coisa" abre a folha comum.
 - **Possível duplicata:** o usuário escolhe qual fica. Ficando com o rascunho, ele entra confirmado com a categoria e a descrição da que foi descartada (que vira `ignorada`).
 - **Sumiu da origem:** "Manter" limpa `removida_na_origem_em`; "Remover" a torna `ignorada`.
+
+### Decisões do código da revisão (2026-10-27)
+
+- **Antes das fontes:** a revisão chega antes da importação (S5) e da Pluggy (S7). `transacao.possivel_duplicata_de` e `transacao.removida_na_origem_em` entram com ela e são preenchidas pelas fontes quando elas existirem.
+- **Cada rascunho aparece uma vez**, na primeira situação que vale: duplicata pendente (a outra não está ignorada) > lado de um par sugerido > `pagamento_fatura` > rascunho comum. Transação confirmada com `removida_na_origem_em` é "sumiu da origem". O contador soma as decisões e os rascunhos comuns.
+- **Par sugerido:** entre rascunhos sem par e sem duplicata pendente, em corrente ou carteira; saída `despesa`/`transferencia_saida` × entrada `receita`/`transferencia_entrada`. Cada transação entra em um par só: vence a menor diferença de dias, depois a data e o id, para o resultado ser sempre o mesmo. Função pura (`revisao/pareamento.py`), calculada na leitura como a sugestão de categoria. "Ligar" troca os tipos para os de transferência, tira a categoria e confirma os dois.
+- **O efeito na regra vem do servidor:** ele só depende de a categoria escolhida ser a sugerida ou outra, então cada rascunho traz os dois efeitos possíveis (`prever_efeito`, a mesma função que `aprender` usa) e o app mostra o da escolha.
+- **Confirmar exige categoria** quando o tipo tem categoria; a revisão existe para classificar (o lançamento manual continua com categoria opcional). O tipo pode mudar no mesmo sentido entre os que não pedem vínculo: saída → `despesa`; entrada → `receita` ou `estorno`. Transferência e pagamento de fatura têm ações próprias; `aporte`/`resgate` esperam os investimentos.
+- **Conta alimentada por fonte** = tem ao menos uma transação com `fonte` diferente de `manual` (a carteira nunca tem). É o critério do campo "Para": destino sem fonte → o app cria o outro lado, confirmado e ligado; destino com fonte → liga com o rascunho de lá (mesmo valor, sentido oposto, até ±2 dias, sem par, par não recusado, o de data mais próxima) e, se ele ainda não chegou, recusa até chegar. Assim o outro lado nunca entra duplicado.
+- **Pagamento das fontes:** as candidatas são, de cada cartão ativo, a fatura atual e as duas anteriores; a sugerida é a fechada do cartão pago pela conta do pagamento com vencimento mais perto da data dele.
+- **Duplicata:** ficar com o rascunho só herda categoria e descrição (e o par de transferência ou a fatura paga) se a descartada estava confirmada; se as duas eram rascunho, o que fica vai para a lista comum. "Manter as duas" limpa `possivel_duplicata_de`.
+- **Remover um lado de transferência que sumiu da origem** desfaz o par e devolve o outro lado a rascunho, para parear com o que chegou no lugar.
+- **Lote:** o app manda os ids que viu; o servidor confirma os que ainda são rascunho comum com sugestão e pula os demais.
 
 ### Feriados
 
@@ -103,7 +116,7 @@ Lidos pela estrutura mascarada e por comparações agregadas (contagens e sim/n�
 ## Consequências
 
 - Normalização e pareamento são funções puras com testes de tabela.
-- Novas tabelas: `categoria`, `regra_classificacao` (sem `prioridade`) e, no card da revisão, `par_recusado`; `transacao.categoria_id`.
+- Novas tabelas: `categoria`, `regra_classificacao` (sem `prioridade`) e `par_recusado`; `transacao.categoria_id`, `transacao.possivel_duplicata_de` e `transacao.removida_na_origem_em`.
 - `holidays` é dependência nova do backend.
 - O cartão do Nubank tem exportação estruturada (OFX), então não depende só da Pluggy; o do Mercado Pago ainda será verificado.
 - Um único parser OFX atende conta e cartão do Nubank, o que reduz parsers e fixtures na fase de importação.

@@ -1,13 +1,14 @@
 """Tabela de transações: cada entrada ou saída de dinheiro de uma conta."""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
     CheckConstraint,
     Date,
+    DateTime,
     ForeignKey,
     Numeric,
     SmallInteger,
@@ -18,7 +19,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, ComTimestamps, check_enum
+from app.modulos.cartoes.models import Fatura
 from app.modulos.categorias.models import Categoria
+from app.modulos.contas.models import Conta
 
 
 class TipoTransacao(StrEnum):
@@ -118,6 +121,7 @@ class Transacao(ComTimestamps, Base):
             name="par_so_em_transferencia",
         ),
         CheckConstraint("transferencia_par_id <> id", name="par_nao_e_ela_mesma"),
+        CheckConstraint("possivel_duplicata_de <> id", name="duplicata_nao_e_ela_mesma"),
         # Coração da idempotência: a mesma transação da mesma fonte não entra
         # duas vezes. Lançamento manual tem id_externo nulo e não colide.
         UniqueConstraint(
@@ -155,7 +159,18 @@ class Transacao(ComTimestamps, Base):
         ForeignKey("transacao.id"), unique=True
     )
 
+    # Outra fonte trouxe algo igual: a revisão decide qual fica. `SET NULL`
+    # porque o sync da Pluggy apaga rascunho que sumiu da origem.
+    possivel_duplicata_de: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("transacao.id", ondelete="SET NULL"), index=True
+    )
+    # Confirmada que sumiu da Pluggy na janela de reconciliação: alerta na revisão.
+    removida_na_origem_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     categoria: Mapped[Categoria | None] = relationship(lazy="joined")
+    # Carregadas só quando pedidas (a revisão usa selectinload).
+    conta: Mapped[Conta] = relationship()
+    fatura: Mapped[Fatura | None] = relationship()
     compra_parcelada: Mapped[CompraParcelada | None] = relationship(
         back_populates="parcelas", lazy="joined"
     )
