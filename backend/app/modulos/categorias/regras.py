@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.erros import CampoInvalido
 from app.modulos.categorias import service as categorias_service
 from app.modulos.categorias.classificacao import (
+    RegraCandidata,
     escolher_regra,
     grupos_do_tipo,
     natureza,
@@ -185,20 +186,15 @@ def aprender(sessao: Session, transacao: Transacao, categoria: Categoria) -> Apr
     """
     sugerida = regra_sugerida(sessao, transacao)
     padrao = normalizar(transacao.descricao_original)
-    if sugerida is not None and sugerida.categoria_id == categoria.id:
+    mesma_categoria = sugerida is not None and sugerida.categoria_id == categoria.id
+    efeito = prever_efeito(sugerida, padrao, mesma_categoria)
+    if efeito == EfeitoAprendizado.reforcada:
         sugerida.vezes_aplicada += 1
-        return Aprendizado(EfeitoAprendizado.reforcada, sugerida)
-    if sugerida is not None and sugerida.origem == OrigemRegra.manual:
-        return Aprendizado(EfeitoAprendizado.manual_mantida, sugerida)
-    if not padrao:
-        return Aprendizado(EfeitoAprendizado.nenhuma, None)
+    if efeito in (EfeitoAprendizado.reforcada, EfeitoAprendizado.manual_mantida):
+        return Aprendizado(efeito, sugerida)
+    if efeito == EfeitoAprendizado.nenhuma:
+        return Aprendizado(efeito, None)
 
-    if sugerida is None:
-        efeito = EfeitoAprendizado.criada
-    elif sugerida.padrao == padrao:
-        efeito = EfeitoAprendizado.corrigida
-    else:
-        efeito = EfeitoAprendizado.especializada
     # Uma aprendida com o mesmo padrão pode existir sem ter sugerido (a
     # categoria dela foi desativada): é reaproveitada, para o padrão não se
     # repetir. Uma manual nessa situação fica como está.
@@ -209,6 +205,25 @@ def aprender(sessao: Session, transacao: Transacao, categoria: Categoria) -> Apr
     regra.categoria = categoria
     regra.vezes_aplicada = 0
     return Aprendizado(efeito, regra)
+
+
+def prever_efeito(
+    sugerida: RegraCandidata | None, padrao: str, mesma_categoria: bool
+) -> EfeitoAprendizado:
+    """O que `aprender` fará com as regras, sem mudar nada: depende só da regra
+    sugerida, do padrão da transação e de a categoria escolhida ser a da
+    sugestão. A revisão mostra os dois efeitos possíveis antes de confirmar."""
+    if sugerida is not None and mesma_categoria:
+        return EfeitoAprendizado.reforcada
+    if sugerida is not None and sugerida.origem == OrigemRegra.manual:
+        return EfeitoAprendizado.manual_mantida
+    if not padrao:
+        return EfeitoAprendizado.nenhuma
+    if sugerida is None:
+        return EfeitoAprendizado.criada
+    if sugerida.padrao == padrao:
+        return EfeitoAprendizado.corrigida
+    return EfeitoAprendizado.especializada
 
 
 def _sugerida(transacao: Transacao, regras: list[RegraClassificacao]) -> RegraClassificacao | None:
