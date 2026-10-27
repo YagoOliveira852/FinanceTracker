@@ -5,6 +5,7 @@ revisão" e "Decisões do código da revisão")."""
 import uuid
 from dataclasses import dataclass, field
 from datetime import date
+from enum import StrEnum
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -52,6 +53,14 @@ _MENSAGEM_TIPO = {
 
 # Quantas faturas fechadas antes da atual entram como candidatas a um pagamento.
 _FATURAS_ANTERIORES = 2
+
+
+class ManterDuplicata(StrEnum):
+    """Qual fica numa possível duplicata."""
+
+    rascunho = "rascunho"  # o que chegou por último; a outra é ignorada
+    outra = "outra"  # a que já estava; o rascunho é ignorado
+    as_duas = "as_duas"  # não é duplicata
 
 
 class NaoEhPagamento(Exception):
@@ -456,6 +465,82 @@ def pagar(
     pagamento.fatura_id = fatura.id
     pagamento.status = StatusTransacao.confirmada
     sessao.commit()
+
+
+def resolver_duplicata(sessao: Session, transacao_id: uuid.UUID, manter: ManterDuplicata) -> None:
+    """Decide a possível duplicata. A descartada fica ignorada (nunca apagada).
+    Ficando com o rascunho e a outra confirmada, ele entra confirmado no lugar
+    dela: herda descrição, tipo, categoria (ensinando as regras), a fatura e o
+    par de transferência. Se a outra era rascunho, ele só herda a descrição e
+    segue para a lista comum."""
+    rascunho = _rascunho_para_revisar(sessao, transacao_id)
+    outra = (
+        None
+        if rascunho.possivel_duplicata_de is None
+        else sessao.get(Transacao, rascunho.possivel_duplicata_de)
+    )
+    if outra is None or outra.status == StatusTransacao.ignorada:
+        raise JaRevisada
+    if manter == ManterDuplicata.as_duas:
+        rascunho.possivel_duplicata_de = None
+    elif manter == ManterDuplicata.outra:
+        rascunho.status = StatusTransacao.ignorada
+    else:
+        _ficar_com_o_rascunho(sessao, rascunho, outra)
+    sessao.commit()
+
+
+def manter(sessao: Session, transacao_id: uuid.UUID) -> None:
+    """A que sumiu da origem continua valendo: só limpa o alerta."""
+    _sumida_para_revisar(sessao, transacao_id).removida_na_origem_em = None
+    sessao.commit()
+
+
+def remover(sessao: Session, transacao_id: uuid.UUID) -> None:
+    """A que sumiu da origem fica ignorada: sai do saldo e dos gastos, mas fica
+    no histórico. Se era lado de uma transferência, o par é desfeito e o outro
+    lado volta a rascunho, para parear com o que chegou no lugar."""
+    sumida = _sumida_para_revisar(sessao, transacao_id)
+    sumida.status = StatusTransacao.ignorada
+    par = sumida.transferencia_par
+    if par is not None:
+        sumida.transferencia_par = None
+        par.transferencia_par = None
+        par.status = StatusTransacao.rascunho
+    sessao.commit()
+
+
+def _ficar_com_o_rascunho(sessao: Session, rascunho: Transacao, outra: Transacao) -> None:
+    rascunho.descricao = outra.descricao
+    confirmada = outra.status == StatusTransacao.confirmada
+    outra.status = StatusTransacao.ignorada
+    if not confirmada:
+        return
+
+    par = outra.transferencia_par
+    if par is not None:
+        # Desliga antes de religar: o par é unique.
+        outra.transferencia_par = None
+        par.transferencia_par = None
+        sessao.flush()
+    rascunho.tipo = outra.tipo
+    if rascunho.fatura_id is None:
+        rascunho.fatura_id = outra.fatura_id
+    categoria = outra.categoria
+    if categoria is not None and categoria.ativa:
+        regras.aprender(sessao, rascunho, categoria)
+    rascunho.categoria = categoria
+    if par is not None:
+        rascunho.transferencia_par = par
+        par.transferencia_par = rascunho
+    rascunho.status = StatusTransacao.confirmada
+
+
+def _sumida_para_revisar(sessao: Session, transacao_id: uuid.UUID) -> Transacao:
+    transacao = transacoes_service.obter(sessao, transacao_id)
+    if transacao.status != StatusTransacao.confirmada or transacao.removida_na_origem_em is None:
+        raise JaRevisada
+    return transacao
 
 
 def _fica_paga(resumo: ResumoFatura, pagamento: Transacao, hoje: date) -> bool:

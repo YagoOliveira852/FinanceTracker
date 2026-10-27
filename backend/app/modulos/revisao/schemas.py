@@ -12,6 +12,7 @@ from app.modulos.categorias.models import OrigemRegra
 from app.modulos.categorias.regras import EfeitoAprendizado
 from app.modulos.categorias.schemas import CategoriaResumo
 from app.modulos.contas.models import TipoConta
+from app.modulos.revisao.service import ManterDuplicata
 from app.modulos.transacoes.models import (
     FonteTransacao,
     StatusTransacao,
@@ -182,4 +183,13 @@ class PagamentoRevisaoEntrada(BaseModel):
     cartao_id: uuid.UUID
     competencia: str = Field(
         pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="Mês da fatura, `AAAA-MM`."
+    )
+
+
+class DuplicataEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    manter: ManterDuplicata = Field(
+        description="`rascunho`: fica o que chegou por último, confirmado no lugar da outra se "
+        "ela estava confirmada; `outra`: fica a que já estava; `as_duas`: não é duplicata."
     )

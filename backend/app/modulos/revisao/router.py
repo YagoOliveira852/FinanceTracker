@@ -14,6 +14,7 @@ from app.modulos.revisao import service
 from app.modulos.revisao.schemas import (
     ConfirmacaoEntrada,
     ConfirmacaoSaida,
+    DuplicataEntrada,
     DuplicataSaida,
     FaturaCandidataSaida,
     LoteEntrada,
@@ -180,6 +181,40 @@ def pagar(transacao_id: uuid.UUID, dados: PagamentoRevisaoEntrada, sessao: Sessa
         service.pagar(
             sessao, transacao_id, cartao_id=dados.cartao_id, competencia=date(int(ano), int(mes), 1)
         )
+
+
+@router.post(
+    "/transacoes/{transacao_id}/duplicata",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_NAO_ENCONTRADA | _JA_REVISADA,
+)
+def resolver_duplicata(transacao_id: uuid.UUID, dados: DuplicataEntrada, sessao: SessaoDep) -> None:
+    """Possível duplicata: escolhe qual fica; a outra fica ignorada."""
+    with _erros_da_acao():
+        service.resolver_duplicata(sessao, transacao_id, dados.manter)
+
+
+@router.post(
+    "/transacoes/{transacao_id}/manter",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_NAO_ENCONTRADA | _JA_REVISADA,
+)
+def manter(transacao_id: uuid.UUID, sessao: SessaoDep) -> None:
+    """A confirmada que sumiu da origem continua valendo; o alerta some."""
+    with _erros_da_acao():
+        service.manter(sessao, transacao_id)
+
+
+@router.post(
+    "/transacoes/{transacao_id}/remover",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_NAO_ENCONTRADA | _JA_REVISADA,
+)
+def remover(transacao_id: uuid.UUID, sessao: SessaoDep) -> None:
+    """A confirmada que sumiu da origem fica ignorada (no histórico, fora do
+    saldo); se era transferência, o outro lado volta a rascunho."""
+    with _erros_da_acao():
+        service.remover(sessao, transacao_id)
 
 
 def _rascunho(rascunho: service.Rascunho) -> RascunhoSaida:
