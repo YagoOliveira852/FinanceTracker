@@ -251,7 +251,7 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 | parcela_numero | smallint null | `CHECK >= 1`; até `qtd_parcelas` (regra no service). Sem unique com a compra: a mesma parcela pode chegar por duas fontes até a revisão decidir |
 | transferencia_par_id | uuid FK null | liga saída e entrada entre contas próprias; unique, e cada lado aponta para o outro (regra no service). `CHECK`: só `transferencia_saida`/`transferencia_entrada` têm par, e nenhuma é par de si mesma |
 | investimento_id | uuid FK null | para `aporte`/`resgate` |
-| possivel_duplicata_de | uuid FK null | marcada quando outra fonte trouxe algo igual |
+| possivel_duplicata_de | uuid FK null | marcada quando outra fonte trouxe algo igual; `ON DELETE SET NULL` (o sync apaga rascunho que sumiu da origem) |
 | removida_na_origem_em | timestamptz null | transação confirmada que sumiu da Pluggy na janela de reconciliação; alerta na revisão |
 | unique | (conta_id, fonte, id_externo) | coração da idempotência |
 
@@ -279,7 +279,9 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 
 **Sem coluna `prioridade`:** a regra casa quando o padrão aparece como palavras inteiras na descrição normalizada (funções puras em `categorias/classificacao.py`); entre as que casam, manual antes de aprendida, restrita a uma conta antes de geral, padrão mais longo antes, e por fim a ordem alfabética. Só sugere regra de categoria ativa e compatível com o tipo da transação. A sugestão é calculada na leitura, não gravada. Na confirmação: sem regra, nasce uma aprendida; sugestão confirmada soma 1 em `vezes_aplicada`; correção de aprendida com o mesmo padrão troca a categoria e zera a contagem (com padrão mais curto, nasce uma aprendida mais longa); regra manual não muda na revisão. Sem unique no banco: duas regras com o mesmo padrão podem coexistir se uma for de renda e outra de gasto; o service recusa as demais repetições. Spec `2026-10-19-revisao-classificacao`.
 
-**par_recusado** (card da revisão) — `saida_id`, `entrada_id` (FKs para `transacao`), unique no par. "Não é par" na revisão grava aqui; a sugestão daquele par não volta, mas cada lado ainda pode parear com outra transação.
+**par_recusado** — `saida_id`, `entrada_id` (FKs para `transacao`, `ON DELETE CASCADE`), unique no par. "Não é par" na revisão grava aqui; a sugestão daquele par não volta, mas cada lado ainda pode parear com outra transação.
+
+**Revisão:** cada rascunho aparece numa situação só — duplicata pendente > lado de um par sugerido > pagamento de fatura > rascunho comum (com a categoria sugerida) — e a confirmada com `removida_na_origem_em` aparece como "sumiu da origem"; o contador soma decisões e rascunhos comuns (um par conta 1). Par sugerido e categoria sugerida são calculados na leitura. Nada é apagado: ignorar, remover e descartar são `status = ignorada`. Uma conta é **alimentada por fonte** quando tem transação com `fonte` diferente de `manual`: marcar um rascunho como transferência para ela liga com o rascunho que veio de lá; para uma conta sem fonte (a carteira), o app cria o outro lado. Spec `2026-10-19-revisao-classificacao`, seções "Decisões do design da revisão" e "Decisões do código da revisão".
 
 ### 7.4 Planejamento
 
@@ -429,6 +431,7 @@ FinanceTracker/
 │   │   │   ├── cartoes/          #   schemas.py (entrada/saída Pydantic)
 │   │   │   ├── transacoes/       #   service.py (regras de negócio)
 │   │   │   ├── categorias/       #   router.py  (endpoints HTTP)
+│   │   │   ├── revisao/          # lista da revisão, pares sugeridos, decisões
 │   │   │   ├── importacao/
 │   │   │   │   └── parsers/      # ofx.py (Nubank conta e cartão), csv_mercadopago.py
 │   │   │   ├── planejamento/
