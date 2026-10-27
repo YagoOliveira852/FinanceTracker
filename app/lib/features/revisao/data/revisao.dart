@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../categorias/data/regra.dart';
 import '../../contas/data/conta.dart';
+import '../../faturas/data/fatura.dart';
 import '../../transacoes/data/transacao.dart';
 
 part 'revisao.freezed.dart';
@@ -170,4 +171,42 @@ abstract class ResultadoConfirmacao with _$ResultadoConfirmacao {
     required EfeitoRegra efeito,
     String? regraPadrao,
   }) = _ResultadoConfirmacao;
+}
+
+/// Qual fica numa possível duplicata.
+enum ManterDuplicata {
+  /// O que chegou por último; a outra fica ignorada.
+  rascunho,
+
+  /// A que já estava; o rascunho fica ignorado.
+  outra,
+
+  /// Não é duplicata.
+  asDuas,
+}
+
+/// Uma fatura que o pagamento vindo das fontes pode ter pago.
+@freezed
+abstract class FaturaCandidata with _$FaturaCandidata {
+  const factory FaturaCandidata({
+    required String cartaoId,
+    required String cartaoNome,
+
+    /// Primeiro dia do mês do vencimento.
+    required DateTime competencia,
+
+    /// Como está hoje, sem este pagamento.
+    required StatusFatura status,
+    required DateTime dataVencimento,
+    required Decimal valor,
+
+    /// Já pago, sem este pagamento.
+    required Decimal valorPago,
+
+    /// Com este pagamento, a fatura fica paga.
+    required bool ficaPaga,
+
+    /// A pré-selecionada (no máximo uma).
+    required bool sugerida,
+  }) = _FaturaCandidata;
 }

@@ -11,6 +11,7 @@ import '../../transacoes/data/transacao.dart';
 import '../cubit/revisao_cubit.dart';
 import '../data/revisao.dart';
 import 'folha_rascunho.dart';
+import 'folhas_decisao.dart';
 import 'item_rascunho.dart';
 import 'textos.dart';
 
@@ -117,6 +118,7 @@ class RevisaoTela extends StatelessWidget {
           corIcone: esquema.onPrimaryContainer,
           fundoIcone: esquema.primaryContainer,
           titulo: 'Par de transferência?',
+          aoTocar: () => abrirFolhaPar(context, par),
           subtitulo: Text(
             '${par.saida.contaNome} → ${par.entrada.contaNome}',
             overflow: TextOverflow.ellipsis,
@@ -130,6 +132,7 @@ class RevisaoTela extends StatelessWidget {
         ItemLista(
           icone: Icons.credit_card_rounded,
           titulo: 'Pagamento de fatura?',
+          aoTocar: () => abrirFolhaPagamento(context, pagamento),
           subtitulo: Text(
             '${pagamento.contaNome} · escolha a fatura',
             overflow: TextOverflow.ellipsis,
@@ -142,6 +145,7 @@ class RevisaoTela extends StatelessWidget {
           corIcone: cores.ritmoAtencao,
           fundoIcone: cores.ritmoAtencaoContainer,
           titulo: 'Possível duplicata',
+          aoTocar: () => abrirFolhaDuplicata(context, duplicata),
           subtitulo: Text(
             '${duplicata.outra.descricao} · ${duplicata.outra.fonte.rotulo} '
             'e ${duplicata.rascunho.fonte.rotulo}',
@@ -155,6 +159,7 @@ class RevisaoTela extends StatelessWidget {
           corIcone: cores.ritmoRisco,
           fundoIcone: cores.ritmoRiscoContainer,
           titulo: 'Sumiu do Open Finance',
+          aoTocar: () => abrirFolhaSumida(context, sumida),
           subtitulo: Text(
             '${sumida.descricao} · confirmada',
             overflow: TextOverflow.ellipsis,

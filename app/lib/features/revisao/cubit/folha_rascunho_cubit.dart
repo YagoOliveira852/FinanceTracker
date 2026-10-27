@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../core/api/erro_api.dart';
+import '../../contas/data/conta.dart';
 import '../../transacoes/data/transacao.dart';
 import '../data/revisao.dart';
 import '../data/revisao_repositorio.dart';
@@ -15,6 +16,9 @@ abstract class FolhaRascunhoEstado with _$FolhaRascunhoEstado {
 
     /// Começa na sugestão; nula até o usuário escolher, sem sugestão.
     String? categoriaId,
+
+    /// Na transferência: a outra conta ("Para" numa saída, "De" numa entrada).
+    String? outraContaId,
     required String descricao,
     @Default(false) bool enviando,
     String? erro,
@@ -25,7 +29,8 @@ abstract class FolhaRascunhoEstado with _$FolhaRascunhoEstado {
 }
 
 /// A folha de um rascunho comum: descrição, tipo e categoria escolhidos, o
-/// efeito que a escolha terá nas regras, Confirmar e Ignorar.
+/// efeito que a escolha terá nas regras, Confirmar e Ignorar. Como
+/// transferência, escolhe a outra conta em vez da categoria.
 class FolhaRascunhoCubit extends Cubit<FolhaRascunhoEstado> {
   FolhaRascunhoCubit(this._revisao, this.rascunho)
     : super(
@@ -41,22 +46,38 @@ class FolhaRascunhoCubit extends Cubit<FolhaRascunhoEstado> {
   final RevisaoRepositorio _revisao;
   final Rascunho rascunho;
 
-  /// Os tipos em que o rascunho pode ser confirmado com categoria, no mesmo
-  /// sentido (como a API): saída é despesa; entrada, receita ou estorno.
-  static List<TipoTransacao> tiposPara(ItemRevisao item) => item.tipo.entrada
-      ? const [TipoTransacao.receita, TipoTransacao.estorno]
-      : const [TipoTransacao.despesa];
+  /// Os tipos do rascunho, no mesmo sentido (como a API): saída é despesa;
+  /// entrada, receita ou estorno; em corrente e carteira, também
+  /// transferência entre contas próprias.
+  static List<TipoTransacao> tiposPara(ItemRevisao item) {
+    final transfere = item.contaTipo != TipoConta.cartaoCredito;
+    return item.tipo.entrada
+        ? [
+            TipoTransacao.receita,
+            TipoTransacao.estorno,
+            if (transfere) TipoTransacao.transferenciaEntrada,
+          ]
+        : [
+            TipoTransacao.despesa,
+            if (transfere) TipoTransacao.transferenciaSaida,
+          ];
+  }
+
+  bool get eTransferencia =>
+      state.tipo == TipoTransacao.transferenciaSaida ||
+      state.tipo == TipoTransacao.transferenciaEntrada;
 
   /// O que confirmar faz com as regras, com a categoria escolhida. Nulo sem
   /// categoria ou com o tipo trocado (a sugestão era para o tipo original).
   EfeitoRegra? get efeito {
     final categoriaId = state.categoriaId;
     if (categoriaId == null || state.tipo != rascunho.item.tipo) return null;
+    if (eTransferencia) return null;
     return rascunho.efeitoPara(categoriaId);
   }
 
   bool get podeConfirmar =>
-      state.categoriaId != null &&
+      (eTransferencia ? state.outraContaId : state.categoriaId) != null &&
       state.descricao.trim().isNotEmpty &&
       !state.enviando;
 
@@ -72,6 +93,9 @@ class FolhaRascunhoCubit extends Cubit<FolhaRascunhoEstado> {
     ),
   );
 
+  void escolherOutraConta(String id) =>
+      emit(state.copyWith(outraContaId: id, erro: null));
+
   void escolherCategoria(String id) =>
       emit(state.copyWith(categoriaId: id, erro: null));
 
@@ -81,6 +105,16 @@ class FolhaRascunhoCubit extends Cubit<FolhaRascunhoEstado> {
   Future<void> confirmar() async {
     if (!podeConfirmar) return;
     final descricao = state.descricao.trim();
+    if (eTransferencia) {
+      return _enviar(() async {
+        await _revisao.transferir(
+          rascunho.item.id,
+          contaId: state.outraContaId!,
+          descricao: descricao,
+        );
+        return '$descricao ligada como transferência.';
+      });
+    }
     await _enviar(() async {
       await _revisao.confirmar(
         rascunho.item.id,

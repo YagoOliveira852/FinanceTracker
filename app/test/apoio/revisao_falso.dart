@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/categorias/data/regra.dart';
 import 'package:financas/features/contas/data/conta.dart';
+import 'package:financas/features/faturas/data/fatura.dart';
 import 'package:financas/features/revisao/data/revisao.dart';
 import 'package:financas/features/revisao/data/revisao_repositorio.dart';
 import 'package:financas/features/transacoes/data/transacao.dart';
@@ -115,21 +116,105 @@ Duplicata duplicataExemplo() => Duplicata(
   ),
 );
 
+ParSugerido parExemplo() => ParSugerido(
+  saida: itemExemplo(
+    id: 'p1',
+    valor: '300.00',
+    data: DateTime(2026, 10, 24),
+    descricao: 'PIX ENVIADO CONTA DIA A DIA',
+    descricaoOriginal: 'PIX ENVIADO CONTA DIA A DIA',
+  ),
+  entrada: itemExemplo(
+    id: 'p2',
+    contaId: 'c2',
+    contaNome: 'Conta do dia a dia',
+    tipo: TipoTransacao.receita,
+    valor: '300.00',
+    descricao: 'PIX RECEBIDO CONTA PRINCIPAL',
+    descricaoOriginal: 'PIX RECEBIDO CONTA PRINCIPAL',
+  ),
+  dias: 1,
+);
+
+ItemRevisao pagamentoExemplo() => itemExemplo(
+  id: 'f1',
+  tipo: TipoTransacao.pagamentoFatura,
+  valor: '1032.15',
+  data: DateTime(2026, 10, 13),
+  descricao: 'Pagamento de fatura',
+  descricaoOriginal: 'PAGAMENTO DE FATURA CARTAO EXEMPLO',
+);
+
+ItemRevisao sumidaExemplo() => itemExemplo(
+  id: 's1',
+  valor: '42.30',
+  data: DateTime(2026, 10, 20),
+  descricao: 'Farmácia Exemplo',
+  descricaoOriginal: 'FARMACIA EXEMPLO',
+  status: StatusTransacao.confirmada,
+  categoria: const CategoriaDaTransacao(id: 'cat-mercado', nome: 'Mercado'),
+);
+
+/// Outubro (fechada, sugerida) e novembro (aberta) do Cartão Exemplo.
+List<FaturaCandidata> candidatasExemplo() => [
+  FaturaCandidata(
+    cartaoId: 'k1',
+    cartaoNome: 'Cartão Exemplo',
+    competencia: DateTime(2026, 10),
+    status: StatusFatura.fechada,
+    dataVencimento: DateTime(2026, 10, 13),
+    valor: Decimal.parse('1032.15'),
+    valorPago: Decimal.zero,
+    ficaPaga: true,
+    sugerida: true,
+  ),
+  FaturaCandidata(
+    cartaoId: 'k1',
+    cartaoNome: 'Cartão Exemplo',
+    competencia: DateTime(2026, 11),
+    status: StatusFatura.aberta,
+    dataVencimento: DateTime(2026, 11, 10),
+    valor: Decimal.parse('544.80'),
+    valorPago: Decimal.zero,
+    ficaPaga: false,
+    sugerida: false,
+  ),
+];
+
 /// Monta a revisão com o total e os sugeridos coerentes com as listas.
 Revisao revisaoCom({
   List<Rascunho>? rascunhos,
+  List<ParSugerido> pares = const [],
+  List<ItemRevisao> pagamentos = const [],
   List<Duplicata> duplicatas = const [],
+  List<ItemRevisao> sumidas = const [],
 }) {
   final comuns =
       rascunhos ??
       [rascunhoSugerido(), rascunhoDeManual(), rascunhoSemSugestao()];
   return Revisao(
-    total: comuns.length + duplicatas.length,
+    total:
+        comuns.length +
+        pares.length +
+        pagamentos.length +
+        duplicatas.length +
+        sumidas.length,
     qtdSugeridos: comuns.where((r) => r.sugestao != null).length,
+    pares: pares,
+    pagamentos: pagamentos,
     duplicatas: duplicatas,
+    sumidas: sumidas,
     rascunhos: comuns,
   );
 }
+
+/// Revisão com uma decisão de cada tipo e os três rascunhos comuns.
+Revisao revisaoComDecisoes() => revisaoCom(
+  pares: [parExemplo()],
+  pagamentos: [pagamentoExemplo()],
+  duplicatas: [duplicataExemplo()],
+  sumidas: [sumidaExemplo()],
+);
 
 /// Repositório da revisão em memória: confirmar e ignorar tiram o rascunho
 /// da lista, como a API. [erro] faz a próxima chamada falhar.
@@ -146,6 +231,10 @@ class RevisaoRepositorioFalso implements RevisaoRepositorio {
       >[];
   final ignorados = <String>[];
   final lotes = <List<String>>[];
+
+  /// Cada decisão enviada, como texto: "ligar p1 p2", "manter s1"...
+  final decisoes = <String>[];
+  var candidatas = candidatasExemplo();
 
   @override
   Future<Revisao> carregar() async {
@@ -193,13 +282,76 @@ class RevisaoRepositorioFalso implements RevisaoRepositorio {
     return confirmados.length;
   }
 
+  @override
+  Future<void> ligarPar(
+    String saidaId,
+    String entradaId, {
+    String? descricao,
+  }) => _decidir('ligar $saidaId $entradaId ${descricao ?? '-'}', [saidaId]);
+
+  @override
+  Future<void> recusarPar(String saidaId, String entradaId) =>
+      _decidir('recusar $saidaId $entradaId', [saidaId]);
+
+  @override
+  Future<void> transferir(
+    String id, {
+    required String contaId,
+    required String descricao,
+  }) => _decidir('transferir $id $contaId $descricao', [id]);
+
+  @override
+  Future<List<FaturaCandidata>> faturasDoPagamento(String id) async {
+    if (erro case final e?) throw e;
+    return candidatas;
+  }
+
+  @override
+  Future<void> pagar(
+    String id, {
+    required String cartaoId,
+    required DateTime competencia,
+  }) => _decidir('pagar $id $cartaoId ${competencia.month}', [id]);
+
+  @override
+  Future<void> resolverDuplicata(String id, ManterDuplicata manter) =>
+      _decidir('duplicata $id ${manter.name}', [id]);
+
+  @override
+  Future<void> manter(String id) => _decidir('manter $id', [id]);
+
+  @override
+  Future<void> remover(String id) => _decidir('remover $id', [id]);
+
+  Future<void> _decidir(String decisao, List<String> ids) async {
+    if (erro case final e?) throw e;
+    decisoes.add(decisao);
+    _tirar(ids);
+  }
+
+  /// Tira da revisão os rascunhos e as decisões que envolvem os [ids].
   void _tirar(List<String> ids) {
     revisao = revisaoCom(
       rascunhos: [
         for (final r in revisao.rascunhos)
           if (!ids.contains(r.item.id)) r,
       ],
-      duplicatas: revisao.duplicatas,
+      pares: [
+        for (final p in revisao.pares)
+          if (!ids.contains(p.saida.id)) p,
+      ],
+      pagamentos: [
+        for (final p in revisao.pagamentos)
+          if (!ids.contains(p.id)) p,
+      ],
+      duplicatas: [
+        for (final d in revisao.duplicatas)
+          if (!ids.contains(d.rascunho.id)) d,
+      ],
+      sumidas: [
+        for (final s in revisao.sumidas)
+          if (!ids.contains(s.id)) s,
+      ],
     );
   }
 }
