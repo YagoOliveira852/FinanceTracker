@@ -151,3 +151,13 @@ class ParRecusaEntrada(BaseModel):
 
     saida_id: uuid.UUID
     entrada_id: uuid.UUID
+
+
+class TransferenciaRevisaoEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    conta_id: uuid.UUID = Field(
+        description='A outra conta: "Para" numa saída, "De" numa entrada. Corrente ou '
+        "carteira ativa."
+    )
+    descricao: str = Field(min_length=1, max_length=200, description="Vale para os dois lados.")

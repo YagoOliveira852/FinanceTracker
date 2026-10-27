@@ -23,6 +23,7 @@ from app.modulos.revisao.schemas import (
     RevisaoSaida,
     SugestaoSaida,
     TransacaoRevisao,
+    TransferenciaRevisaoEntrada,
 )
 from app.modulos.transacoes.service import TransacaoNaoEncontrada
 
@@ -120,6 +121,20 @@ def recusar_par(dados: ParRecusaEntrada, sessao: SessaoDep) -> None:
     """ "Não é par": a sugestão deste par não volta; cada lado ainda pareia com outro."""
     with _erros_da_acao():
         service.recusar_par(sessao, dados.saida_id, dados.entrada_id)
+
+
+@router.post(
+    "/transacoes/{transacao_id}/transferencia",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_NAO_ENCONTRADA | _JA_REVISADA,
+)
+def transferir(
+    transacao_id: uuid.UUID, dados: TransferenciaRevisaoEntrada, sessao: SessaoDep
+) -> None:
+    """O rascunho é transferência com a outra conta: liga com o rascunho que veio
+    de lá ou, se ela não recebe extrato nem Open Finance, cria o outro lado."""
+    with _erros_da_acao():
+        service.transferir(sessao, transacao_id, conta_id=dados.conta_id, descricao=dados.descricao)
 
 
 def _rascunho(rascunho: service.Rascunho) -> RascunhoSaida:

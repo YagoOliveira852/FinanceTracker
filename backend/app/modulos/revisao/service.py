@@ -5,7 +5,7 @@ revisão" e "Decisões do código da revisão")."""
 import uuid
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.erros import CampoInvalido
@@ -16,10 +16,11 @@ from app.modulos.categorias.models import RegraClassificacao
 from app.modulos.categorias.regras import Aprendizado, EfeitoAprendizado, prever_efeito
 from app.modulos.contas.models import TipoConta
 from app.modulos.revisao.models import ParRecusado
-from app.modulos.revisao.pareamento import casam, sugerir_pares
+from app.modulos.revisao.pareamento import DIAS_MAXIMOS, casam, sugerir_pares
 from app.modulos.transacoes import service as transacoes_service
 from app.modulos.transacoes.models import (
     TIPOS_SAIDA,
+    FonteTransacao,
     StatusTransacao,
     TipoTransacao,
     Transacao,
@@ -301,6 +302,79 @@ def recusar_par(sessao: Session, saida_id: uuid.UUID, entrada_id: uuid.UUID) -> 
     if ja_recusado is None:
         sessao.add(ParRecusado(saida_id=saida_id, entrada_id=entrada_id))
     sessao.commit()
+
+
+def transferir(
+    sessao: Session, transacao_id: uuid.UUID, *, conta_id: uuid.UUID, descricao: str
+) -> None:
+    """O rascunho é uma transferência com a outra conta (campo "Para", ou "De"
+    numa entrada). Se a outra conta é alimentada por fonte, o outro lado chega
+    de lá: liga com o rascunho compatível, ou recusa até ele chegar (criar
+    agora o duplicaria). Sem fonte (ex.: carteira), o app cria o outro lado,
+    confirmado."""
+    transacao = _rascunho_para_revisar(sessao, transacao_id)
+    if transacao.transferencia_par_id is not None:
+        raise JaRevisada
+    if transacao.conta.tipo not in _CONTAS_DE_TRANSFERENCIA:
+        raise CampoInvalido("conta_id", "Do cartão não sai transferência: use Pagamento de fatura.")
+    outra_conta = transacoes_service.conta_de_transferencia(sessao, conta_id, "conta_id")
+    if outra_conta.id == transacao.conta_id:
+        raise CampoInvalido("conta_id", "Escolha uma conta diferente da do rascunho.")
+
+    e_saida = transacao.tipo in TIPOS_SAIDA
+    if transacoes_service.conta_tem_fonte(sessao, outra_conta.id):
+        outro_lado = _outro_lado_que_chegou(sessao, transacao, outra_conta.id, e_saida)
+        if outro_lado is None:
+            lado = "entrada" if e_saida else "saída"
+            raise CampoInvalido(
+                "conta_id",
+                f"A {outra_conta.nome} recebe extrato ou Open Finance: confirme quando a "
+                f"{lado} chegar de lá.",
+            )
+    else:
+        outro_lado = Transacao(
+            conta_id=outra_conta.id,
+            # Provisório: `_ligar` dá o tipo de transferência aos dois lados.
+            tipo=TipoTransacao.receita if e_saida else TipoTransacao.despesa,
+            valor=transacao.valor,
+            data=transacao.data,
+            descricao_original=descricao,
+            descricao=descricao,
+            status=StatusTransacao.confirmada,
+            fonte=FonteTransacao.manual,
+        )
+        sessao.add(outro_lado)
+    saida, entrada = (transacao, outro_lado) if e_saida else (outro_lado, transacao)
+    _ligar(saida, entrada, descricao)
+    sessao.commit()
+
+
+def _outro_lado_que_chegou(
+    sessao: Session, transacao: Transacao, conta_id: uuid.UUID, e_saida: bool
+) -> Transacao | None:
+    """O rascunho da outra conta que pode ser o outro lado: sentido oposto,
+    mesmo valor, até `DIAS_MAXIMOS` dias, sem par e sem par recusado com este;
+    o de data mais próxima."""
+    tipos = _ENTRADAS_DE_PAR if e_saida else _SAIDAS_DE_PAR
+    recusado = select(ParRecusado.id).where(
+        ParRecusado.saida_id == (transacao.id if e_saida else Transacao.id),
+        ParRecusado.entrada_id == (Transacao.id if e_saida else transacao.id),
+    )
+    distancia = func.abs(Transacao.data - transacao.data)
+    return sessao.scalars(
+        select(Transacao)
+        .where(
+            Transacao.conta_id == conta_id,
+            Transacao.status == StatusTransacao.rascunho.value,
+            Transacao.tipo.in_([tipo.value for tipo in tipos]),
+            Transacao.valor == transacao.valor,
+            Transacao.transferencia_par_id.is_(None),
+            distancia <= DIAS_MAXIMOS,
+            ~recusado.exists(),
+        )
+        .order_by(distancia, Transacao.data, Transacao.id)
+        .limit(1)
+    ).first()
 
 
 def _ligar(saida: Transacao, entrada: Transacao, descricao: str | None) -> None:

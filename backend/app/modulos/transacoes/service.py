@@ -5,7 +5,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from app.core.erros import CampoInvalido
@@ -150,8 +150,8 @@ def transferir(
     Só corrente e carteira: pagar o cartão é pagamento de fatura. Devolve
     (saída, entrada); entra o par inteiro ou nada.
     """
-    _conta_de_transferencia(sessao, conta_origem_id, "conta_origem_id")
-    _conta_de_transferencia(sessao, conta_destino_id, "conta_destino_id")
+    conta_de_transferencia(sessao, conta_origem_id, "conta_origem_id")
+    conta_de_transferencia(sessao, conta_destino_id, "conta_destino_id")
     if conta_destino_id == conta_origem_id:
         raise CampoInvalido("conta_destino_id", "Escolha uma conta diferente da de origem.")
 
@@ -217,7 +217,22 @@ def conta_ativa(sessao: Session, conta_id: uuid.UUID, campo: str = "conta_id") -
     return conta
 
 
-def _conta_de_transferencia(sessao: Session, conta_id: uuid.UUID, campo: str) -> Conta:
+def conta_tem_fonte(sessao: Session, conta_id: uuid.UUID) -> bool:
+    """A conta é alimentada por extrato ou Open Finance: tem alguma transação
+    que não foi lançada à mão. A carteira nunca tem."""
+    return bool(
+        sessao.scalar(
+            select(
+                exists().where(
+                    Transacao.conta_id == conta_id, Transacao.fonte != FonteTransacao.manual.value
+                )
+            )
+        )
+    )
+
+
+def conta_de_transferencia(sessao: Session, conta_id: uuid.UUID, campo: str) -> Conta:
+    """Corrente ou carteira ativa; senão, recusa no `campo` do corpo."""
     conta = conta_ativa(sessao, conta_id, campo)
     if conta.tipo == TipoConta.cartao_credito:
         raise CampoInvalido(campo, "Para pagar o cartão, use Pagamento de fatura.")
