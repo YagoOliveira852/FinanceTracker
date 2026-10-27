@@ -41,13 +41,10 @@ def sugerir_pares[S: Movimento, E: Movimento](
     """
     entradas = list(entradas)
     candidatos = [
-        (abs((entrada.data - saida.data).days), saida.data, saida.id, entrada.id, saida, entrada)
+        (_dias(saida, entrada), saida.data, saida.id, entrada.id, saida, entrada)
         for saida in saidas
         for entrada in entradas
-        if saida.valor == entrada.valor
-        and saida.conta_id != entrada.conta_id
-        and abs((entrada.data - saida.data).days) <= DIAS_MAXIMOS
-        and (saida.id, entrada.id) not in recusados
+        if casam(saida, entrada) and (saida.id, entrada.id) not in recusados
     ]
     candidatos.sort(key=lambda candidato: candidato[:4])
 
@@ -59,3 +56,17 @@ def sugerir_pares[S: Movimento, E: Movimento](
         usados.update((saida.id, entrada.id))
         pares.append((saida, entrada))
     return sorted(pares, key=lambda par: (par[0].data, par[0].id))
+
+
+def casam(saida: Movimento, entrada: Movimento) -> bool:
+    """Podem ser os dois lados de uma transferência: mesmo valor, contas
+    diferentes e até `DIAS_MAXIMOS` dias de diferença (para qualquer lado)."""
+    return (
+        saida.valor == entrada.valor
+        and saida.conta_id != entrada.conta_id
+        and _dias(saida, entrada) <= DIAS_MAXIMOS
+    )
+
+
+def _dias(saida: Movimento, entrada: Movimento) -> int:
+    return abs((entrada.data - saida.data).days)

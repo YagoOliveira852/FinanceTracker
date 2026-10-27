@@ -16,6 +16,8 @@ from app.modulos.revisao.schemas import (
     DuplicataSaida,
     LoteEntrada,
     LoteSaida,
+    ParEntrada,
+    ParRecusaEntrada,
     ParSaida,
     RascunhoSaida,
     RevisaoSaida,
@@ -100,6 +102,24 @@ def ignorar(transacao_id: uuid.UUID, sessao: SessaoDep) -> None:
 def confirmar_lote(dados: LoteEntrada, sessao: SessaoDep) -> LoteSaida:
     """Confirma com a categoria sugerida os rascunhos que ainda têm sugestão."""
     return LoteSaida(confirmados=service.confirmar_lote(sessao, dados.ids))
+
+
+@router.post(
+    "/pares",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_NAO_ENCONTRADA | _JA_REVISADA,
+)
+def ligar_par(dados: ParEntrada, sessao: SessaoDep) -> None:
+    """ "Ligar": as duas viram transferência entre contas próprias, confirmadas."""
+    with _erros_da_acao():
+        service.ligar_par(sessao, dados.saida_id, dados.entrada_id, dados.descricao)
+
+
+@router.post("/pares/recusados", status_code=status.HTTP_204_NO_CONTENT, responses=_NAO_ENCONTRADA)
+def recusar_par(dados: ParRecusaEntrada, sessao: SessaoDep) -> None:
+    """ "Não é par": a sugestão deste par não volta; cada lado ainda pareia com outro."""
+    with _erros_da_acao():
+        service.recusar_par(sessao, dados.saida_id, dados.entrada_id)
 
 
 def _rascunho(rascunho: service.Rascunho) -> RascunhoSaida:

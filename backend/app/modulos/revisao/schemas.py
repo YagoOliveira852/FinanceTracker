@@ -134,3 +134,20 @@ class LoteEntrada(BaseModel):
 
 class LoteSaida(BaseModel):
     confirmados: int = Field(description="Os que ainda tinham sugestão e foram confirmados.")
+
+
+class ParEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    saida_id: uuid.UUID
+    entrada_id: uuid.UUID
+    descricao: str | None = Field(
+        default=None, max_length=200, description="Vale para os dois lados; vazia mantém."
+    )
+
+
+class ParRecusaEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    saida_id: uuid.UUID
+    entrada_id: uuid.UUID

@@ -16,7 +16,7 @@ from app.modulos.categorias.models import RegraClassificacao
 from app.modulos.categorias.regras import Aprendizado, EfeitoAprendizado, prever_efeito
 from app.modulos.contas.models import TipoConta
 from app.modulos.revisao.models import ParRecusado
-from app.modulos.revisao.pareamento import sugerir_pares
+from app.modulos.revisao.pareamento import casam, sugerir_pares
 from app.modulos.transacoes import service as transacoes_service
 from app.modulos.transacoes.models import (
     TIPOS_SAIDA,
@@ -261,3 +261,59 @@ def _rascunho_para_revisar(sessao: Session, transacao_id: uuid.UUID) -> Transaca
     if transacao.status != StatusTransacao.rascunho:
         raise JaRevisada
     return transacao
+
+
+def ligar_par(
+    sessao: Session, saida_id: uuid.UUID, entrada_id: uuid.UUID, descricao: str | None
+) -> None:
+    """ "Ligar": as duas viram transferência entre contas próprias, confirmadas
+    e sem categoria (não são gasto nem renda). A descrição, se vier, vale para
+    os dois lados."""
+    saida = _rascunho_para_revisar(sessao, saida_id)
+    entrada = _rascunho_para_revisar(sessao, entrada_id)
+    if saida.transferencia_par_id is not None or entrada.transferencia_par_id is not None:
+        raise JaRevisada
+    if saida.tipo not in _SAIDAS_DE_PAR or saida.conta.tipo not in _CONTAS_DE_TRANSFERENCIA:
+        raise CampoInvalido("saida_id", "Escolha a saída de uma conta corrente ou carteira.")
+    if entrada.tipo not in _ENTRADAS_DE_PAR or entrada.conta.tipo not in _CONTAS_DE_TRANSFERENCIA:
+        raise CampoInvalido("entrada_id", "Escolha a entrada de uma conta corrente ou carteira.")
+    if not casam(saida, entrada):
+        raise CampoInvalido(
+            "entrada_id",
+            "O par precisa ter o mesmo valor, contas diferentes e até 2 dias de diferença.",
+        )
+    _ligar(saida, entrada, descricao)
+    sessao.commit()
+
+
+def recusar_par(sessao: Session, saida_id: uuid.UUID, entrada_id: uuid.UUID) -> None:
+    """ "Não é par": a sugestão desta saída com esta entrada não volta; cada uma
+    ainda pode parear com outra. Recusar de novo não muda nada."""
+    transacoes_service.obter(sessao, saida_id)
+    transacoes_service.obter(sessao, entrada_id)
+    if saida_id == entrada_id:
+        raise CampoInvalido("entrada_id", "Escolha uma transação diferente da saída.")
+    ja_recusado = sessao.scalar(
+        select(ParRecusado.id).where(
+            ParRecusado.saida_id == saida_id, ParRecusado.entrada_id == entrada_id
+        )
+    )
+    if ja_recusado is None:
+        sessao.add(ParRecusado(saida_id=saida_id, entrada_id=entrada_id))
+    sessao.commit()
+
+
+def _ligar(saida: Transacao, entrada: Transacao, descricao: str | None) -> None:
+    for lado, tipo in (
+        (saida, TipoTransacao.transferencia_saida),
+        (entrada, TipoTransacao.transferencia_entrada),
+    ):
+        lado.tipo = tipo
+        lado.categoria = None
+        # Fora do cartão, só pagamento de fatura tem fatura.
+        lado.fatura_id = None
+        lado.status = StatusTransacao.confirmada
+        if descricao:
+            lado.descricao = descricao
+    saida.transferencia_par = entrada
+    entrada.transferencia_par = saida
