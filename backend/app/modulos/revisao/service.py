@@ -4,22 +4,30 @@ revisão" e "Decisões do código da revisão")."""
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import date
+from enum import StrEnum
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.erros import CampoInvalido
+from app.modulos.cartoes import faturas
+from app.modulos.cartoes import service as cartoes_service
+from app.modulos.cartoes.datas import StatusFatura, status_da_fatura
+from app.modulos.cartoes.faturas import ResumoFatura
+from app.modulos.cartoes.models import Cartao
 from app.modulos.categorias import regras
 from app.modulos.categorias import service as categorias_service
 from app.modulos.categorias.classificacao import grupos_do_tipo, normalizar
 from app.modulos.categorias.models import RegraClassificacao
 from app.modulos.categorias.regras import Aprendizado, EfeitoAprendizado, prever_efeito
-from app.modulos.contas.models import TipoConta
+from app.modulos.contas.models import Conta, TipoConta
 from app.modulos.revisao.models import ParRecusado
-from app.modulos.revisao.pareamento import sugerir_pares
+from app.modulos.revisao.pareamento import DIAS_MAXIMOS, casam, sugerir_pares
 from app.modulos.transacoes import service as transacoes_service
 from app.modulos.transacoes.models import (
     TIPOS_SAIDA,
+    FonteTransacao,
     StatusTransacao,
     TipoTransacao,
     Transacao,
@@ -41,6 +49,22 @@ _MENSAGEM_TIPO = {
     _CONFIRMAVEIS_ENTRADA: "Uma entrada é confirmada como receita ou estorno; transferência "
     "tem opção própria.",
 }
+
+
+# Quantas faturas fechadas antes da atual entram como candidatas a um pagamento.
+_FATURAS_ANTERIORES = 2
+
+
+class ManterDuplicata(StrEnum):
+    """Qual fica numa possível duplicata."""
+
+    rascunho = "rascunho"  # o que chegou por último; a outra é ignorada
+    outra = "outra"  # a que já estava; o rascunho é ignorado
+    as_duas = "as_duas"  # não é duplicata
+
+
+class NaoEhPagamento(Exception):
+    """Só um rascunho de pagamento de fatura escolhe a fatura."""
 
 
 class JaRevisada(Exception):
@@ -75,6 +99,16 @@ class ParSugerido:
 class Duplicata:
     rascunho: Transacao
     outra: Transacao
+
+
+@dataclass(frozen=True)
+class FaturaCandidata:
+    """Uma fatura que o pagamento pode ter pago, como fica com ele."""
+
+    cartao: Cartao
+    resumo: ResumoFatura
+    fica_paga: bool
+    sugerida: bool
 
 
 @dataclass(frozen=True)
@@ -261,3 +295,278 @@ def _rascunho_para_revisar(sessao: Session, transacao_id: uuid.UUID) -> Transaca
     if transacao.status != StatusTransacao.rascunho:
         raise JaRevisada
     return transacao
+
+
+def ligar_par(
+    sessao: Session, saida_id: uuid.UUID, entrada_id: uuid.UUID, descricao: str | None
+) -> None:
+    """ "Ligar": as duas viram transferência entre contas próprias, confirmadas
+    e sem categoria (não são gasto nem renda). A descrição, se vier, vale para
+    os dois lados."""
+    saida = _rascunho_para_revisar(sessao, saida_id)
+    entrada = _rascunho_para_revisar(sessao, entrada_id)
+    if saida.transferencia_par_id is not None or entrada.transferencia_par_id is not None:
+        raise JaRevisada
+    if saida.tipo not in _SAIDAS_DE_PAR or saida.conta.tipo not in _CONTAS_DE_TRANSFERENCIA:
+        raise CampoInvalido("saida_id", "Escolha a saída de uma conta corrente ou carteira.")
+    if entrada.tipo not in _ENTRADAS_DE_PAR or entrada.conta.tipo not in _CONTAS_DE_TRANSFERENCIA:
+        raise CampoInvalido("entrada_id", "Escolha a entrada de uma conta corrente ou carteira.")
+    if not casam(saida, entrada):
+        raise CampoInvalido(
+            "entrada_id",
+            "O par precisa ter o mesmo valor, contas diferentes e até 2 dias de diferença.",
+        )
+    _ligar(saida, entrada, descricao)
+    sessao.commit()
+
+
+def recusar_par(sessao: Session, saida_id: uuid.UUID, entrada_id: uuid.UUID) -> None:
+    """ "Não é par": a sugestão desta saída com esta entrada não volta; cada uma
+    ainda pode parear com outra. Recusar de novo não muda nada."""
+    transacoes_service.obter(sessao, saida_id)
+    transacoes_service.obter(sessao, entrada_id)
+    if saida_id == entrada_id:
+        raise CampoInvalido("entrada_id", "Escolha uma transação diferente da saída.")
+    ja_recusado = sessao.scalar(
+        select(ParRecusado.id).where(
+            ParRecusado.saida_id == saida_id, ParRecusado.entrada_id == entrada_id
+        )
+    )
+    if ja_recusado is None:
+        sessao.add(ParRecusado(saida_id=saida_id, entrada_id=entrada_id))
+    sessao.commit()
+
+
+def transferir(
+    sessao: Session, transacao_id: uuid.UUID, *, conta_id: uuid.UUID, descricao: str
+) -> None:
+    """O rascunho é uma transferência com a outra conta (campo "Para", ou "De"
+    numa entrada). Se a outra conta é alimentada por fonte, o outro lado chega
+    de lá: liga com o rascunho compatível, ou recusa até ele chegar (criar
+    agora o duplicaria). Sem fonte (ex.: carteira), o app cria o outro lado,
+    confirmado."""
+    transacao = _rascunho_para_revisar(sessao, transacao_id)
+    if transacao.transferencia_par_id is not None:
+        raise JaRevisada
+    if transacao.conta.tipo not in _CONTAS_DE_TRANSFERENCIA:
+        raise CampoInvalido("conta_id", "Do cartão não sai transferência: use Pagamento de fatura.")
+    outra_conta = transacoes_service.conta_de_transferencia(sessao, conta_id, "conta_id")
+    if outra_conta.id == transacao.conta_id:
+        raise CampoInvalido("conta_id", "Escolha uma conta diferente da do rascunho.")
+
+    e_saida = transacao.tipo in TIPOS_SAIDA
+    if transacoes_service.conta_tem_fonte(sessao, outra_conta.id):
+        outro_lado = _outro_lado_que_chegou(sessao, transacao, outra_conta.id, e_saida)
+        if outro_lado is None:
+            lado = "entrada" if e_saida else "saída"
+            raise CampoInvalido(
+                "conta_id",
+                f"A {outra_conta.nome} recebe extrato ou Open Finance: confirme quando a "
+                f"{lado} chegar de lá.",
+            )
+    else:
+        outro_lado = Transacao(
+            conta_id=outra_conta.id,
+            # Provisório: `_ligar` dá o tipo de transferência aos dois lados.
+            tipo=TipoTransacao.receita if e_saida else TipoTransacao.despesa,
+            valor=transacao.valor,
+            data=transacao.data,
+            descricao_original=descricao,
+            descricao=descricao,
+            status=StatusTransacao.confirmada,
+            fonte=FonteTransacao.manual,
+        )
+        sessao.add(outro_lado)
+    saida, entrada = (transacao, outro_lado) if e_saida else (outro_lado, transacao)
+    _ligar(saida, entrada, descricao)
+    sessao.commit()
+
+
+def _outro_lado_que_chegou(
+    sessao: Session, transacao: Transacao, conta_id: uuid.UUID, e_saida: bool
+) -> Transacao | None:
+    """O rascunho da outra conta que pode ser o outro lado: sentido oposto,
+    mesmo valor, até `DIAS_MAXIMOS` dias, sem par e sem par recusado com este;
+    o de data mais próxima."""
+    tipos = _ENTRADAS_DE_PAR if e_saida else _SAIDAS_DE_PAR
+    recusado = select(ParRecusado.id).where(
+        ParRecusado.saida_id == (transacao.id if e_saida else Transacao.id),
+        ParRecusado.entrada_id == (Transacao.id if e_saida else transacao.id),
+    )
+    distancia = func.abs(Transacao.data - transacao.data)
+    return sessao.scalars(
+        select(Transacao)
+        .where(
+            Transacao.conta_id == conta_id,
+            Transacao.status == StatusTransacao.rascunho.value,
+            Transacao.tipo.in_([tipo.value for tipo in tipos]),
+            Transacao.valor == transacao.valor,
+            Transacao.transferencia_par_id.is_(None),
+            distancia <= DIAS_MAXIMOS,
+            ~recusado.exists(),
+        )
+        .order_by(distancia, Transacao.data, Transacao.id)
+        .limit(1)
+    ).first()
+
+
+def faturas_do_pagamento(
+    sessao: Session, transacao_id: uuid.UUID, hoje: date
+) -> list[FaturaCandidata]:
+    """As faturas que o pagamento pode ter pago: de cada cartão ativo, a atual
+    e as duas anteriores. Sugerida: a que a fonte já ligou ou, senão, a
+    fechada do cartão pago por esta conta com o vencimento mais perto da data
+    do pagamento."""
+    pagamento = _pagamento_para_revisar(sessao, transacao_id)
+    cartoes = sessao.scalars(
+        select(Cartao).join(Cartao.conta).where(Conta.ativa.is_(True)).order_by(Conta.nome)
+    )
+    candidatas: list[tuple[Cartao, ResumoFatura]] = []
+    for cartao in cartoes:
+        lista = faturas.listar(sessao, cartao, hoje)
+        candidatas += [(cartao, r) for r in [lista.atual, *lista.anteriores[:_FATURAS_ANTERIORES]]]
+
+    sugerida = next(
+        (r for _, r in candidatas if r.fatura is not None and r.fatura.id == pagamento.fatura_id),
+        None,
+    )
+    if sugerida is None:
+        sugerida = min(
+            (
+                r
+                for c, r in candidatas
+                if c.conta_pagamento_id == pagamento.conta_id and r.status == StatusFatura.fechada
+            ),
+            key=lambda r: abs((r.data_vencimento - pagamento.data).days),
+            default=None,
+        )
+    return [
+        FaturaCandidata(
+            cartao=cartao,
+            resumo=resumo,
+            fica_paga=_fica_paga(resumo, pagamento, hoje),
+            sugerida=resumo is sugerida,
+        )
+        for cartao, resumo in candidatas
+    ]
+
+
+def pagar(
+    sessao: Session, transacao_id: uuid.UUID, *, cartao_id: uuid.UUID, competencia: date
+) -> None:
+    """Confirma o pagamento ligado à fatura escolhida, gravando-a se ainda é só
+    calculada. Não é gasto: as compras já contaram no cartão."""
+    pagamento = _pagamento_para_revisar(sessao, transacao_id)
+    try:
+        cartao = cartoes_service.obter_cartao(sessao, cartao_id)
+    except cartoes_service.CartaoNaoEncontrado as exc:
+        raise CampoInvalido("cartao_id", "Cartão não encontrado.") from exc
+    fatura = cartoes_service.obter_ou_criar_fatura(sessao, cartao, competencia)
+    pagamento.fatura_id = fatura.id
+    pagamento.status = StatusTransacao.confirmada
+    sessao.commit()
+
+
+def resolver_duplicata(sessao: Session, transacao_id: uuid.UUID, manter: ManterDuplicata) -> None:
+    """Decide a possível duplicata. A descartada fica ignorada (nunca apagada).
+    Ficando com o rascunho e a outra confirmada, ele entra confirmado no lugar
+    dela: herda descrição, tipo, categoria (ensinando as regras), a fatura e o
+    par de transferência. Se a outra era rascunho, ele só herda a descrição e
+    segue para a lista comum."""
+    rascunho = _rascunho_para_revisar(sessao, transacao_id)
+    outra = (
+        None
+        if rascunho.possivel_duplicata_de is None
+        else sessao.get(Transacao, rascunho.possivel_duplicata_de)
+    )
+    if outra is None or outra.status == StatusTransacao.ignorada:
+        raise JaRevisada
+    if manter == ManterDuplicata.as_duas:
+        rascunho.possivel_duplicata_de = None
+    elif manter == ManterDuplicata.outra:
+        rascunho.status = StatusTransacao.ignorada
+    else:
+        _ficar_com_o_rascunho(sessao, rascunho, outra)
+    sessao.commit()
+
+
+def manter(sessao: Session, transacao_id: uuid.UUID) -> None:
+    """A que sumiu da origem continua valendo: só limpa o alerta."""
+    _sumida_para_revisar(sessao, transacao_id).removida_na_origem_em = None
+    sessao.commit()
+
+
+def remover(sessao: Session, transacao_id: uuid.UUID) -> None:
+    """A que sumiu da origem fica ignorada: sai do saldo e dos gastos, mas fica
+    no histórico. Se era lado de uma transferência, o par é desfeito e o outro
+    lado volta a rascunho, para parear com o que chegou no lugar."""
+    sumida = _sumida_para_revisar(sessao, transacao_id)
+    sumida.status = StatusTransacao.ignorada
+    par = sumida.transferencia_par
+    if par is not None:
+        sumida.transferencia_par = None
+        par.transferencia_par = None
+        par.status = StatusTransacao.rascunho
+    sessao.commit()
+
+
+def _ficar_com_o_rascunho(sessao: Session, rascunho: Transacao, outra: Transacao) -> None:
+    rascunho.descricao = outra.descricao
+    confirmada = outra.status == StatusTransacao.confirmada
+    outra.status = StatusTransacao.ignorada
+    if not confirmada:
+        return
+
+    par = outra.transferencia_par
+    if par is not None:
+        # Desliga antes de religar: o par é unique.
+        outra.transferencia_par = None
+        par.transferencia_par = None
+        sessao.flush()
+    rascunho.tipo = outra.tipo
+    if rascunho.fatura_id is None:
+        rascunho.fatura_id = outra.fatura_id
+    categoria = outra.categoria
+    if categoria is not None and categoria.ativa:
+        regras.aprender(sessao, rascunho, categoria)
+    rascunho.categoria = categoria
+    if par is not None:
+        rascunho.transferencia_par = par
+        par.transferencia_par = rascunho
+    rascunho.status = StatusTransacao.confirmada
+
+
+def _sumida_para_revisar(sessao: Session, transacao_id: uuid.UUID) -> Transacao:
+    transacao = transacoes_service.obter(sessao, transacao_id)
+    if transacao.status != StatusTransacao.confirmada or transacao.removida_na_origem_em is None:
+        raise JaRevisada
+    return transacao
+
+
+def _fica_paga(resumo: ResumoFatura, pagamento: Transacao, hoje: date) -> bool:
+    ja_ligado = resumo.fatura is not None and resumo.fatura.id == pagamento.fatura_id
+    pago = resumo.valor_pago + (0 if ja_ligado else pagamento.valor)
+    return status_da_fatura(resumo.data_fechamento, hoje, resumo.valor, pago) == StatusFatura.paga
+
+
+def _pagamento_para_revisar(sessao: Session, transacao_id: uuid.UUID) -> Transacao:
+    pagamento = _rascunho_para_revisar(sessao, transacao_id)
+    if pagamento.tipo != TipoTransacao.pagamento_fatura:
+        raise NaoEhPagamento
+    return pagamento
+
+
+def _ligar(saida: Transacao, entrada: Transacao, descricao: str | None) -> None:
+    for lado, tipo in (
+        (saida, TipoTransacao.transferencia_saida),
+        (entrada, TipoTransacao.transferencia_entrada),
+    ):
+        lado.tipo = tipo
+        lado.categoria = None
+        # Fora do cartão, só pagamento de fatura tem fatura.
+        lado.fatura_id = None
+        lado.status = StatusTransacao.confirmada
+        if descricao:
+            lado.descricao = descricao
+    saida.transferencia_par = entrada
+    entrada.transferencia_par = saida

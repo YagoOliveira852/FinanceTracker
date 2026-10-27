@@ -89,8 +89,16 @@ Class | Method | HTTP request | Description
 [*RegrasApi*](doc/RegrasApi.md) | [**obter**](doc/RegrasApi.md#obter) | **GET** /regras/{regra_id} | Obter
 [*RevisaoApi*](doc/RevisaoApi.md) | [**confirmar**](doc/RevisaoApi.md#confirmar) | **POST** /revisao/transacoes/{transacao_id}/confirmar | Confirmar
 [*RevisaoApi*](doc/RevisaoApi.md) | [**confirmarLote**](doc/RevisaoApi.md#confirmarlote) | **POST** /revisao/confirmar-lote | Confirmar Lote
+[*RevisaoApi*](doc/RevisaoApi.md) | [**faturasDoPagamento**](doc/RevisaoApi.md#faturasdopagamento) | **GET** /revisao/transacoes/{transacao_id}/faturas | Faturas Do Pagamento
 [*RevisaoApi*](doc/RevisaoApi.md) | [**ignorar**](doc/RevisaoApi.md#ignorar) | **POST** /revisao/transacoes/{transacao_id}/ignorar | Ignorar
+[*RevisaoApi*](doc/RevisaoApi.md) | [**ligarPar**](doc/RevisaoApi.md#ligarpar) | **POST** /revisao/pares | Ligar Par
 [*RevisaoApi*](doc/RevisaoApi.md) | [**listar**](doc/RevisaoApi.md#listar) | **GET** /revisao | Listar
+[*RevisaoApi*](doc/RevisaoApi.md) | [**manter**](doc/RevisaoApi.md#manter) | **POST** /revisao/transacoes/{transacao_id}/manter | Manter
+[*RevisaoApi*](doc/RevisaoApi.md) | [**pagar**](doc/RevisaoApi.md#pagar) | **POST** /revisao/transacoes/{transacao_id}/pagamento | Pagar
+[*RevisaoApi*](doc/RevisaoApi.md) | [**recusarPar**](doc/RevisaoApi.md#recusarpar) | **POST** /revisao/pares/recusados | Recusar Par
+[*RevisaoApi*](doc/RevisaoApi.md) | [**remover**](doc/RevisaoApi.md#remover) | **POST** /revisao/transacoes/{transacao_id}/remover | Remover
+[*RevisaoApi*](doc/RevisaoApi.md) | [**resolverDuplicata**](doc/RevisaoApi.md#resolverduplicata) | **POST** /revisao/transacoes/{transacao_id}/duplicata | Resolver Duplicata
+[*RevisaoApi*](doc/RevisaoApi.md) | [**transferir**](doc/RevisaoApi.md#transferir) | **POST** /revisao/transacoes/{transacao_id}/transferencia | Transferir
 [*SaudeApi*](doc/SaudeApi.md) | [**saude**](doc/SaudeApi.md#saude) | **GET** /saude | Saude
 [*TransacoesApi*](doc/TransacoesApi.md) | [**lancar**](doc/TransacoesApi.md#lancar) | **POST** /transacoes | Lancar
 [*TransacoesApi*](doc/TransacoesApi.md) | [**lancarParcelada**](doc/TransacoesApi.md#lancarparcelada) | **POST** /transacoes/parceladas | Lancar Parcelada
@@ -120,10 +128,12 @@ Class | Method | HTTP request | Description
  - [ContaSaida](doc/ContaSaida.md)
  - [ContasResumo](doc/ContasResumo.md)
  - [DatasFaturaSaida](doc/DatasFaturaSaida.md)
+ - [DuplicataEntrada](doc/DuplicataEntrada.md)
  - [DuplicataSaida](doc/DuplicataSaida.md)
  - [EfeitoAprendizado](doc/EfeitoAprendizado.md)
  - [ErroCampo](doc/ErroCampo.md)
  - [ExemploRascunho](doc/ExemploRascunho.md)
+ - [FaturaCandidataSaida](doc/FaturaCandidataSaida.md)
  - [FaturaDetalheSaida](doc/FaturaDetalheSaida.md)
  - [FaturaEdicao](doc/FaturaEdicao.md)
  - [FaturaResumo](doc/FaturaResumo.md)
@@ -137,8 +147,12 @@ Class | Method | HTTP request | Description
  - [LoginEntrada](doc/LoginEntrada.md)
  - [LoteEntrada](doc/LoteEntrada.md)
  - [LoteSaida](doc/LoteSaida.md)
+ - [ManterDuplicata](doc/ManterDuplicata.md)
  - [OrigemRegra](doc/OrigemRegra.md)
  - [PagamentoEntrada](doc/PagamentoEntrada.md)
+ - [PagamentoRevisaoEntrada](doc/PagamentoRevisaoEntrada.md)
+ - [ParEntrada](doc/ParEntrada.md)
+ - [ParRecusaEntrada](doc/ParRecusaEntrada.md)
  - [ParSaida](doc/ParSaida.md)
  - [ParcelaSaida](doc/ParcelaSaida.md)
  - [RascunhoSaida](doc/RascunhoSaida.md)
@@ -161,6 +175,7 @@ Class | Method | HTTP request | Description
  - [TransacaoSaida](doc/TransacaoSaida.md)
  - [TransferenciaEntrada](doc/TransferenciaEntrada.md)
  - [TransferenciaParSaida](doc/TransferenciaParSaida.md)
+ - [TransferenciaRevisaoEntrada](doc/TransferenciaRevisaoEntrada.md)
  - [TransferenciaSaida](doc/TransferenciaSaida.md)
  - [UsuarioSaida](doc/UsuarioSaida.md)
  - [ValidationError](doc/ValidationError.md)

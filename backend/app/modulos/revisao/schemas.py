@@ -7,10 +7,12 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.dinheiro import Dinheiro
+from app.modulos.cartoes.datas import StatusFatura
 from app.modulos.categorias.models import OrigemRegra
 from app.modulos.categorias.regras import EfeitoAprendizado
 from app.modulos.categorias.schemas import CategoriaResumo
 from app.modulos.contas.models import TipoConta
+from app.modulos.revisao.service import ManterDuplicata
 from app.modulos.transacoes.models import (
     FonteTransacao,
     StatusTransacao,
@@ -134,3 +136,60 @@ class LoteEntrada(BaseModel):
 
 class LoteSaida(BaseModel):
     confirmados: int = Field(description="Os que ainda tinham sugestão e foram confirmados.")
+
+
+class ParEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    saida_id: uuid.UUID
+    entrada_id: uuid.UUID
+    descricao: str | None = Field(
+        default=None, max_length=200, description="Vale para os dois lados; vazia mantém."
+    )
+
+
+class ParRecusaEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    saida_id: uuid.UUID
+    entrada_id: uuid.UUID
+
+
+class TransferenciaRevisaoEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    conta_id: uuid.UUID = Field(
+        description='A outra conta: "Para" numa saída, "De" numa entrada. Corrente ou '
+        "carteira ativa."
+    )
+    descricao: str = Field(min_length=1, max_length=200, description="Vale para os dois lados.")
+
+
+class FaturaCandidataSaida(BaseModel):
+    cartao_id: uuid.UUID
+    cartao_nome: str
+    competencia: date = Field(description="Primeiro dia do mês do vencimento.")
+    status: StatusFatura = Field(description="Como está hoje, sem este pagamento.")
+    data_vencimento: date
+    valor: Dinheiro
+    valor_pago: Dinheiro = Field(description="Já pago, sem este pagamento.")
+    fica_paga: bool = Field(description="Com este pagamento, a fatura fica paga.")
+    sugerida: bool = Field(description="A pré-selecionada (no máximo uma).")
+
+
+class PagamentoRevisaoEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cartao_id: uuid.UUID
+    competencia: str = Field(
+        pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="Mês da fatura, `AAAA-MM`."
+    )
+
+
+class DuplicataEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    manter: ManterDuplicata = Field(
+        description="`rascunho`: fica o que chegou por último, confirmado no lugar da outra se "
+        "ela estava confirmada; `outra`: fica a que já estava; `as_duas`: não é duplicata."
+    )
