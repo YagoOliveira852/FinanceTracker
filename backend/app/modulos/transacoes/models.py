@@ -1,13 +1,14 @@
 """Tabela de transações: cada entrada ou saída de dinheiro de uma conta."""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
     CheckConstraint,
     Date,
+    DateTime,
     ForeignKey,
     Numeric,
     SmallInteger,
@@ -118,6 +119,7 @@ class Transacao(ComTimestamps, Base):
             name="par_so_em_transferencia",
         ),
         CheckConstraint("transferencia_par_id <> id", name="par_nao_e_ela_mesma"),
+        CheckConstraint("possivel_duplicata_de <> id", name="duplicata_nao_e_ela_mesma"),
         # Coração da idempotência: a mesma transação da mesma fonte não entra
         # duas vezes. Lançamento manual tem id_externo nulo e não colide.
         UniqueConstraint(
@@ -154,6 +156,14 @@ class Transacao(ComTimestamps, Base):
     transferencia_par_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("transacao.id"), unique=True
     )
+
+    # Outra fonte trouxe algo igual: a revisão decide qual fica. `SET NULL`
+    # porque o sync da Pluggy apaga rascunho que sumiu da origem.
+    possivel_duplicata_de: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("transacao.id", ondelete="SET NULL"), index=True
+    )
+    # Confirmada que sumiu da Pluggy na janela de reconciliação: alerta na revisão.
+    removida_na_origem_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     categoria: Mapped[Categoria | None] = relationship(lazy="joined")
     compra_parcelada: Mapped[CompraParcelada | None] = relationship(
