@@ -2,25 +2,50 @@
 rascunhos (spec `2026-10-19-revisao-classificacao`, "Decisões do design da
 revisão" e "Decisões do código da revisão")."""
 
+import uuid
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.erros import CampoInvalido
 from app.modulos.categorias import regras
+from app.modulos.categorias import service as categorias_service
 from app.modulos.categorias.classificacao import grupos_do_tipo, normalizar
 from app.modulos.categorias.models import RegraClassificacao
-from app.modulos.categorias.regras import EfeitoAprendizado, prever_efeito
+from app.modulos.categorias.regras import Aprendizado, EfeitoAprendizado, prever_efeito
 from app.modulos.contas.models import TipoConta
 from app.modulos.revisao.models import ParRecusado
 from app.modulos.revisao.pareamento import sugerir_pares
-from app.modulos.transacoes.models import StatusTransacao, TipoTransacao, Transacao
+from app.modulos.transacoes import service as transacoes_service
+from app.modulos.transacoes.models import (
+    TIPOS_SAIDA,
+    StatusTransacao,
+    TipoTransacao,
+    Transacao,
+)
 
 # Das fontes, um Pix entre contas próprias chega como despesa e receita (ou já
 # como transferência, se a fonte souber).
 _SAIDAS_DE_PAR = frozenset({TipoTransacao.despesa, TipoTransacao.transferencia_saida})
 _ENTRADAS_DE_PAR = frozenset({TipoTransacao.receita, TipoTransacao.transferencia_entrada})
 _CONTAS_DE_TRANSFERENCIA = frozenset({TipoConta.corrente, TipoConta.carteira})
+# Tipos em que um rascunho é confirmado com categoria, por sentido.
+# Transferência e pagamento de fatura têm ações próprias; aporte e resgate
+# esperam os investimentos.
+_CONFIRMAVEIS_SAIDA = frozenset({TipoTransacao.despesa})
+_CONFIRMAVEIS_ENTRADA = frozenset({TipoTransacao.receita, TipoTransacao.estorno})
+_MENSAGEM_TIPO = {
+    _CONFIRMAVEIS_SAIDA: "Uma saída é confirmada como despesa; transferência e pagamento de "
+    "fatura têm opção própria.",
+    _CONFIRMAVEIS_ENTRADA: "Uma entrada é confirmada como receita ou estorno; transferência "
+    "tem opção própria.",
+}
+
+
+class JaRevisada(Exception):
+    """A transação não está mais no estado que a ação espera (a lista do app
+    ficou velha): já foi confirmada, ignorada ou ligada."""
 
 
 @dataclass(frozen=True)
@@ -171,3 +196,68 @@ def _rascunho(transacao: Transacao, sugerida: RegraClassificacao | None) -> Rasc
         efeito_confirmando=prever_efeito(sugerida, padrao, mesma_categoria=True),
         efeito_corrigindo=prever_efeito(sugerida, padrao, mesma_categoria=False),
     )
+
+
+def confirmar(
+    sessao: Session,
+    transacao_id: uuid.UUID,
+    *,
+    descricao: str,
+    categoria_id: uuid.UUID,
+    tipo: TipoTransacao | None = None,
+) -> Aprendizado:
+    """Confirma o rascunho com a categoria escolhida e ensina as regras
+    (`regras.confirmar_categoria`). O tipo pode mudar no mesmo sentido (ex.:
+    a receita que era estorno); a descrição original nunca muda."""
+    transacao = _rascunho_para_revisar(sessao, transacao_id)
+    tipo = TipoTransacao(tipo or transacao.tipo)
+    saida = transacao.tipo in TIPOS_SAIDA
+    confirmaveis = _CONFIRMAVEIS_SAIDA if saida else _CONFIRMAVEIS_ENTRADA
+    if tipo not in confirmaveis:
+        raise CampoInvalido("tipo", _MENSAGEM_TIPO[confirmaveis])
+    # Valida antes de mudar a transação: um 422 não deixa nada pela metade.
+    categorias_service.categoria_para_tipo(sessao, categoria_id, tipo)
+
+    transacao.tipo = tipo
+    transacao.descricao = descricao
+    if transacao.conta.tipo != TipoConta.cartao_credito:
+        # Fora do cartão, só o pagamento de fatura tem fatura ("É outra coisa").
+        transacao.fatura_id = None
+    return regras.confirmar_categoria(sessao, transacao.id, categoria_id)
+
+
+def ignorar(sessao: Session, transacao_id: uuid.UUID) -> None:
+    """Ignorada, nunca apagada: fica no histórico e a idempotência impede que
+    volte na próxima importação."""
+    _rascunho_para_revisar(sessao, transacao_id).status = StatusTransacao.ignorada
+    sessao.commit()
+
+
+def confirmar_lote(sessao: Session, ids: list[uuid.UUID]) -> int:
+    """Confirma com a categoria sugerida os rascunhos comuns da lista que
+    ainda têm sugestão; os demais (decisões, sem sugestão, já revisados) ficam
+    de fora. Tudo num commit; devolve quantos confirmou."""
+    sugeridos = {
+        rascunho.transacao.id: rascunho
+        for rascunho in listar(sessao).rascunhos
+        if rascunho.sugerida is not None
+    }
+    confirmados = 0
+    for transacao_id in dict.fromkeys(ids):
+        rascunho = sugeridos.get(transacao_id)
+        if rascunho is None:
+            continue
+        categoria = rascunho.sugerida.categoria
+        regras.aprender(sessao, rascunho.transacao, categoria)
+        rascunho.transacao.categoria = categoria
+        rascunho.transacao.status = StatusTransacao.confirmada
+        confirmados += 1
+    sessao.commit()
+    return confirmados
+
+
+def _rascunho_para_revisar(sessao: Session, transacao_id: uuid.UUID) -> Transacao:
+    transacao = transacoes_service.obter(sessao, transacao_id)
+    if transacao.status != StatusTransacao.rascunho:
+        raise JaRevisada
+    return transacao

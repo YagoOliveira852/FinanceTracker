@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -103,3 +103,34 @@ class RevisaoSaida(BaseModel):
     duplicatas: list[DuplicataSaida]
     sumidas: list[TransacaoRevisao] = Field(description="Confirmadas que sumiram da origem.")
     rascunhos: list[RascunhoSaida] = Field(description="Os comuns, da data mais recente.")
+
+
+class ConfirmacaoEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    descricao: str = Field(min_length=1, max_length=200)
+    categoria_id: uuid.UUID = Field(description="Ativa e do grupo que combina com o tipo.")
+    tipo: Literal[TipoTransacao.despesa, TipoTransacao.receita, TipoTransacao.estorno] | None = (
+        Field(
+            default=None,
+            description="Troca o tipo no mesmo sentido (saída: despesa; entrada: receita ou "
+            "estorno); nulo mantém.",
+        )
+    )
+
+
+class ConfirmacaoSaida(BaseModel):
+    efeito: EfeitoAprendizado = Field(description="O que a confirmação fez com as regras.")
+    regra_padrao: str | None = Field(description="O padrão da regra criada, reforçada ou mantida.")
+
+
+class LoteEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ids: list[uuid.UUID] = Field(
+        min_length=1, max_length=500, description="Os rascunhos com sugestão que o app mostrou."
+    )
+
+
+class LoteSaida(BaseModel):
+    confirmados: int = Field(description="Os que ainda tinham sugestão e foram confirmados.")
