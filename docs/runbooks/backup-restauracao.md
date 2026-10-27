@@ -176,3 +176,4 @@ O `restic.env` e o `financas.dump` no PC têm segredos e dados reais: apague os 
 | Data | Onde | Snapshot | Resultado |
 |---|---|---|---|
 | 27/10/2026 | PC, repositório local e dados fictícios (teste dos scripts) | latest | OK; diferença detectada depois de uma escrita; `pg_dump` falhando não cria snapshot |
+| 27/10/2026 | VPS, bucket do B2, banco de produção (`testar-restauracao.sh` logo após um backup) | latest | OK: 13 tabelas, contagens e `alembic_version` iguais à produção. Alerta do healthchecks.io conferido com uma falha real no primeiro backup |

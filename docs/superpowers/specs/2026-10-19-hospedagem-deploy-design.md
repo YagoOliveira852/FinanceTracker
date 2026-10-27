@@ -105,6 +105,6 @@ Objetivo: perder no máximo um dia de lançamentos (RPO de 24 h) e conseguir rec
 - Cada peça do deploy é explicável isoladamente: Action → Tailscale (OIDC) → ssh → Compose.
 - Todo push na `main` vai para produção alguns minutos depois; a proteção é o CI do PR e o `up --wait` com healthcheck.
 - O cronograma ganha folga no fim, porque o deploy deixa de ser uma tarefa concentrada.
-- Com 1 GB, sobra pouca RAM: o container `jobs` e o restic precisam caber no que resta (medir quando entrarem; o plano de 2 GB é a saída).
+- Com 1 GB, sobra pouca RAM: o container `jobs` e o restic precisam caber no que resta (medir quando entrarem; o plano de 2 GB é a saída). Restic, 27/10/2026: cada `run` dura poucos segundos, curto demais para o `docker stats`; sem pressão de memória observada (api ~86 MiB, db ~25 MiB), e ele roda às 03:30, longe do uso.
 - A VPS é um ponto único de falha; o backup externo testado é o que torna isso aceitável. Acesso de emergência: o console web do provedor.
 - O certificado `*.ts.net` aparece nos logs públicos de Certificate Transparency: o nome da máquina e da tailnet ficam conhecidos, o acesso não.
