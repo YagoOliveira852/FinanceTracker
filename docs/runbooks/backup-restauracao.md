@@ -56,7 +56,7 @@ sudo systemctl start financas-backup              # espera terminar; log no jour
 2. **Buckets → Create a Bucket:** nome único, *Files in Bucket* **Private**, *Object Lock* desativado. Anotar o **Endpoint** que aparece no bucket (`s3.<região>.backblazeb2.com`).
 3. No bucket, **Lifecycle Settings → "Keep only the last version of the file"**. Sem isso, o `prune` só esconde arquivos e o espaço nunca é liberado.
 4. **Application Keys → Add a New Application Key:** acesso só a esse bucket, *Read and Write*. Anotar o `keyID` e a `applicationKey`, que aparece uma vez só.
-5. **Caps & Alerts:** limite diário baixo para armazenamento, download e transações das classes B e C, com alerta por e-mail. Se um limite for atingido, o B2 recusa a operação, o backup falha e o healthchecks.io avisa.
+5. **Sem cartão cadastrado:** a conta fica limitada ao plano gratuito (10 GB) e não há cobrança. Se um limite gratuito for atingido, o B2 recusa a operação, o backup falha e o healthchecks.io avisa. Ao cadastrar um cartão, configure antes o **Caps & Alerts** com limite diário baixo para armazenamento, download e transações, com alerta por e-mail.
 
 ### 2. healthchecks.io (Yago, no navegador)
 
@@ -166,7 +166,7 @@ O `restic.env` e o `financas.dump` no PC têm segredos e dados reais: apague os 
 | `restic.env não encontrado` | Preparação não feita, ou arquivo em outra pasta | Passo 3 da preparação |
 | `Fatal: wrong password or no key found` | `RESTIC_PASSWORD` diferente da usada no `init` | Copiar a senha do gerenciador de senhas |
 | `service "db" is not running` | Banco parado | `dc ps`, `dc up -d --wait` |
-| `Access Denied` / `403` do B2 | Application key apagada, sem acesso ao bucket ou limite do Caps & Alerts atingido | Painel do B2: chave, bucket e Caps |
+| `Access Denied` / `403` do B2 | Application key apagada, sem acesso ao bucket ou limite gratuito (ou do Caps & Alerts) atingido | Painel do B2: chave, bucket e uso em *Reports* |
 | `repository is already locked` | Uma execução interrompida deixou trava | Confirmar que nenhum backup roda (`systemctl status financas-backup`) e `dc run --rm restic unlock` |
 | Aviso do healthchecks.io sem erro no journal | Timer parado ou VPS desligada | `systemctl list-timers`; acesso pelo console da Locaweb |
 

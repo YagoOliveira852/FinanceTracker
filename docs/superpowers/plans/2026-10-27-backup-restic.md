@@ -29,7 +29,7 @@
 
 ## Na VPS (com o Yago, depois do merge e do deploy)
 
-- [ ] Yago: conta B2, bucket privado com "Keep only the last version", application key restrita ao bucket, Caps & Alerts; conta healthchecks.io com check de 1 dia + 2 h de tolerância (passo a passo no runbook).
+- [ ] Yago: conta B2, bucket privado com "Keep only the last version", application key restrita ao bucket, conta sem cartão (limitada ao gratuito; Caps & Alerts só se houver cartão); conta healthchecks.io com check de 1 dia + 2 h de tolerância (passo a passo no runbook).
 - [ ] `restic.env` (600) na VPS com a senha gerada lá; senha copiada para o gerenciador de senhas.
 - [ ] `dc run --rm restic init`; instalar os units; `sudo systemctl start financas-backup`; conferir journal, `restic snapshots` e o ping no healthchecks.io.
 - [ ] `bash testar-restauracao.sh` logo depois do backup; registrar o resultado (data e "OK", sem números) no runbook.
