@@ -21,6 +21,10 @@ fi
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 touch versao.env
+# Pasta do dump do backup (backup.sh), montada no container restic. Criada
+# aqui, pelo usuário do deploy, antes de qualquer `compose run restic`: se o
+# Docker a criasse para o bind mount, ela seria do root.
+mkdir -p -m 700 backup
 
 # A TAG do ambiente vence a do versao.env na interpolação do compose.
 compose() {

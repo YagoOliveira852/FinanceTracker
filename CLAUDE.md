@@ -142,7 +142,7 @@ dc down                                                 # para (NUNCA use -v: ap
 
 ```bash
 systemctl list-timers financas-backup.timer             # última e próxima execução
-journalctl -u financas-backup --since yesterday         # saída do último backup
+sudo journalctl -u financas-backup --since yesterday    # saída do último backup
 sudo systemctl start financas-backup                    # backup agora (antes de algo arriscado)
 dc run --rm restic snapshots                            # o restic roda no container do profile backup
 sudo systemctl start financas-backup && bash testar-restauracao.sh   # restaura num Postgres temporário e compara

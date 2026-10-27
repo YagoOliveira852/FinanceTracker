@@ -5,7 +5,7 @@
 # próprio systemd, para o log ir para o mesmo lugar:
 #
 #   sudo systemctl start financas-backup
-#   journalctl -u financas-backup -e
+#   sudo journalctl -u financas-backup -e
 #
 # Segredos em restic.env (ver restic.env.example). Motivos de cada passo na
 # spec de hospedagem, "Backup em detalhe"; restauração em
@@ -43,9 +43,15 @@ terminar() {
 trap terminar EXIT
 avisar start
 
-# Criada aqui, antes do `run`: se o Docker a criasse para o bind mount, ela
-# seria do root.
+# A pasta do dump, montada no container restic. O implantar.sh já a cria; se
+# o Docker a tivesse criado para o bind mount (um `run` antes do primeiro
+# deploy), ela seria do root e o dump não poderia ser gravado.
 mkdir -p backup
+if [[ ! -O backup ]]; then
+  echo "A pasta $PWD/backup não é do usuário $(id -un). Corrija com:" \
+    "sudo chown $(id -un): $PWD/backup" >&2
+  exit 1
+fi
 chmod 700 backup
 
 echo "1/4 pg_dump do banco..."
