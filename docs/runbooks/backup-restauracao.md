@@ -22,7 +22,7 @@ pg_dump (container db) → backup/financas.dump → restic backup (cifra no serv
 | Segredos | `/opt/financas/restic.env` (600): repositório, senha do restic, application key do B2, URL de ping |
 | Senha do restic | **também no gerenciador de senhas.** Sem ela, nenhum backup pode ser lido |
 | Restic | container `restic` do `compose.prod.yml` (profile `backup`): `dc run --rm restic <comando>` |
-| Log | `journalctl -u financas-backup` |
+| Log | `sudo journalctl -u financas-backup` (sem `sudo`, o `deploy` não vê as linhas do próprio systemd) |
 | Alerta | e-mail do healthchecks.io quando o backup falha ou não roda em 26 h |
 
 Nos comandos abaixo, `dc` é o alias de `CLAUDE.md`:
@@ -37,7 +37,7 @@ alias dc='docker compose -f compose.prod.yml --env-file .env --env-file versao.e
 ```bash
 systemctl list-timers financas-backup.timer       # última e próxima execução
 systemctl status financas-backup                  # resultado da última (status=0/SUCCESS)
-journalctl -u financas-backup --since yesterday   # saída completa
+sudo journalctl -u financas-backup --since yesterday   # saída completa
 dc run --rm restic snapshots                      # um snapshot por dia, até 30 dias
 dc run --rm restic stats --mode raw-data          # espaço ocupado no B2
 ```
@@ -91,7 +91,7 @@ systemd-analyze calendar '*-*-* 03:30:00 America/Fortaleza'   # próxima execuç
 sudo systemctl daemon-reload
 sudo systemctl enable --now financas-backup.timer
 sudo systemctl start financas-backup              # primeiro backup, agora
-journalctl -u financas-backup -e --no-pager       # termina em "Backup concluído."
+sudo journalctl -u financas-backup -e --no-pager  # termina em "Backup concluído."
 ```
 
 Quando os units mudarem no repositório, repita o `install` e o `daemon-reload` (o deploy só copia os arquivos para `/opt/financas`).
@@ -165,6 +165,7 @@ O `restic.env` e o `financas.dump` no PC têm segredos e dados reais: apague os 
 |---|---|---|
 | `restic.env não encontrado` | Preparação não feita, ou arquivo em outra pasta | Passo 3 da preparação |
 | `Fatal: wrong password or no key found` | `RESTIC_PASSWORD` diferente da usada no `init` | Copiar a senha do gerenciador de senhas |
+| `A pasta .../backup não é do usuário deploy` | Um `dc run restic` antes do primeiro deploy fez o Docker criar a pasta como root | `sudo chown deploy: /opt/financas/backup` |
 | `service "db" is not running` | Banco parado | `dc ps`, `dc up -d --wait` |
 | `Access Denied` / `403` do B2 | Application key apagada, sem acesso ao bucket ou limite gratuito (ou do Caps & Alerts) atingido | Painel do B2: chave, bucket e uso em *Reports* |
 | `repository is already locked` | Uma execução interrompida deixou trava | Confirmar que nenhum backup roda (`systemctl status financas-backup`) e `dc run --rm restic unlock` |
