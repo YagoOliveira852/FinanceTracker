@@ -1,0 +1,19 @@
+# Backup diário do banco (deploy/backup.sh), disparado pelo
+# financas-backup.timer. Instalação e comandos em
+# docs/runbooks/backup-restauracao.md.
+[Unit]
+Description=Backup do banco de produção (pg_dump, restic, B2)
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# O usuário do deploy, que está no grupo docker; nada roda como root.
+User=deploy
+ExecStart=/usr/bin/bash /opt/financas/backup.sh
+# Um backup travado (B2 fora do ar) não fica pendurado até o próximo.
+TimeoutStartSec=1h
+# Cede CPU e disco para a api se as duas coisas coincidirem.
+Nice=10
+IOSchedulingClass=idle

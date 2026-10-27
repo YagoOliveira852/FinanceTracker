@@ -1,6 +1,6 @@
 # Deploy na VPS, que só existe na tailnet: o runner entra na Tailscale como nó
-# efêmero (tag:ci), copia o compose.prod.yml e o implantar.sh por scp e roda o
-# implantar.sh por ssh (Tailscale SSH, usuário deploy).
+# efêmero (tag:ci), copia o compose.prod.yml e os scripts (implantar.sh e os do
+# backup) por scp e roda o implantar.sh por ssh (Tailscale SSH, usuário deploy).
 #
 # Roda sozinho quando o workflow imagem termina com sucesso num push na main,
 # com a imagem daquele commit (sha-<7>). À mão, `gh workflow run deploy` sobe
@@ -87,8 +87,14 @@ jobs:
           test -s ~/.ssh/known_hosts || { echo "A VPS não anunciou chave de host na tailnet." >&2; exit 1; }
           printf 'Host %s\n  User deploy\n  BatchMode yes\n  StrictHostKeyChecking yes\n' "$VPS_HOST" > ~/.ssh/config
 
-      - name: Copiar compose e script
-        run: scp deploy/compose.prod.yml deploy/implantar.sh "$VPS_HOST:/opt/financas/"
+      # Os units do backup só são copiados; instalá-los é um passo à mão (ver
+      # docs/runbooks/backup-restauracao.md), e o deploy não usa sudo.
+      - name: Copiar compose e scripts
+        run: |
+          scp deploy/compose.prod.yml deploy/implantar.sh \
+            deploy/backup.sh deploy/testar-restauracao.sh \
+            deploy/systemd/financas-backup.service deploy/systemd/financas-backup.timer \
+            "$VPS_HOST:/opt/financas/"
 
       - name: Implantar
         run: |

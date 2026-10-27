@@ -60,5 +60,26 @@ services:
     restart: unless-stopped
     logging: *logs
 
+  # Só para o backup (deploy/backup.sh): no profile `backup`, o `up -d` não o
+  # sobe; `docker compose run --rm restic <comando>` roda e sai.
+  restic:
+    image: restic/restic:0.19.1
+    profiles: [backup]
+    # O restic grava o host em cada snapshot e o `forget` agrupa por ele; sem
+    # isto, cada `run` teria um nome aleatório.
+    hostname: financas
+    # Separado do .env: a api recebe o .env inteiro, e a chave do B2 apaga
+    # backups. Opcional para o `config` do deploy não falhar antes de o
+    # arquivo existir; sem ele, o restic recusa rodar.
+    env_file:
+      - path: restic.env
+        required: false
+    volumes:
+      - ./backup:/backup:ro
+      # Índices do repositório: evita baixá-los do B2 a cada execução.
+      - restic_cache:/root/.cache/restic
+    logging: *logs
+
 volumes:
   db_data:
+  restic_cache:
