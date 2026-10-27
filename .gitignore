@@ -8,6 +8,7 @@ docs/explicacoes/
 .env
 .env.*
 !.env.example
+restic.env
 
 # Dados financeiros reais nunca entram no repositório
 *.ofx

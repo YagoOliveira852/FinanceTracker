@@ -27,7 +27,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 - **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator 7.26.0 via Docker, alvo `dart-dio`, serialização `built_value`, `decimal=String`) em `app/packages/api_client/`. O FastAPI publica operationId `<tag>_<função>` e o gerador corta a tag (`removeOperationIdPrefix`): `contas_listar` vira `ContasApi.listar()`. Por isso cada rota tem **uma tag só, sem `_`** (teste em `tests/unit/test_operation_ids.py`).
 - **Banco:** PostgreSQL 16.
 - **Ferramentas:** uv (dependências Python), ruff (lint/format), pytest + httpx + testcontainers.
-- **Deploy:** Locaweb VPS de 1 GB acessível só pela Tailscale, Docker Compose puro (`api`, `db`; `jobs` quando os jobs entrarem). A cada push na `main`: imagem no GHCR → `deploy.yml` entra na tailnet por OIDC → scp + Tailscale SSH → `deploy/implantar.sh` (pull da `sha-<7>`, migrations, `up -d --wait`). Backup diário criptografado (restic → Backblaze B2). APK assinado gerado pelo CI em tag. Ver `docs/superpowers/specs/2026-10-19-hospedagem-deploy-design.md`.
+- **Deploy:** Locaweb VPS de 1 GB acessível só pela Tailscale, Docker Compose puro (`api`, `db`; `jobs` quando os jobs entrarem). A cada push na `main`: imagem no GHCR → `deploy.yml` entra na tailnet por OIDC → scp + Tailscale SSH → `deploy/implantar.sh` (pull da `sha-<7>`, migrations, `up -d --wait`). Backup diário criptografado (restic → Backblaze B2, systemd timer na VPS). APK assinado gerado pelo CI em tag. Ver `docs/superpowers/specs/2026-10-19-hospedagem-deploy-design.md`.
 
 ## Setup & commands
 
@@ -126,7 +126,7 @@ ssh deploy@<maquina>.<tailnet>.ts.net                   # nome real em CLAUDE.lo
 curl https://<maquina>.<tailnet>.ts.net/saude           # {"status":"ok"}, do PC ou do celular na tailnet
 ```
 
-**No servidor**, em `/opt/financas`: `compose.prod.yml` e `implantar.sh` (copiados pelo deploy), `.env` (segredos, permissão 600) e `versao.env` (`TAG=sha-<7>` da versão no ar, gravado pelo `implantar.sh`). Todo comando do compose leva os dois arquivos de ambiente; sem o `versao.env`, um `up -d` trocaria a imagem pela `latest`:
+**No servidor**, em `/opt/financas`: `compose.prod.yml`, `implantar.sh`, `backup.sh`, `testar-restauracao.sh` e os units `financas-backup.{service,timer}` (copiados pelo deploy), `.env` (segredos, permissão 600), `restic.env` (segredos do backup, permissão 600, lido só pelo container `restic`) e `versao.env` (`TAG=sha-<7>` da versão no ar, gravado pelo `implantar.sh`). Todo comando do compose leva os dois arquivos de ambiente; sem o `versao.env`, um `up -d` trocaria a imagem pela `latest`:
 
 ```bash
 cd /opt/financas
@@ -138,6 +138,16 @@ bash implantar.sh sha-1a2b3c4                           # o mesmo que o deploy f
 dc down                                                 # para (NUNCA use -v: apaga os dados)
 ```
 
+**Backup** (restic → Backblaze B2, todo dia às 03:30 pelo `financas-backup.timer`; retenção de 30 dias; alerta pelo healthchecks.io). Preparação, restauração e o caso da VPS perdida em [`docs/runbooks/backup-restauracao.md`](docs/runbooks/backup-restauracao.md):
+
+```bash
+systemctl list-timers financas-backup.timer             # última e próxima execução
+journalctl -u financas-backup --since yesterday         # saída do último backup
+sudo systemctl start financas-backup                    # backup agora (antes de algo arriscado)
+dc run --rm restic snapshots                            # o restic roda no container do profile backup
+sudo systemctl start financas-backup && bash testar-restauracao.sh   # restaura num Postgres temporário e compara
+```
+
 **Preparação do servidor** (feita uma vez, à mão, em 23/10/2026; refazer só ao trocar de VPS). Ubuntu 24.04:
 
 1. Usuário `deploy` com sudo sem senha (`/etc/sudoers.d/deploy`) e no grupo `docker`; `/etc/ssh/sshd_config.d/00-financas.conf` com `PermitRootLogin no`, `PasswordAuthentication no` e `KbdInteractiveAuthentication no`.
@@ -147,6 +157,7 @@ dc down                                                 # para (NUNCA use -v: ap
 5. Firewall: `ufw default deny incoming`, `ufw allow in on tailscale0 to any port 22 proto tcp`, `ufw enable`. A api escuta só em `127.0.0.1:8000` porque o Docker publica portas por fora do `ufw`.
 6. `/opt/financas` do usuário `deploy`; `.env` copiado de `deploy/.env.example` com os segredos gerados **ali mesmo** (`python3 -c "import secrets; ..."`, comandos no próprio arquivo) e `chmod 600 .env`.
 7. Primeiro deploy pelo `gh workflow run deploy` (aplica as migrations); depois `dc run --rm api python -m app.criar_usuario` para criar o usuário.
+8. Backup: bucket e application key no B2, check no healthchecks.io, `restic.env` com a senha do restic gerada ali (e copiada para o gerenciador de senhas), `dc run --rm restic init` e os units em `/etc/systemd/system/` (runbook, "Preparação"). Ao trocar de VPS, restaurar o banco em vez de criar o usuário (runbook, "Desastre").
 
 **Tailscale e GitHub** (painel, uma vez): política da tailnet com `tagOwners` (`tag:ci`, `tag:server`), grant `tag:ci` → `tag:server` em `tcp:22` e `tcp:443`, regra de ssh `tag:ci` → `tag:server` como `deploy`, e `tests`/`sshTests` que conferem isso. Credencial OIDC em Settings → Trust credentials (issuer GitHub, subject `repo:<dono>@<id>/<repo>@<id>:environment:producao`, scope Auth Keys de escrita, `tag:ci`). No GitHub, environment `producao` restrito à `main`, com os secrets `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE` e `VPS_HOST`.
 
@@ -247,7 +258,7 @@ TZ_NEGOCIO=America/Fortaleza
 
 **App:** só `--dart-define=API_URL=...` no build (em release, o endereço `https://...ts.net` da VPS). **Nenhum segredo no APK** — chave da Pluggy fica exclusivamente no backend.
 
-**Produção:** o `.env` real fica só na VPS, gerado lá mesmo (`deploy/.env.example`: `POSTGRES_PASSWORD`, `JWT_SECRET` e os opcionais); a `TAG` da imagem fica em `versao.env`, gravado pelo `implantar.sh`. O deploy não guarda segredo de longa duração: o environment `producao` do GitHub tem só `TS_OAUTH_CLIENT_ID` e `TS_AUDIENCE` (da credencial OIDC da Tailscale) e `VPS_HOST` (`<maquina>.<tailnet>.ts.net`), que não dão acesso sozinhos e ficam em secrets para saírem mascarados no log público. Os segredos que vierem depois (keystore do APK, credenciais do B2/restic) ficam nos secrets do GitHub ou na VPS, nunca no repositório.
+**Produção:** o `.env` real fica só na VPS, gerado lá mesmo (`deploy/.env.example`: `POSTGRES_PASSWORD`, `JWT_SECRET` e os opcionais); a `TAG` da imagem fica em `versao.env`, gravado pelo `implantar.sh`. O deploy não guarda segredo de longa duração: o environment `producao` do GitHub tem só `TS_OAUTH_CLIENT_ID` e `TS_AUDIENCE` (da credencial OIDC da Tailscale) e `VPS_HOST` (`<maquina>.<tailnet>.ts.net`), que não dão acesso sozinhos e ficam em secrets para saírem mascarados no log público. Os segredos do backup ficam em `/opt/financas/restic.env` (`deploy/restic.env.example`: `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` da application key do B2, `BACKUP_PING_URL` opcional); a senha do restic tem uma segunda cópia no gerenciador de senhas, porque sem ela o backup não abre. Os que vierem depois (keystore do APK) ficam nos secrets do GitHub ou na VPS, nunca no repositório.
 
 Nunca commitar segredos nem colar credenciais em specs, planos ou notas.
 
@@ -282,12 +293,13 @@ As telas são desenhadas no **Claude Design** antes de implementadas, sempre com
 | `docs/superpowers/specs/` | Decisões e motivos, escritas antes de implementar |
 | `docs/superpowers/plans/` | Planos passo a passo derivados de uma spec |
 | `docs/explicacoes/` | **Local, fora do git:** notas de aprendizado (FastAPI, Flutter, conceitos do domínio) |
+| `docs/runbooks/` | Procedimentos de produção passo a passo: backup e restauração |
 | `docs/agents/` | Configuração dos skills de engenharia: issue tracker, labels de triagem, docs de domínio |
 | `README.md` | Vitrine do portfólio: prints do modo demo, arquitetura, como rodar |
 
 Nomes: `YYYY-MM-DD-<tema>-design.md` (specs), `YYYY-MM-DD-<tema>.md` (planos), `NN-<tema>.md` (explicações).
 
-Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e alerta; dinheiro no contrato da API; backend síncrono e usuário único; revisão e classificação; spike da Pluggy (sync, reconciliação, cartão, investimentos). Em 2026-10-20: conexões da Pluggy pelo app (itemId, vínculo de contas, estado do sync). Em 2026-10-23: cartões e faturas (regra das datas, feriados com Carnaval, fatura calculada até ser gravada, ajuste para o valor real, editar/desativar cartão). Em 2026-10-24: compra parcelada (divisão com o centavo na 1ª, data e fatura de cada parcela, realocação da compra inteira); pagamento de fatura e transferência (pagamento numa transação só, status `paga` derivado, par de transferência). Em 2026-10-26: a spec da revisão ganhou as decisões do design (categorias, regras sem prioridade, compatibilidade com o tipo, `par_recusado`, duplicata). Em 2026-10-27: as decisões do código da revisão (ordem das situações, pareamento, efeito calculado no servidor, categoria obrigatória ao confirmar, conta alimentada por fonte). Prevista: deduplicação entre fontes.
+Specs já decididas (2026-10-19): hospedagem e deploy; cálculo de aporte e alerta; dinheiro no contrato da API; backend síncrono e usuário único; revisão e classificação; spike da Pluggy (sync, reconciliação, cartão, investimentos). Em 2026-10-20: conexões da Pluggy pelo app (itemId, vínculo de contas, estado do sync). Em 2026-10-23: cartões e faturas (regra das datas, feriados com Carnaval, fatura calculada até ser gravada, ajuste para o valor real, editar/desativar cartão). Em 2026-10-24: compra parcelada (divisão com o centavo na 1ª, data e fatura de cada parcela, realocação da compra inteira); pagamento de fatura e transferência (pagamento numa transação só, status `paga` derivado, par de transferência). Em 2026-10-26: a spec da revisão ganhou as decisões do design (categorias, regras sem prioridade, compatibilidade com o tipo, `par_recusado`, duplicata). Em 2026-10-27: as decisões do código da revisão (ordem das situações, pareamento, efeito calculado no servidor, categoria obrigatória ao confirmar, conta alimentada por fonte); e o backup em detalhe, na spec de hospedagem (systemd timer, restic em container, dump sem compressão em arquivo, B2 pela API S3, `restic.env` separado, healthchecks.io, restauração testada). Prevista: deduplicação entre fontes.
 
 ## Do / Don't
 

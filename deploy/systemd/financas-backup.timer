@@ -1,0 +1,14 @@
+# Agenda o financas-backup.service. Instalação e comandos em
+# docs/runbooks/backup-restauracao.md.
+[Unit]
+Description=Backup diário do banco de produção
+
+[Timer]
+# No fuso do negócio; o servidor roda em UTC.
+OnCalendar=*-*-* 03:30:00 America/Fortaleza
+# Se o servidor estava desligado no horário, roda assim que ligar.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
