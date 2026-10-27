@@ -7,6 +7,7 @@ import '../apoio/auth_falso.dart';
 import '../apoio/categorias_falso.dart';
 import '../apoio/contas_falso.dart';
 import '../apoio/faturas_falso.dart';
+import '../apoio/revisao_falso.dart';
 import '../apoio/transacoes_falso.dart';
 
 /// App inteiro (router, abas, providers) com repositórios falsos.
@@ -21,6 +22,7 @@ Future<Dependencias> _abrir(WidgetTester tester, {bool sessao = true}) async {
     transacoes: TransacoesRepositorioFalso(),
     faturas: FaturasRepositorioFalso(),
     categorias: CategoriasRepositorioFalso(),
+    revisao: RevisaoRepositorioFalso(),
   );
   await dependencias.sessao.iniciar();
   await tester.pumpWidget(FinancasApp(dependencias));
@@ -62,6 +64,24 @@ void main() {
 
     expect(find.text('Saldo disponível'), findsOneWidget);
     expect(find.text('R\$ 2.350,00'), findsOneWidget);
+  });
+
+  testWidgets('aba Revisão mostra o contador e a lista', (tester) async {
+    await _abrir(tester);
+
+    final contador = find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.byType(Badge),
+    );
+    expect(
+      find.descendant(of: contador.first, matching: find.text('3')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Revisão'));
+    await tester.pumpAndSettle();
+    expect(find.text('3 para revisar'), findsOneWidget);
+    expect(find.text('Padaria Pão Quente'), findsOneWidget);
   });
 
   testWidgets('Mais → Contas, com itens em breve visíveis', (tester) async {
@@ -161,15 +181,6 @@ void main() {
     expect(find.text('Categorias e regras'), findsOneWidget);
     expect(find.text('Feira'), findsOneWidget);
     expect(find.text('Mercado'), findsNothing);
-  });
-
-  testWidgets('aba Revisão mostra em breve', (tester) async {
-    await _abrir(tester);
-
-    await tester.tap(find.text('Revisão'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Revisão chega em breve'), findsOneWidget);
   });
 
   testWidgets('Sair volta ao login', (tester) async {

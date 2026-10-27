@@ -190,7 +190,7 @@ Organizado **por módulo de domínio**, não por camada: `backend/app/modulos/<m
 - `lib/core/formatacao/` — dinheiro (`R$ 1.234,56`, leitura do valor digitado, sempre `Decimal`) e datas em pt-BR.
 - `lib/core/cache/` — drift, só leitura offline; o servidor é a fonte da verdade.
 - `lib/features/<feature>/` — `data/` (repositório que usa o cliente gerado e converte seus modelos `built_value` em modelos `freezed` do app, `String` monetária → `Decimal`), `cubit/` (estado), `ui/` (telas e widgets). Telas e cubits nunca importam tipos do cliente gerado.
-- Features: `login`, `inicio` (aporte, reserva, alerta), `revisao` (rascunhos para confirmar), `transacoes`, `contas`, `faturas`, `categorias` (categorias e regras, em Mais; o `CategoriasCubit` fica no topo do app, como o `ContasCubit`), `importacao`, `investimentos`, `configuracoes`.
+- Features: `login`, `inicio` (aporte, reserva, alerta), `revisao` (rascunhos e decisões; o `RevisaoCubit` fica no topo do app, porque a barra de abas mostra o contador; cada folha tem o seu cubit, e o efeito na regra vem pronto da API), `transacoes`, `contas`, `faturas`, `categorias` (categorias e regras, em Mais; o `CategoriasCubit` fica no topo do app, como o `ContasCubit`), `importacao`, `investimentos`, `configuracoes`.
 
 ### Autenticação
 

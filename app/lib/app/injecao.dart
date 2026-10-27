@@ -6,6 +6,7 @@ import '../features/contas/data/contas_repositorio.dart';
 import '../features/faturas/data/faturas_repositorio.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/login/data/auth_repositorio.dart';
+import '../features/revisao/data/revisao_repositorio.dart';
 import '../features/transacoes/data/transacoes_repositorio.dart';
 
 /// Monta os objetos de longa duração do app: repositórios e a sessão.
@@ -20,6 +21,7 @@ class Dependencias {
     required this.transacoes,
     required this.faturas,
     required this.categorias,
+    required this.revisao,
   }) : sessao = SessaoCubit(auth);
 
   /// Dependências reais, falando com a API em [baseUrl].
@@ -43,6 +45,7 @@ class Dependencias {
       transacoes: TransacoesRepositorioApi(cliente),
       faturas: FaturasRepositorioApi(cliente),
       categorias: CategoriasRepositorioApi(cliente),
+      revisao: RevisaoRepositorioApi(cliente),
     );
   }
 
@@ -51,5 +54,6 @@ class Dependencias {
   final TransacoesRepositorio transacoes;
   final FaturasRepositorio faturas;
   final CategoriasRepositorio categorias;
+  final RevisaoRepositorio revisao;
   final SessaoCubit sessao;
 }

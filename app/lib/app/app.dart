@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../features/categorias/cubit/categorias_cubit.dart';
 import '../features/contas/cubit/contas_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
+import '../features/revisao/cubit/revisao_cubit.dart';
 import 'injecao.dart';
 import 'router.dart';
 import 'tema.dart';
@@ -16,7 +17,8 @@ import 'tema.dart';
 /// O [ContasCubit] fica aqui em cima porque Início, Contas e Lançamento
 /// mostram as mesmas contas: criar uma conta ou lançar uma transação
 /// recarrega um cubit só, e todas as telas veem o saldo novo. O
-/// [CategoriasCubit] pelo mesmo motivo: Categorias e Lançamento.
+/// [CategoriasCubit] pelo mesmo motivo: Categorias e Lançamento. O
+/// [RevisaoCubit] porque a barra de abas mostra o contador da Revisão.
 class FinancasApp extends StatefulWidget {
   const FinancasApp(this.dependencias, {super.key});
 
@@ -45,6 +47,7 @@ class _FinancasAppState extends State<FinancasApp> {
         RepositoryProvider.value(value: dependencias.transacoes),
         RepositoryProvider.value(value: dependencias.faturas),
         RepositoryProvider.value(value: dependencias.categorias),
+        RepositoryProvider.value(value: dependencias.revisao),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -71,14 +74,25 @@ class _FinancasAppState extends State<FinancasApp> {
               return categorias;
             },
           ),
+          BlocProvider(
+            lazy: false,
+            create: (_) {
+              final revisao = RevisaoCubit(dependencias.revisao);
+              if (dependencias.sessao.state is SessaoConectada) {
+                revisao.carregar();
+              }
+              return revisao;
+            },
+          ),
         ],
         child: BlocListener<SessaoCubit, SessaoEstado>(
-          // Recarrega contas e categorias a cada login.
+          // Recarrega contas, categorias e a revisão a cada login.
           listenWhen: (antes, depois) =>
               antes is! SessaoConectada && depois is SessaoConectada,
           listener: (context, _) {
             context.read<ContasCubit>().carregar();
             context.read<CategoriasCubit>().carregar();
+            context.read<RevisaoCubit>().carregar();
           },
           child: MaterialApp.router(
             title: 'Finanças',
