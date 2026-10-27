@@ -7,6 +7,7 @@ import '../apoio/auth_falso.dart';
 import '../apoio/categorias_falso.dart';
 import '../apoio/contas_falso.dart';
 import '../apoio/faturas_falso.dart';
+import '../apoio/revisao_falso.dart';
 import '../apoio/transacoes_falso.dart';
 
 /// App inteiro (router, abas, providers) com repositórios falsos.
@@ -21,6 +22,7 @@ Future<Dependencias> _abrir(WidgetTester tester, {bool sessao = true}) async {
     transacoes: TransacoesRepositorioFalso(),
     faturas: FaturasRepositorioFalso(),
     categorias: CategoriasRepositorioFalso(),
+    revisao: RevisaoRepositorioFalso(),
   );
   await dependencias.sessao.iniciar();
   await tester.pumpWidget(FinancasApp(dependencias));
