@@ -5,8 +5,11 @@ import '../../../app/tema.dart';
 import '../../../app/widgets/aviso.dart';
 import '../../../app/widgets/chip_opcao.dart';
 import '../../../core/formatacao/datas.dart';
+import '../../../core/formatacao/dinheiro.dart';
 import '../../categorias/cubit/categorias_cubit.dart';
 import '../../categorias/data/categoria.dart';
+import '../../contas/cubit/contas_cubit.dart';
+import '../../contas/data/conta.dart';
 import '../cubit/folha_rascunho_cubit.dart';
 import '../cubit/revisao_cubit.dart';
 import '../data/revisao.dart';
@@ -115,7 +118,7 @@ class _FolhaRascunhoState extends State<_FolhaRascunho> {
                   ),
                 ),
                 const SizedBox(height: Espaco.x4),
-                _ComoVeio(item.descricaoOriginal),
+                ComoVeio(item.descricaoOriginal),
                 const SizedBox(height: Espaco.x4),
                 TextField(
                   controller: _descricao,
@@ -143,23 +146,27 @@ class _FolhaRascunhoState extends State<_FolhaRascunho> {
                     ],
                   ),
                 ],
-                const SizedBox(height: Espaco.x2),
-                Text('Categoria', style: textos.labelLarge),
-                const SizedBox(height: Espaco.x2),
-                Wrap(
-                  spacing: Espaco.x2,
-                  runSpacing: Espaco.x2,
-                  children: [
-                    for (final categoria in opcoes)
-                      ChipOpcao(
-                        rotulo: categoria.nome,
-                        selecionado: estado.categoriaId == categoria.id,
-                        aoTocar: estado.enviando
-                            ? null
-                            : () => cubit.escolherCategoria(categoria.id),
-                      ),
-                  ],
-                ),
+                const SizedBox(height: Espaco.x4),
+                if (cubit.eTransferencia)
+                  _OutraConta(item: item, estado: estado, cubit: cubit)
+                else ...[
+                  Text('Categoria', style: textos.labelLarge),
+                  const SizedBox(height: Espaco.x2),
+                  Wrap(
+                    spacing: Espaco.x2,
+                    runSpacing: Espaco.x2,
+                    children: [
+                      for (final categoria in opcoes)
+                        ChipOpcao(
+                          rotulo: categoria.nome,
+                          selecionado: estado.categoriaId == categoria.id,
+                          aoTocar: estado.enviando
+                              ? null
+                              : () => cubit.escolherCategoria(categoria.id),
+                        ),
+                    ],
+                  ),
+                ],
                 if (efeito != null) ...[
                   const SizedBox(height: Espaco.x4),
                   Aviso(
@@ -207,9 +214,89 @@ class _FolhaRascunhoState extends State<_FolhaRascunho> {
   }
 }
 
+/// Na transferência: "Para" (saída) ou "De" (entrada), só correntes e
+/// carteiras ativas, como no lançamento. A API decide se cria o outro lado
+/// ou liga com o que veio da outra conta.
+class _OutraConta extends StatelessWidget {
+  const _OutraConta({
+    required this.item,
+    required this.estado,
+    required this.cubit,
+  });
+
+  final ItemRevisao item;
+  final FolhaRascunhoEstado estado;
+  final FolhaRascunhoCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final contas = switch (context.watch<ContasCubit>().state) {
+      ContasCarregado(:final resumo) => [
+        for (final c in resumo.contas)
+          if (c.ativa &&
+              c.tipo != TipoConta.cartaoCredito &&
+              c.id != item.contaId)
+            c,
+      ],
+      _ => const <Conta>[],
+    };
+    final saida = !item.tipo.entrada;
+    final valor = formatarDinheiro(item.valor);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: estado.outraContaId,
+          isExpanded: true,
+          decoration: InputDecoration(labelText: saida ? 'Para' : 'De'),
+          items: [
+            for (final conta in contas)
+              DropdownMenuItem(
+                value: conta.id,
+                child: Text(conta.nome, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: estado.enviando
+              ? null
+              : (id) {
+                  if (id != null) cubit.escolherOutraConta(id);
+                },
+        ),
+        const SizedBox(height: Espaco.x2),
+        Text(
+          'Só correntes e carteiras ativas, como no lançamento.',
+          style: context.textos.bodySmall?.copyWith(
+            color: context.esquema.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: Espaco.x4),
+        Aviso(
+          icone: Icons.add_link_rounded,
+          texto: Text(
+            saida
+                ? 'Se a outra conta não tem extrato nem Open Finance (como a '
+                      'carteira), o app cria a entrada de $valor nela, já '
+                      'ligada a esta saída. Se tem, liga com o rascunho que '
+                      'chegar de lá.'
+                : 'Se a outra conta não tem extrato nem Open Finance (como a '
+                      'carteira), o app cria a saída de $valor nela, já '
+                      'ligada a esta entrada. Se tem, liga com o rascunho que '
+                      'chegar de lá.',
+            style: context.textos.bodyMedium?.copyWith(
+              color: context.esquema.onPrimaryContainer,
+            ),
+          ),
+          fundo: context.esquema.primaryContainer,
+          cor: context.esquema.onPrimaryContainer,
+        ),
+      ],
+    );
+  }
+}
+
 /// "Como veio do banco": a descrição original, que nunca muda.
-class _ComoVeio extends StatelessWidget {
-  const _ComoVeio(this.descricaoOriginal);
+class ComoVeio extends StatelessWidget {
+  const ComoVeio(this.descricaoOriginal, {super.key});
 
   final String descricaoOriginal;
 
