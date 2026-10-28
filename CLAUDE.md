@@ -39,7 +39,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 - **uv** — baixa sozinho o Python 3.12 fixado no projeto; ruff entra como dependência de dev.
 - **JDK 17+** em `JAVA_HOME` (Gradle do Android).
 - **Flutter** canal stable, com `flutter/bin` no `PATH`.
-- **Android SDK sem Android Studio:** command-line tools em `$ANDROID_HOME/cmdline-tools/latest`, mais `platform-tools`, `platforms;android-36` e `build-tools;36.0.0` via `sdkmanager`. Licenças: `flutter doctor --android-licenses`. O aviso do `sdkmanager` sugerindo o novo Android CLI pode ser ignorado: o Flutter ainda chama o `sdkmanager` diretamente.
+- **Android SDK sem Android Studio:** command-line tools em `$ANDROID_HOME/cmdline-tools/latest`, mais `platform-tools`, `platforms;android-36`, `platforms;android-37` (o `receive_sharing_intent` compila com o 37; o Gradle baixa sozinho se as licenças estiverem aceitas) e `build-tools;36.0.0` via `sdkmanager`. Licenças: `flutter doctor --android-licenses`. O aviso do `sdkmanager` sugerindo o novo Android CLI pode ser ignorado: o Flutter ainda chama o `sdkmanager` diretamente.
 - Aparelho físico com depuração USB (ou Wi-Fi) é o alvo principal; emulador é opcional (`sdkmanager "emulator" "system-images;..."` + `avdmanager`).
 - **Tailscale** no PC e no celular: a API de produção só é alcançável pela tailnet.
 

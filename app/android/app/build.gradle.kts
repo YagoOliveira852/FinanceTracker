@@ -6,7 +6,10 @@ plugins {
 
 android {
     namespace = "io.github.yagooliveira852.financas"
-    compileSdk = flutter.compileSdkVersion
+    // O receive_sharing_intent (Compartilhar) exige compilar contra a API 37,
+    // acima da padrão do Flutter. Só muda a compilação: o targetSdk continua o
+    // do Flutter, e o comportamento do app em tempo de execução não muda.
+    compileSdk = maxOf(flutter.compileSdkVersion, 37)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
