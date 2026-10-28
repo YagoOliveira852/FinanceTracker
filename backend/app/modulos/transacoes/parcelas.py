@@ -32,3 +32,13 @@ def data_da_parcela(data_compra: date, numero: int) -> date:
     mes = meses % 12 + 1
     ultimo = calendar.monthrange(ano, mes)[1]
     return date(ano, mes, min(data_compra.day, ultimo))
+
+
+def data_da_compra(data_parcela: date, numero: int) -> date:
+    """Data estimada da compra a partir da parcela `numero` (o inverso de
+    `data_da_parcela`): recua `numero − 1` meses. Usada quando a fonte só traz
+    a data de cobrança (OFX); dia que não existe no mês vira o último."""
+    meses = data_parcela.year * 12 + data_parcela.month - 1 - (numero - 1)
+    ano, mes = divmod(meses, 12)
+    ultimo = calendar.monthrange(ano, mes + 1)[1]
+    return date(ano, mes + 1, min(data_parcela.day, ultimo))

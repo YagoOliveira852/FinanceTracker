@@ -2688,6 +2688,250 @@
         }
       }
     },
+    "/importacoes": {
+      "get": {
+        "tags": [
+          "importacoes"
+        ],
+        "summary": "Listar",
+        "description": "O histórico de importações, da mais recente para a mais antiga.",
+        "operationId": "importacoes_listar",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImportacaoSaida"
+                  },
+                  "type": "array",
+                  "title": "Response Importacoes Listar"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "importacoes"
+        ],
+        "summary": "Importar",
+        "description": "Importa o arquivo na conta, tudo ou nada: as linhas entram como rascunho\ne a resposta é o resumo. Arquivo repetido devolve a importação anterior.",
+        "operationId": "importacoes_importar",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importacoes_importar"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoImportacaoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "O arquivo já tinha sido importado; nada mudou.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoImportacaoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroImportacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/importacoes/{importacao_id}": {
+      "get": {
+        "tags": [
+          "importacoes"
+        ],
+        "summary": "Obter",
+        "operationId": "importacoes_obter",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "importacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Importacao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "importacoes"
+        ],
+        "summary": "Desfazer",
+        "description": "Desfaz a importação enquanto nada dela foi confirmado: apaga as\ntransações e o saldo do extrato, devolve a fatura ao que era e libera o\narquivo para ser importado de novo.",
+        "operationId": "importacoes_desfazer",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "importacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Importacao Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -2776,6 +3020,27 @@
           "valor_real"
         ],
         "title": "AjusteEntrada"
+      },
+      "Body_importacoes_importar": {
+        "properties": {
+          "arquivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Arquivo",
+            "description": "O OFX do extrato da conta ou da fatura."
+          },
+          "conta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arquivo",
+          "conta_id"
+        ],
+        "title": "Body_importacoes_importar"
       },
       "CartaoEdicao": {
         "properties": {
@@ -3227,6 +3492,29 @@
         ],
         "title": "ConfirmacaoSaida"
       },
+      "ContaDaImportacao": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoConta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "tipo"
+        ],
+        "title": "ContaDaImportacao"
+      },
       "ContaDaRegra": {
         "properties": {
           "id": {
@@ -3506,6 +3794,48 @@
         ],
         "title": "ErroCampo"
       },
+      "ErroImportacao": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "campos": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ErroCampo"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campos"
+          },
+          "linhas_repetidas": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LinhaRepetidaSaida"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linhas Repetidas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErroImportacao",
+        "description": "O formato único de erro; no FITID repetido, também as linhas repetidas."
+      },
       "ExemploRascunho": {
         "properties": {
           "descricao": {
@@ -3586,6 +3916,42 @@
           "sugerida"
         ],
         "title": "FaturaCandidataSaida"
+      },
+      "FaturaDaImportacao": {
+        "properties": {
+          "competencia": {
+            "type": "string",
+            "format": "date",
+            "title": "Competencia",
+            "description": "Primeiro dia do mês do vencimento."
+          },
+          "valor_informado": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Informado",
+            "description": "O valor do banco gravado na fatura."
+          },
+          "data_fechamento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Fechamento",
+            "description": "O fechamento do arquivo, gravado na fatura."
+          }
+        },
+        "type": "object",
+        "required": [
+          "competencia",
+          "valor_informado",
+          "data_fechamento"
+        ],
+        "title": "FaturaDaImportacao"
       },
       "FaturaDetalheSaida": {
         "properties": {
@@ -3832,6 +4198,15 @@
         ],
         "title": "FeriadoSaida"
       },
+      "FonteImportacao": {
+        "type": "string",
+        "enum": [
+          "ofx",
+          "csv_mercadopago",
+          "pluggy"
+        ],
+        "title": "FonteImportacao"
+      },
       "FonteTransacao": {
         "type": "string",
         "enum": [
@@ -3865,6 +4240,145 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "ImportacaoSaida": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "nome_arquivo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Arquivo"
+          },
+          "fonte": {
+            "$ref": "#/components/schemas/FonteImportacao"
+          },
+          "conta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContaDaImportacao"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periodo_inicio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo Inicio"
+          },
+          "periodo_fim": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo Fim"
+          },
+          "qtd_novas": {
+            "type": "integer",
+            "title": "Qtd Novas",
+            "description": "Entraram como rascunho (sem as possíveis duplicatas)."
+          },
+          "qtd_possiveis_duplicatas": {
+            "type": "integer",
+            "title": "Qtd Possiveis Duplicatas",
+            "description": "Entraram como rascunho, marcadas."
+          },
+          "qtd_ja_importadas": {
+            "type": "integer",
+            "title": "Qtd Ja Importadas",
+            "description": "Já estavam no app; ficaram de fora."
+          },
+          "qtd_parcelas": {
+            "type": "integer",
+            "title": "Qtd Parcelas",
+            "description": "Parcelas, com a data da compra estimada."
+          },
+          "qtd_confirmadas": {
+            "type": "integer",
+            "title": "Qtd Confirmadas",
+            "description": "Transações desta importação já confirmadas."
+          },
+          "qtd_pendentes": {
+            "type": "integer",
+            "title": "Qtd Pendentes",
+            "description": "Transações desta importação ainda na revisão."
+          },
+          "pode_desfazer": {
+            "type": "boolean",
+            "title": "Pode Desfazer",
+            "description": "Nenhuma transação desta importação foi confirmada."
+          },
+          "saldo_extrato": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SaldoExtratoSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Só no extrato da conta."
+          },
+          "fatura": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FaturaDaImportacao"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Só na fatura do cartão."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "criado_em",
+          "nome_arquivo",
+          "fonte",
+          "conta",
+          "periodo_inicio",
+          "periodo_fim",
+          "qtd_novas",
+          "qtd_possiveis_duplicatas",
+          "qtd_ja_importadas",
+          "qtd_parcelas",
+          "qtd_confirmadas",
+          "qtd_pendentes",
+          "pode_desfazer",
+          "saldo_extrato",
+          "fatura"
+        ],
+        "title": "ImportacaoSaida"
+      },
       "InstituicaoSaida": {
         "properties": {
           "id": {
@@ -3883,6 +4397,37 @@
           "nome"
         ],
         "title": "InstituicaoSaida"
+      },
+      "LinhaRepetidaSaida": {
+        "properties": {
+          "fitid": {
+            "type": "string",
+            "title": "Fitid"
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data"
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor",
+            "description": "Com sinal, como no arquivo: negativo é saída."
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fitid",
+          "data",
+          "valor",
+          "descricao"
+        ],
+        "title": "LinhaRepetidaSaida"
       },
       "ListaFaturasSaida": {
         "properties": {
@@ -4475,6 +5020,24 @@
         ],
         "title": "RespostaErro"
       },
+      "ResultadoImportacaoSaida": {
+        "properties": {
+          "ja_importada": {
+            "type": "boolean",
+            "title": "Ja Importada",
+            "description": "O arquivo já tinha sido importado: `importacao` é a anterior, nada mudou."
+          },
+          "importacao": {
+            "$ref": "#/components/schemas/ImportacaoSaida"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ja_importada",
+          "importacao"
+        ],
+        "title": "ResultadoImportacaoSaida"
+      },
       "RevisaoSaida": {
         "properties": {
           "total": {
@@ -4537,6 +5100,27 @@
           "rascunhos"
         ],
         "title": "RevisaoSaida"
+      },
+      "SaldoExtratoSaida": {
+        "properties": {
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor",
+            "description": "Saldo final do extrato (`LEDGERBAL`)."
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valor",
+          "data"
+        ],
+        "title": "SaldoExtratoSaida"
       },
       "Saude": {
         "properties": {

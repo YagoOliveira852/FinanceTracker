@@ -22,6 +22,7 @@ from app.core.db import Base, ComTimestamps, check_enum
 from app.modulos.cartoes.models import Fatura
 from app.modulos.categorias.models import Categoria
 from app.modulos.contas.models import Conta
+from app.modulos.importacao.models import Importacao
 
 
 class TipoTransacao(StrEnum):
@@ -145,6 +146,9 @@ class Transacao(ComTimestamps, Base):
     fonte: Mapped[str] = mapped_column(Text)
     # FITID do OFX, id da Pluggy ou hash do CSV; nulo no lançamento manual.
     id_externo: Mapped[str | None] = mapped_column(Text)
+    # Importação que trouxe a transação (o desfazer apaga as dela); nula no
+    # lançamento manual.
+    importacao_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("importacao.id"), index=True)
     # Obrigatório em transação de conta `cartao_credito` (regra no service: um
     # CHECK não enxerga o tipo da conta).
     fatura_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("fatura.id"), index=True)
@@ -171,6 +175,7 @@ class Transacao(ComTimestamps, Base):
     # Carregadas só quando pedidas (a revisão usa selectinload).
     conta: Mapped[Conta] = relationship()
     fatura: Mapped[Fatura | None] = relationship()
+    importacao: Mapped[Importacao | None] = relationship()
     compra_parcelada: Mapped[CompraParcelada | None] = relationship(
         back_populates="parcelas", lazy="joined"
     )

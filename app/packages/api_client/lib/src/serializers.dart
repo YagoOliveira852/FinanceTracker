@@ -27,6 +27,7 @@ import 'package:api_client/src/model/compra_parcelada_entrada.dart';
 import 'package:api_client/src/model/compra_parcelada_saida.dart';
 import 'package:api_client/src/model/confirmacao_entrada.dart';
 import 'package:api_client/src/model/confirmacao_saida.dart';
+import 'package:api_client/src/model/conta_da_importacao.dart';
 import 'package:api_client/src/model/conta_da_regra.dart';
 import 'package:api_client/src/model/conta_entrada.dart';
 import 'package:api_client/src/model/conta_na_revisao.dart';
@@ -37,16 +38,21 @@ import 'package:api_client/src/model/duplicata_entrada.dart';
 import 'package:api_client/src/model/duplicata_saida.dart';
 import 'package:api_client/src/model/efeito_aprendizado.dart';
 import 'package:api_client/src/model/erro_campo.dart';
+import 'package:api_client/src/model/erro_importacao.dart';
 import 'package:api_client/src/model/exemplo_rascunho.dart';
 import 'package:api_client/src/model/fatura_candidata_saida.dart';
+import 'package:api_client/src/model/fatura_da_importacao.dart';
 import 'package:api_client/src/model/fatura_detalhe_saida.dart';
 import 'package:api_client/src/model/fatura_edicao.dart';
 import 'package:api_client/src/model/fatura_resumo.dart';
 import 'package:api_client/src/model/feriado_saida.dart';
+import 'package:api_client/src/model/fonte_importacao.dart';
 import 'package:api_client/src/model/fonte_transacao.dart';
 import 'package:api_client/src/model/grupo_categoria.dart';
 import 'package:api_client/src/model/http_validation_error.dart';
+import 'package:api_client/src/model/importacao_saida.dart';
 import 'package:api_client/src/model/instituicao_saida.dart';
+import 'package:api_client/src/model/linha_repetida_saida.dart';
 import 'package:api_client/src/model/lista_faturas_saida.dart';
 import 'package:api_client/src/model/location_inner.dart';
 import 'package:api_client/src/model/login_entrada.dart';
@@ -67,7 +73,9 @@ import 'package:api_client/src/model/regra_detalhe_saida.dart';
 import 'package:api_client/src/model/regra_entrada.dart';
 import 'package:api_client/src/model/regra_saida.dart';
 import 'package:api_client/src/model/resposta_erro.dart';
+import 'package:api_client/src/model/resultado_importacao_saida.dart';
 import 'package:api_client/src/model/revisao_saida.dart';
+import 'package:api_client/src/model/saldo_extrato_saida.dart';
 import 'package:api_client/src/model/saude.dart';
 import 'package:api_client/src/model/status_fatura.dart';
 import 'package:api_client/src/model/status_transacao.dart';
@@ -101,6 +109,7 @@ part 'serializers.g.dart';
   CompraParceladaSaida,
   ConfirmacaoEntrada,
   ConfirmacaoSaida,
+  ContaDaImportacao,
   ContaDaRegra,
   ContaEntrada,
   ContaNaRevisao,
@@ -111,16 +120,21 @@ part 'serializers.g.dart';
   DuplicataSaida,
   EfeitoAprendizado,
   ErroCampo,
+  ErroImportacao,
   ExemploRascunho,
   FaturaCandidataSaida,
+  FaturaDaImportacao,
   FaturaDetalheSaida,
   FaturaEdicao,
   FaturaResumo,
   FeriadoSaida,
+  FonteImportacao,
   FonteTransacao,
   GrupoCategoria,
   HTTPValidationError,
+  ImportacaoSaida,
   InstituicaoSaida,
+  LinhaRepetidaSaida,
   ListaFaturasSaida,
   LocationInner,
   LoginEntrada,
@@ -141,7 +155,9 @@ part 'serializers.g.dart';
   RegraEntrada,
   RegraSaida,
   RespostaErro,
+  ResultadoImportacaoSaida,
   RevisaoSaida,
+  SaldoExtratoSaida,
   Saude,
   StatusFatura,
   StatusTransacao,
@@ -167,6 +183,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(FaturaResumo)]),
         () => ListBuilder<FaturaResumo>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(ImportacaoSaida)]),
+        () => ListBuilder<ImportacaoSaida>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(TransacaoRevisao)]),
@@ -195,6 +215,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(DuplicataSaida)]),
         () => ListBuilder<DuplicataSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(LinhaRepetidaSaida)]),
+        () => ListBuilder<LinhaRepetidaSaida>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(LocationInner)]),

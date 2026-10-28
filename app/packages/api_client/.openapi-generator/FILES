@@ -9,6 +9,7 @@ lib/src/api/cartoes_api.dart
 lib/src/api/categorias_api.dart
 lib/src/api/contas_api.dart
 lib/src/api/faturas_api.dart
+lib/src/api/importacoes_api.dart
 lib/src/api/regras_api.dart
 lib/src/api/revisao_api.dart
 lib/src/api/saude_api.dart
@@ -33,6 +34,7 @@ lib/src/model/compra_parcelada_entrada.dart
 lib/src/model/compra_parcelada_saida.dart
 lib/src/model/confirmacao_entrada.dart
 lib/src/model/confirmacao_saida.dart
+lib/src/model/conta_da_importacao.dart
 lib/src/model/conta_da_regra.dart
 lib/src/model/conta_entrada.dart
 lib/src/model/conta_na_revisao.dart
@@ -44,16 +46,21 @@ lib/src/model/duplicata_entrada.dart
 lib/src/model/duplicata_saida.dart
 lib/src/model/efeito_aprendizado.dart
 lib/src/model/erro_campo.dart
+lib/src/model/erro_importacao.dart
 lib/src/model/exemplo_rascunho.dart
 lib/src/model/fatura_candidata_saida.dart
+lib/src/model/fatura_da_importacao.dart
 lib/src/model/fatura_detalhe_saida.dart
 lib/src/model/fatura_edicao.dart
 lib/src/model/fatura_resumo.dart
 lib/src/model/feriado_saida.dart
+lib/src/model/fonte_importacao.dart
 lib/src/model/fonte_transacao.dart
 lib/src/model/grupo_categoria.dart
 lib/src/model/http_validation_error.dart
+lib/src/model/importacao_saida.dart
 lib/src/model/instituicao_saida.dart
+lib/src/model/linha_repetida_saida.dart
 lib/src/model/lista_faturas_saida.dart
 lib/src/model/location_inner.dart
 lib/src/model/login_entrada.dart
@@ -74,7 +81,9 @@ lib/src/model/regra_detalhe_saida.dart
 lib/src/model/regra_entrada.dart
 lib/src/model/regra_saida.dart
 lib/src/model/resposta_erro.dart
+lib/src/model/resultado_importacao_saida.dart
 lib/src/model/revisao_saida.dart
+lib/src/model/saldo_extrato_saida.dart
 lib/src/model/saude.dart
 lib/src/model/status_fatura.dart
 lib/src/model/status_transacao.dart

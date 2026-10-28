@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.modulos.transacoes.parcelas import data_da_parcela, dividir_em_parcelas
+from app.modulos.transacoes.parcelas import data_da_compra, data_da_parcela, dividir_em_parcelas
 
 
 @pytest.mark.parametrize(
@@ -47,3 +47,17 @@ def test_dividir_sem_centavo_para_cada_parcela_e_erro():
 )
 def test_data_da_parcela(data_compra, numero, esperada):
     assert data_da_parcela(data_compra, numero) == esperada
+
+
+@pytest.mark.parametrize(
+    ("data_parcela", "numero", "esperada"),
+    [
+        (date(2026, 10, 15), 1, date(2026, 10, 15)),
+        (date(2026, 10, 15), 3, date(2026, 8, 15)),
+        (date(2026, 2, 10), 4, date(2025, 11, 10)),  # vira o ano
+        (date(2026, 3, 31), 2, date(2026, 2, 28)),  # 31 fev não existe
+        (date(2026, 1, 20), 13, date(2025, 1, 20)),
+    ],
+)
+def test_data_da_compra(data_parcela, numero, esperada):
+    assert data_da_compra(data_parcela, numero) == esperada

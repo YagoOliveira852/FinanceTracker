@@ -82,6 +82,10 @@ Class | Method | HTTP request | Description
 [*FaturasApi*](doc/FaturasApi.md) | [**obter**](doc/FaturasApi.md#obter) | **GET** /cartoes/{conta_id}/faturas/{competencia} | Obter
 [*FaturasApi*](doc/FaturasApi.md) | [**pagar**](doc/FaturasApi.md#pagar) | **POST** /cartoes/{conta_id}/faturas/{competencia}/pagamentos | Pagar
 [*FaturasApi*](doc/FaturasApi.md) | [**paraCompra**](doc/FaturasApi.md#paracompra) | **GET** /cartoes/{conta_id}/faturas/para-compra | Para Compra
+[*ImportacoesApi*](doc/ImportacoesApi.md) | [**desfazer**](doc/ImportacoesApi.md#desfazer) | **DELETE** /importacoes/{importacao_id} | Desfazer
+[*ImportacoesApi*](doc/ImportacoesApi.md) | [**importar**](doc/ImportacoesApi.md#importar) | **POST** /importacoes | Importar
+[*ImportacoesApi*](doc/ImportacoesApi.md) | [**listar**](doc/ImportacoesApi.md#listar) | **GET** /importacoes | Listar
+[*ImportacoesApi*](doc/ImportacoesApi.md) | [**obter**](doc/ImportacoesApi.md#obter) | **GET** /importacoes/{importacao_id} | Obter
 [*RegrasApi*](doc/RegrasApi.md) | [**criar**](doc/RegrasApi.md#criar) | **POST** /regras | Criar
 [*RegrasApi*](doc/RegrasApi.md) | [**editar**](doc/RegrasApi.md#editar) | **PUT** /regras/{regra_id} | Editar
 [*RegrasApi*](doc/RegrasApi.md) | [**excluir**](doc/RegrasApi.md#excluir) | **DELETE** /regras/{regra_id} | Excluir
@@ -122,6 +126,7 @@ Class | Method | HTTP request | Description
  - [CompraParceladaSaida](doc/CompraParceladaSaida.md)
  - [ConfirmacaoEntrada](doc/ConfirmacaoEntrada.md)
  - [ConfirmacaoSaida](doc/ConfirmacaoSaida.md)
+ - [ContaDaImportacao](doc/ContaDaImportacao.md)
  - [ContaDaRegra](doc/ContaDaRegra.md)
  - [ContaEntrada](doc/ContaEntrada.md)
  - [ContaNaRevisao](doc/ContaNaRevisao.md)
@@ -132,16 +137,21 @@ Class | Method | HTTP request | Description
  - [DuplicataSaida](doc/DuplicataSaida.md)
  - [EfeitoAprendizado](doc/EfeitoAprendizado.md)
  - [ErroCampo](doc/ErroCampo.md)
+ - [ErroImportacao](doc/ErroImportacao.md)
  - [ExemploRascunho](doc/ExemploRascunho.md)
  - [FaturaCandidataSaida](doc/FaturaCandidataSaida.md)
+ - [FaturaDaImportacao](doc/FaturaDaImportacao.md)
  - [FaturaDetalheSaida](doc/FaturaDetalheSaida.md)
  - [FaturaEdicao](doc/FaturaEdicao.md)
  - [FaturaResumo](doc/FaturaResumo.md)
  - [FeriadoSaida](doc/FeriadoSaida.md)
+ - [FonteImportacao](doc/FonteImportacao.md)
  - [FonteTransacao](doc/FonteTransacao.md)
  - [GrupoCategoria](doc/GrupoCategoria.md)
  - [HTTPValidationError](doc/HTTPValidationError.md)
+ - [ImportacaoSaida](doc/ImportacaoSaida.md)
  - [InstituicaoSaida](doc/InstituicaoSaida.md)
+ - [LinhaRepetidaSaida](doc/LinhaRepetidaSaida.md)
  - [ListaFaturasSaida](doc/ListaFaturasSaida.md)
  - [LocationInner](doc/LocationInner.md)
  - [LoginEntrada](doc/LoginEntrada.md)
@@ -162,7 +172,9 @@ Class | Method | HTTP request | Description
  - [RegraEntrada](doc/RegraEntrada.md)
  - [RegraSaida](doc/RegraSaida.md)
  - [RespostaErro](doc/RespostaErro.md)
+ - [ResultadoImportacaoSaida](doc/ResultadoImportacaoSaida.md)
  - [RevisaoSaida](doc/RevisaoSaida.md)
+ - [SaldoExtratoSaida](doc/SaldoExtratoSaida.md)
  - [Saude](doc/Saude.md)
  - [StatusFatura](doc/StatusFatura.md)
  - [StatusTransacao](doc/StatusTransacao.md)

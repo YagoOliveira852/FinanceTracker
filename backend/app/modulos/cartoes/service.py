@@ -26,7 +26,12 @@ from app.modulos.cartoes.feriados import feriados_entre
 from app.modulos.cartoes.models import Cartao, Fatura
 from app.modulos.contas.models import Conta, TipoConta
 from app.modulos.contas.service import obter_ou_criar_instituicao
-from app.modulos.transacoes.models import CompraParcelada, TipoTransacao, Transacao
+from app.modulos.transacoes.models import (
+    CompraParcelada,
+    FonteTransacao,
+    TipoTransacao,
+    Transacao,
+)
 
 # O ajuste da fatura pertence a ela por definição, não pela data: nunca muda de
 # fatura quando um fechamento muda.
@@ -198,6 +203,9 @@ def realocar_compras(sessao: Session, cartao: Cartao, de: date, ate: date | None
     A compra parcelada se move inteira, pela data da compra: a parcela k vai
     para a competência da compra mais k−1. A data de cada parcela não diz em
     que fatura ela está, então parcela nunca é realocada pela própria data.
+
+    Só mexe no que foi lançado à mão: a fatura de uma compra das fontes veio
+    do banco, não da regra (spec `2026-10-28-importacao-design`).
     """
     faturas: dict[date, Fatura] = {}
 
@@ -208,6 +216,7 @@ def realocar_compras(sessao: Session, cartao: Cartao, de: date, ate: date | None
 
     avulsas = select(Transacao).where(
         Transacao.conta_id == cartao.conta_id,
+        Transacao.fonte == FonteTransacao.manual,
         Transacao.compra_parcelada_id.is_(None),
         Transacao.data >= de,
         Transacao.tipo.not_in([tipo.value for tipo in TIPOS_AJUSTE]),
@@ -215,7 +224,11 @@ def realocar_compras(sessao: Session, cartao: Cartao, de: date, ate: date | None
     parceladas = (
         select(CompraParcelada)
         .join(Transacao, Transacao.compra_parcelada_id == CompraParcelada.id)
-        .where(Transacao.conta_id == cartao.conta_id, CompraParcelada.data_compra >= de)
+        .where(
+            Transacao.conta_id == cartao.conta_id,
+            Transacao.fonte == FonteTransacao.manual,
+            CompraParcelada.data_compra >= de,
+        )
         .distinct()
     )
     if ate is not None:
