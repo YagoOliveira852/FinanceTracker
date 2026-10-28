@@ -16,6 +16,7 @@ from app.modulos.cartoes.router import router as cartoes_router
 from app.modulos.categorias.regras_router import router as regras_router
 from app.modulos.categorias.router import router as categorias_router
 from app.modulos.contas.router import router as contas_router
+from app.modulos.importacao.router import router as importacao_router
 from app.modulos.revisao.router import router as revisao_router
 from app.modulos.transacoes.router import router as transacoes_router
 
@@ -47,6 +48,7 @@ app.include_router(faturas_router)
 app.include_router(categorias_router)
 app.include_router(regras_router)
 app.include_router(revisao_router)
+app.include_router(importacao_router)
 
 
 class Saude(BaseModel):

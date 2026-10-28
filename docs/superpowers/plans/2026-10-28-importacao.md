@@ -27,33 +27,33 @@
 
 ### Tarefa 1: parser OFX (TDD, `tests/unit/test_parser_ofx.py`)
 
-- [ ] Fixtures: `conta.ofx` (UTF-8 com acento, `BANKMSGSRSV1`, crédito, débito, "Pagamento de fatura", "Estorno", `LEDGERBAL`), `fatura.ofx` (`CREDITCARDMSGSRSV1`, compra + `IOF de "…"` com o mesmo FITID, parcela " - Parcela 3/10", "Pagamento recebido", estorno, `BALAMT` negativo), `fitid_repetido.ofx`, `sem_fechamento.ofx` (folhas sem `</TAG>`, cp1252).
-- [ ] Testes: tipo do extrato; período; data dos 8 dígitos; valor `Decimal` com sinal; `MEMO`/`NAME`; `FITID:iof`; repetido → `FitidRepetido` com as linhas; folhas abertas; cp1252; valor zero descartado; texto que não é OFX e OFX sem as duas marcas → `FormatoNaoReconhecido`; campo obrigatório faltando → idem, com a linha; `LEDGERBAL` (`BALAMT`, `DTASOF`); parcela (N, M, descrição base).
-- [ ] Implementar `parsers/ofx.py`: `ler_ofx(dados: bytes) -> ExtratoOfx` (`tipo`, `periodo_inicio`, `periodo_fim`, `saldo`, `linhas: list[LinhaOfx]` com `id_externo`, `data`, `valor` com sinal, `descricao`, `parcela`).
+- [x] Fixtures: `conta.ofx` (UTF-8 com acento, `BANKMSGSRSV1`, crédito, débito, "Pagamento de fatura", "Estorno", `LEDGERBAL`), `fatura.ofx` (`CREDITCARDMSGSRSV1`, compra + `IOF de "…"` com o mesmo FITID, parcela " - Parcela 3/10", "Pagamento recebido", estorno, `BALAMT` negativo), `fitid_repetido.ofx`, `sem_fechamento.ofx` (folhas sem `</TAG>`, cp1252).
+- [x] Testes: tipo do extrato; período; data dos 8 dígitos; valor `Decimal` com sinal; `MEMO`/`NAME`; `FITID:iof`; repetido → `FitidRepetido` com as linhas; folhas abertas; cp1252; valor zero descartado; texto que não é OFX e OFX sem as duas marcas → `FormatoNaoReconhecido`; campo obrigatório faltando → idem, com a linha; `LEDGERBAL` (`BALAMT`, `DTASOF`); parcela (N, M, descrição base).
+- [x] Implementar `parsers/ofx.py`: `ler_ofx(dados: bytes) -> ExtratoOfx` (`tipo`, `periodo_inicio`, `periodo_fim`, `saldo`, `linhas: list[LinhaOfx]` com `id_externo`, `data`, `valor` com sinal, `descricao`, `parcela`).
 
 ### Tarefa 2: possível duplicata (TDD, `tests/unit/test_duplicatas.py`)
 
-- [ ] Tabela de casos: mesmo valor/sentido ±2 dias casa; 3 dias não; sentido oposto não; um para um (duas novas iguais e uma existente → só a de data mais perto); desempate por data e id; resultado estável.
-- [ ] `duplicatas.py`: `marcar_duplicatas(novas, existentes) -> dict[indice_nova, id_existente]`, com `Protocol` como `pareamento.py`.
+- [x] Tabela de casos: mesmo valor/sentido ±2 dias casa; 3 dias não; sentido oposto não; um para um (duas novas iguais e uma existente → só a de data mais perto); desempate por data e id; resultado estável.
+- [x] `duplicatas.py`: `marcar_duplicatas(novas, existentes) -> dict[indice_nova, id_existente]`, com `Protocol` como `pareamento.py`.
 
 ### Tarefa 3: modelo e migration
 
-- [ ] `Importacao` (spec, "Modelo de dados"), `SnapshotSaldo`, `Transacao.importacao_id`; `check_enum` de `fonte` e `status`.
-- [ ] Migration `cria_importacao_e_snapshot`; `test_migrations.py` continua passando (upgrade/downgrade).
+- [x] `Importacao` (spec, "Modelo de dados"), `SnapshotSaldo`, `Transacao.importacao_id`; `check_enum` de `fonte` e `status`.
+- [x] Migration `cria_importacao_e_snapshot`; `test_migrations.py` continua passando (upgrade/downgrade).
 
 ### Tarefa 4: service de importação (TDD, `tests/integration/test_importacoes.py`)
 
-- [ ] `importar(sessao, conta_id, nome_arquivo, dados, hoje)`: tamanho; hash → já importada; parser; conta × tipo; linhas → transações (tipos da tabela da spec, `pagamento_fatura` sem fatura, "Pagamento recebido" fora); já importadas (qualquer status); duplicatas contra a conta; parcelas (reaproveitar compra ±3 dias); fatura (competência mais perto de `DTEND`, limites dos vizinhos, valor e fechamento, antes/gravado, realocar manuais); snapshot (substitui); um commit só no fim.
-- [ ] `realocar_compras` filtra `fonte = manual` (teste em `test_faturas.py`: compra importada não muda de fatura ao editar o fechamento).
-- [ ] `listar`, `obter` (contagens de confirmadas/pendentes na leitura, `pode_desfazer`).
-- [ ] `desfazer`: 409 com confirmada; apaga transações, compras órfãs, snapshot, importação; restaura a fatura só se ainda estiver com os valores gravados; realoca manuais.
+- [x] `importar(sessao, conta_id, nome_arquivo, dados, hoje)`: tamanho; hash → já importada; parser; conta × tipo; linhas → transações (tipos da tabela da spec, `pagamento_fatura` sem fatura, "Pagamento recebido" fora); já importadas (qualquer status); duplicatas contra a conta; parcelas (reaproveitar compra ±3 dias); fatura (competência mais perto de `DTEND`, limites dos vizinhos, valor e fechamento, antes/gravado, realocar manuais); snapshot (substitui); um commit só no fim.
+- [x] `realocar_compras` filtra `fonte = manual` (teste em `test_importacoes.py`: compra importada não muda de fatura ao editar o fechamento).
+- [x] `listar`, `obter` (contagens de confirmadas/pendentes na leitura, `pode_desfazer`).
+- [x] `desfazer`: 409 com confirmada; apaga transações, compras órfãs, snapshot, importação; restaura a fatura só se ainda estiver com os valores gravados; realoca manuais.
 
 ### Tarefa 5: rotas e contrato
 
-- [ ] `router.py` com `POST` multipart (`arquivo: UploadFile`, `conta_id: Annotated[uuid.UUID, Form()]`), `GET`, `GET {id}`, `DELETE {id}`; 201/200 no `POST`; `ErroImportacao` no 422; incluído em `main.py`.
-- [ ] Testes de rota: multipart feliz (conta e fatura), já importado (200), FITID repetido (422 com linhas, nada gravado), formato, conta incompatível, carteira, conta desativada, desfazer (204/409/404), arquivo grande.
-- [ ] `test_operation_ids.py` continua passando; `bash scripts/gerar-cliente-api.sh` (o cliente vai no PR 3, junto com o app que o usa, ou neste, se o CI do app exigir).
-- [ ] ruff, pytest, code review, PR.
+- [x] `router.py` com `POST` multipart (`arquivo: UploadFile`, `conta_id: Annotated[uuid.UUID, Form()]`), `GET`, `GET {id}`, `DELETE {id}`; 201/200 no `POST`; `ErroImportacao` no 422; incluído em `main.py`.
+- [x] Testes de rota: multipart feliz (conta e fatura), já importado (200), FITID repetido (422 com linhas, nada gravado), formato, conta incompatível, carteira, conta desativada, desfazer (204/409/404), arquivo grande.
+- [x] `test_operation_ids.py` continua passando; `bash scripts/gerar-cliente-api.sh` (o contrato novo vai neste PR).
+- [x] ruff, pytest, code review, PR.
 
 ## PR 3 — app (`feat/importacao-app`, empilhado no PR 2)
 

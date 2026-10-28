@@ -3,3 +3,6 @@
 
 # Cliente gerado pelo openapi-generator: o GitHub recolhe no diff dos PRs.
 app/packages/api_client/** linguist-generated=true
+
+# Fixtures de extrato: bytes exatos (encoding e quebra de linha fazem parte do teste).
+backend/tests/fixtures/** -text
