@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/tema.dart';
-import '../../../app/widgets/chip_opcao.dart';
 import '../../../app/widgets/estados.dart';
 import '../../../app/widgets/lista.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../contas/cubit/contas_cubit.dart';
+import '../../importacao/ui/importar_tela.dart';
 import '../../transacoes/data/transacao.dart';
 import '../cubit/revisao_cubit.dart';
 import '../data/revisao.dart';
@@ -51,6 +52,13 @@ class RevisaoTela extends StatelessWidget {
                 ),
             ],
           ),
+          actions: [
+            IconButton(
+              tooltip: 'Importar extrato',
+              icon: const Icon(Icons.upload_file_rounded),
+              onPressed: () => context.push(rotaImportar),
+            ),
+          ],
         ),
         body: switch (estado) {
           RevisaoEstado(revisao: null, :final erro?) => ErroComTentar(
@@ -214,7 +222,7 @@ class _FaixaDoLote extends StatelessWidget {
   }
 }
 
-/// "Nada para revisar". Importar extrato chega com a importação (em breve).
+/// "Nada para revisar", com o atalho para importar um extrato.
 class _Vazio extends StatelessWidget {
   const _Vazio();
 
@@ -224,19 +232,10 @@ class _Vazio extends StatelessWidget {
       icone: Icons.task_alt_rounded,
       titulo: 'Nada para revisar',
       texto: 'Tudo o que chegou está confirmado.',
-      acao: Wrap(
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: Espaco.x2,
-        runSpacing: Espaco.x2,
-        children: [
-          OutlinedButton.icon(
-            onPressed: null,
-            icon: const Icon(Icons.upload_file_rounded),
-            label: const Text('Importar extrato'),
-          ),
-          const SeloEmBreve(),
-        ],
+      acao: OutlinedButton.icon(
+        onPressed: () => context.push(rotaImportar),
+        icon: const Icon(Icons.upload_file_rounded),
+        label: const Text('Importar extrato'),
       ),
     );
   }

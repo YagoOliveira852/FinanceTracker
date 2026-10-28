@@ -51,7 +51,9 @@ Future<void> _tocar(WidgetTester tester, Finder alvo) async {
 }
 
 void main() {
-  testWidgets('vazio: "Nada para revisar" e importar em breve', (tester) async {
+  testWidgets('vazio: "Nada para revisar" com o atalho para importar', (
+    tester,
+  ) async {
     await _abrir(
       tester,
       RevisaoRepositorioFalso(revisao: revisaoCom(rascunhos: [])),
@@ -65,8 +67,9 @@ void main() {
         matching: find.bySubtype<ButtonStyleButton>(),
       ),
     );
-    expect(importar.onPressed, isNull);
-    expect(find.text('Em breve'), findsOneWidget);
+    expect(importar.onPressed, isNotNull);
+    expect(find.byTooltip('Importar extrato'), findsOneWidget);
+    expect(find.text('Em breve'), findsNothing);
     expect(find.textContaining(RegExp(r'^\d+ para revisar$')), findsNothing);
   });
 

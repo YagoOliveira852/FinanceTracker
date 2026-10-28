@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/tema.dart';
 import '../../../app/widgets/chip_opcao.dart';
 import '../../../app/widgets/lista.dart';
+import '../../importacao/ui/importar_tela.dart';
 import '../../login/cubit/sessao_cubit.dart';
 
 /// Rota da tela Contas, dentro da aba Mais.
@@ -13,8 +14,8 @@ const rotaContas = '/mais/contas';
 /// Rota de Categorias e regras, dentro da aba Mais.
 const rotaCategorias = '/mais/categorias';
 
-/// Aba Mais: Contas, Categorias e regras e os itens que ainda não têm tela
-/// ("em breve").
+/// Aba Mais: Contas, Importar extrato, Categorias e regras e os itens que
+/// ainda não têm tela ("em breve").
 class MaisTela extends StatelessWidget {
   const MaisTela({super.key});
 
@@ -55,14 +56,16 @@ class MaisTela extends StatelessWidget {
           ),
           const SizedBox(height: Espaco.x4),
           const TituloSecao('Dados', pequeno: true),
-          const GrupoLista(
+          GrupoLista(
             itens: [
-              _EmBreve(
+              ItemLista(
                 icone: Icons.upload_file_rounded,
                 titulo: 'Importar extrato',
-                subtitulo: 'Arquivo OFX ou CSV',
+                subtitulo: const Text('OFX da conta ou da fatura do cartão'),
+                direita: seta,
+                aoTocar: () => context.push(rotaImportar),
               ),
-              _EmBreve(
+              const _EmBreve(
                 icone: Icons.sync_rounded,
                 titulo: 'Open Finance',
                 subtitulo: 'Conexões do Meu Pluggy',

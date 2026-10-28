@@ -155,7 +155,7 @@ Tag `importacoes` (operationIds `importacoes_importar`, `importacoes_listar`, `i
 - **Processando:** diálogo sem cancelar.
 - **Resumo:** Novas, Possíveis duplicatas e Já importadas (linhas zeradas somem, menos Novas); conta: saldo do extrato; cartão: parcelas e fatura. "Ir para a Revisão" e "Desfazer importação" (com confirmação); sem desfazer, o aviso de quantas já foram confirmadas e "Revisar as N pendentes".
 - **Erros:** já importado (aviso com "Ver importação"), FITID repetido (as linhas e a orientação), formato não reconhecido, conta incompatível (no campo).
-- **Compartilhar:** o `receive_sharing_intent` recebe `ACTION_SEND` (intent-filter no `AndroidManifest` para OFX e `application/octet-stream`); o app abre a tela já preenchida depois da biometria (app bloqueado) ou do login (sessão expirada); o cartão do arquivo mostra "Recebido pelo Compartilhar" e o X volta ao Início.
+- **Compartilhar:** o `receive_sharing_intent` recebe `ACTION_SEND` (intent-filter no `AndroidManifest` para OFX e `application/octet-stream`); o app abre a tela já preenchida depois da biometria (app bloqueado; quando ela existir, card próprio) ou do login (sessão expirada) — o `CompartilhadoCubit`, no topo do app, guarda o arquivo até a sessão estar conectada; o cartão do arquivo mostra "Recebido pelo Compartilhar" e o X volta ao Início.
 - Dependências novas aprovadas pelo Yago em 28/10: `file_picker` e `receive_sharing_intent`.
 
 ## Alternativas consideradas

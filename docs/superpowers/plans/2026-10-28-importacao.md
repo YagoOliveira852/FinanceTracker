@@ -59,20 +59,20 @@
 
 ### Tarefa 6: dependências e Android
 
-- [ ] `flutter pub add file_picker receive_sharing_intent`; intent-filter `ACTION_SEND` (`application/octet-stream`, `application/x-ofx`, `text/plain`) no `AndroidManifest.xml`; `test/android/manifesto_test.dart` cobre o filtro.
+- [x] `flutter pub add file_picker receive_sharing_intent`; intent-filter `ACTION_SEND` (`application/octet-stream`, `application/x-ofx`, `text/plain`) no `AndroidManifest.xml`; `test/android/manifesto_test.dart` cobre o filtro.
 
 ### Tarefa 7: dados
 
-- [ ] `features/importacao/data/importacao.dart` (freezed: `Importacao`, `ResultadoImportacao` com `jaImportada`, `LinhaRepetida`), `importacoes_repositorio.dart` (multipart pelo cliente gerado; `ErroApi` com `linhasRepetidas`), `tipo_arquivo.dart` (puro: reconhece OFX de fatura pela marca, para sugerir a conta).
-- [ ] Repositório falso em `test/apoio/importacoes_falso.dart`; testes do repositório com o adaptador falso.
+- [x] `features/importacao/data/importacao.dart` (freezed: `Importacao`, `ResultadoImportacao` com `jaImportada`, `LinhaRepetida`), `importacoes_repositorio.dart` (multipart pelo cliente gerado; `ErroApi` com `linhasRepetidas`), `tipo_arquivo.dart` (puro: reconhece OFX de fatura pela marca, para sugerir a conta).
+- [x] Repositório falso em `test/apoio/importacoes_falso.dart`; testes do repositório com o adaptador falso.
 
 ### Tarefa 8: cubits
 
-- [ ] `ImportarCubit` (arquivo escolhido ou compartilhado, conta sugerida pela última importação do mesmo tipo, enviando, erros por campo, FITID repetido, já importado) e `ImportacaoCubit` (resumo, desfazer). bloc_test.
+- [x] `ImportarCubit` (arquivo escolhido ou compartilhado, conta sugerida pela última importação do mesmo tipo, enviando, erros por campo, FITID repetido, já importado) e `ImportacaoCubit` (resumo, desfazer). bloc_test.
 
 ### Tarefa 9: telas e entradas
 
-- [ ] `ImportarTela` (vazio, arquivo escolhido, compartilhado, processando, erros), `ResumoImportacaoTela` (conta, cartão, sem desfazer), confirmação do desfazer.
-- [ ] Rotas no go_router; Mais → "Importar extrato"; Revisão: ícone no cabeçalho e botão do vazio; Compartilhar → tela preenchida (após o login, se a sessão expirou) com o X voltando ao Início. Após importar/desfazer, recarregar a Revisão.
-- [ ] Widget tests das telas e do fluxo no `app_test.dart`; `flutter analyze`, `flutter test`; `CLAUDE.md` (stack do app) e README se mudar algo de uso.
+- [x] `ImportarTela` (vazio, arquivo escolhido, compartilhado, processando, erros), `ResumoImportacaoTela` (conta, cartão, sem desfazer), confirmação do desfazer.
+- [x] Rotas no go_router; Mais → "Importar extrato"; Revisão: ícone no cabeçalho e botão do vazio; Compartilhar → tela preenchida (após o login, se a sessão expirou) com o X voltando ao Início. Após importar/desfazer, recarregar a Revisão.
+- [x] Widget tests das telas e do fluxo no `app_test.dart`; `flutter analyze`, `flutter test`; `CLAUDE.md` (stack do app) e README se mudar algo de uso.
 - [ ] Teste no aparelho com o ambiente local `financas-celular` e fixtures fictícias; code review, PR.

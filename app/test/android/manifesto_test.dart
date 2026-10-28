@@ -19,4 +19,25 @@ void main() {
       ),
     );
   });
+
+  // O Compartilhar de um OFX só abre o app se o filtro aceitar SEND com os
+  // tipos que os apps usam para o arquivo.
+  test('manifesto recebe OFX pelo Compartilhar', () {
+    final manifesto = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
+    final filtro = RegExp(
+      r'<intent-filter>(?:(?!</intent-filter>).)*'
+      r'android\.intent\.action\.SEND"(?:(?!</intent-filter>).)*</intent-filter>',
+      dotAll: true,
+    ).firstMatch(manifesto)?.group(0);
+
+    expect(filtro, isNotNull);
+    for (final tipo in [
+      'application/x-ofx',
+      'application/octet-stream',
+      'text/plain',
+    ]) {
+      expect(filtro, contains('android:mimeType="$tipo"'));
+    }
+  });
 }

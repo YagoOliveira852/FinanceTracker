@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import '../features/categorias/cubit/categorias_cubit.dart';
 import '../features/contas/cubit/contas_cubit.dart';
+import '../features/importacao/cubit/compartilhado_cubit.dart';
+import '../features/importacao/data/importacao.dart';
+import '../features/importacao/ui/importar_tela.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/revisao/cubit/revisao_cubit.dart';
 import 'injecao.dart';
@@ -18,7 +21,9 @@ import 'tema.dart';
 /// mostram as mesmas contas: criar uma conta ou lançar uma transação
 /// recarrega um cubit só, e todas as telas veem o saldo novo. O
 /// [CategoriasCubit] pelo mesmo motivo: Categorias e Lançamento. O
-/// [RevisaoCubit] porque a barra de abas mostra o contador da Revisão.
+/// [RevisaoCubit] porque a barra de abas mostra o contador da Revisão. O
+/// [CompartilhadoCubit] porque o extrato do Compartilhar pode chegar antes
+/// do login e só abre a importação com a sessão conectada.
 class FinancasApp extends StatefulWidget {
   const FinancasApp(this.dependencias, {super.key});
 
@@ -48,6 +53,8 @@ class _FinancasAppState extends State<FinancasApp> {
         RepositoryProvider.value(value: dependencias.faturas),
         RepositoryProvider.value(value: dependencias.categorias),
         RepositoryProvider.value(value: dependencias.revisao),
+        RepositoryProvider.value(value: dependencias.importacoes),
+        RepositoryProvider.value(value: dependencias.seletorArquivo),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -84,16 +91,29 @@ class _FinancasAppState extends State<FinancasApp> {
               return revisao;
             },
           ),
+          BlocProvider(
+            lazy: false,
+            create: (_) => CompartilhadoCubit(dependencias.compartilhamento),
+          ),
         ],
-        child: BlocListener<SessaoCubit, SessaoEstado>(
-          // Recarrega contas, categorias e a revisão a cada login.
-          listenWhen: (antes, depois) =>
-              antes is! SessaoConectada && depois is SessaoConectada,
-          listener: (context, _) {
-            context.read<ContasCubit>().carregar();
-            context.read<CategoriasCubit>().carregar();
-            context.read<RevisaoCubit>().carregar();
-          },
+        child: MultiBlocListener(
+          listeners: [
+            BlocListener<SessaoCubit, SessaoEstado>(
+              // Recarrega contas, categorias e a revisão a cada login.
+              listenWhen: (antes, depois) =>
+                  antes is! SessaoConectada && depois is SessaoConectada,
+              listener: (context, _) {
+                context.read<ContasCubit>().carregar();
+                context.read<CategoriasCubit>().carregar();
+                context.read<RevisaoCubit>().carregar();
+                _abrirCompartilhado(context);
+              },
+            ),
+            BlocListener<CompartilhadoCubit, ArquivoEscolhido?>(
+              listenWhen: (_, depois) => depois != null,
+              listener: (context, _) => _abrirCompartilhado(context),
+            ),
+          ],
           child: MaterialApp.router(
             title: 'Finanças',
             debugShowCheckedModeBanner: false,
@@ -106,6 +126,18 @@ class _FinancasAppState extends State<FinancasApp> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Extrato recebido pelo Compartilhar: com a sessão conectada, abre a
+  /// importação já preenchida; sem ela, espera o login.
+  void _abrirCompartilhado(BuildContext context) {
+    if (context.read<SessaoCubit>().state is! SessaoConectada) return;
+    final arquivo = context.read<CompartilhadoCubit>().consumir();
+    if (arquivo == null) return;
+    // Depois do quadro: o redirect do login para o Início roda antes.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _router.push(rotaImportar, extra: arquivo),
     );
   }
 }
