@@ -96,7 +96,9 @@ GoRouter criarRouter(SessaoCubit sessao) {
       GoRoute(
         path: rotaImportar,
         builder: (context, state) {
-          final compartilhado = state.extra as ArquivoEscolhido?;
+          // A rota filha (resumo) passa outro `extra` por aqui também.
+          final extra = state.extra;
+          final compartilhado = extra is ArquivoEscolhido ? extra : null;
           return BlocProvider(
             create: (context) {
               final cubit = ImportarCubit(
@@ -113,7 +115,8 @@ GoRouter criarRouter(SessaoCubit sessao) {
           GoRoute(
             path: ':id',
             builder: (context, state) {
-              final args = state.extra as ArgsResumo?;
+              final extra = state.extra;
+              final args = extra is ArgsResumo ? extra : null;
               return BlocProvider(
                 create: (context) {
                   final cubit = ImportacaoCubit(
