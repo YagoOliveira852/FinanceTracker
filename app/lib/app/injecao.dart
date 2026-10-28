@@ -4,6 +4,8 @@ import '../core/auth/armazenamento_tokens.dart';
 import '../features/categorias/data/categorias_repositorio.dart';
 import '../features/contas/data/contas_repositorio.dart';
 import '../features/faturas/data/faturas_repositorio.dart';
+import '../features/importacao/data/arquivos.dart';
+import '../features/importacao/data/importacoes_repositorio.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/login/data/auth_repositorio.dart';
 import '../features/revisao/data/revisao_repositorio.dart';
@@ -22,6 +24,9 @@ class Dependencias {
     required this.faturas,
     required this.categorias,
     required this.revisao,
+    required this.importacoes,
+    required this.seletorArquivo,
+    required this.compartilhamento,
   }) : sessao = SessaoCubit(auth);
 
   /// Dependências reais, falando com a API em [baseUrl].
@@ -46,6 +51,9 @@ class Dependencias {
       faturas: FaturasRepositorioApi(cliente),
       categorias: CategoriasRepositorioApi(cliente),
       revisao: RevisaoRepositorioApi(cliente),
+      importacoes: ImportacoesRepositorioApi(cliente),
+      seletorArquivo: SeletorArquivoSistema(),
+      compartilhamento: FonteCompartilhamentoSistema(),
     );
   }
 
@@ -55,5 +63,10 @@ class Dependencias {
   final FaturasRepositorio faturas;
   final CategoriasRepositorio categorias;
   final RevisaoRepositorio revisao;
+  final ImportacoesRepositorio importacoes;
+  final SeletorArquivo seletorArquivo;
+
+  /// Extratos recebidos pelo Compartilhar de outro app.
+  final FonteCompartilhamento compartilhamento;
   final SessaoCubit sessao;
 }

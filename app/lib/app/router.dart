@@ -29,6 +29,13 @@ import '../features/faturas/data/faturas_repositorio.dart';
 import '../features/faturas/ui/editar_fatura_tela.dart';
 import '../features/faturas/ui/fatura_tela.dart';
 import '../features/faturas/ui/faturas_tela.dart';
+import '../features/importacao/cubit/importacao_cubit.dart';
+import '../features/importacao/cubit/importar_cubit.dart';
+import '../features/importacao/data/arquivos.dart';
+import '../features/importacao/data/importacao.dart';
+import '../features/importacao/data/importacoes_repositorio.dart';
+import '../features/importacao/ui/importar_tela.dart';
+import '../features/importacao/ui/resumo_importacao_tela.dart';
 import '../features/inicio/ui/inicio_tela.dart';
 import '../features/login/cubit/login_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
@@ -83,6 +90,48 @@ GoRouter criarRouter(SessaoCubit sessao) {
           ),
           child: const LoginTela(),
         ),
+      ),
+      // Importar extrato abre por cima das abas, de Mais, da Revisão ou do
+      // Compartilhar (`extra`: o arquivo recebido).
+      GoRoute(
+        path: rotaImportar,
+        builder: (context, state) {
+          final compartilhado = state.extra as ArquivoEscolhido?;
+          return BlocProvider(
+            create: (context) {
+              final cubit = ImportarCubit(
+                context.read<ImportacoesRepositorio>(),
+                context.read<SeletorArquivo>(),
+              )..carregar();
+              if (compartilhado != null) cubit.receberArquivo(compartilhado);
+              return cubit;
+            },
+            child: ImportarTela(compartilhado: compartilhado != null),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: ':id',
+            builder: (context, state) {
+              final args = state.extra as ArgsResumo?;
+              return BlocProvider(
+                create: (context) {
+                  final cubit = ImportacaoCubit(
+                    context.read<ImportacoesRepositorio>(),
+                    state.pathParameters['id']!,
+                    inicial: args?.importacao,
+                  );
+                  // Aberta pelo histórico: confirmadas e pendentes de agora.
+                  if (args?.recemImportada != true) cubit.carregar();
+                  return cubit;
+                },
+                child: ResumoImportacaoTela(
+                  recemImportada: args?.recemImportada ?? false,
+                ),
+              );
+            },
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, _, abas) => _EstruturaAbas(abas),

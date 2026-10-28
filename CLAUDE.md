@@ -23,7 +23,7 @@ Instruções pessoais (modo de trabalho, prazo, cronograma) ficam em `CLAUDE.loc
 ## Stack
 
 - **Backend:** Python 3.12, FastAPI **síncrono** (rotas `def`, `Session`), Pydantic v2 (+ pydantic-settings), SQLAlchemy 2.0 (estilo tipado, `Mapped[]`), Alembic, psycopg 3, argon2 (senha), PyJWT, httpx (`httpx.Client` para Pluggy e BCB), holidays (feriados nacionais).
-- **App:** Flutter estável / Dart 3, go_router, flutter_bloc (Cubit), dio, freezed (json_serializable quando o app tiver JSON próprio), `decimal`, drift (cache de leitura), fl_chart, local_auth, flutter_secure_storage, flutter_local_notifications.
+- **App:** Flutter estável / Dart 3, go_router, flutter_bloc (Cubit), dio, freezed (json_serializable quando o app tiver JSON próprio), `decimal`, drift (cache de leitura), fl_chart, local_auth, flutter_secure_storage, flutter_local_notifications, file_picker (seletor do extrato), receive_sharing_intent (extrato pelo Compartilhar do Android; intent-filter `SEND` no `AndroidManifest.xml`).
 - **Contrato:** cliente Dart **gerado** do OpenAPI do FastAPI (openapi-generator 7.26.0 via Docker, alvo `dart-dio`, serialização `built_value`, `decimal=String`) em `app/packages/api_client/`. O FastAPI publica operationId `<tag>_<função>` e o gerador corta a tag (`removeOperationIdPrefix`): `contas_listar` vira `ContasApi.listar()`. Por isso cada rota tem **uma tag só, sem `_`** (teste em `tests/unit/test_operation_ids.py`).
 - **Banco:** PostgreSQL 16.
 - **Ferramentas:** uv (dependências Python), ruff (lint/format), pytest + httpx + testcontainers.
@@ -201,6 +201,7 @@ Organizado **por módulo de domínio**, não por camada: `backend/app/modulos/<m
 - `lib/core/formatacao/` — dinheiro (`R$ 1.234,56`, leitura do valor digitado, sempre `Decimal`) e datas em pt-BR.
 - `lib/core/cache/` — drift, só leitura offline; o servidor é a fonte da verdade.
 - `lib/features/<feature>/` — `data/` (repositório que usa o cliente gerado e converte seus modelos `built_value` em modelos `freezed` do app, `String` monetária → `Decimal`), `cubit/` (estado), `ui/` (telas e widgets). Telas e cubits nunca importam tipos do cliente gerado.
+- Importação (`features/importacao/`): tela por cima das abas (`/importar`, de Mais, do ícone e do vazio da Revisão), resumo em `/importar/:id`; o `CompartilhadoCubit` fica no topo do app e abre a importação com o arquivo recebido assim que a sessão estiver conectada (depois do login, se ela expirou).
 - Features: `login`, `inicio` (aporte, reserva, alerta), `revisao` (rascunhos e decisões; o `RevisaoCubit` fica no topo do app, porque a barra de abas mostra o contador; cada folha tem o seu cubit, e o efeito na regra vem pronto da API), `transacoes`, `contas`, `faturas`, `categorias` (categorias e regras, em Mais; o `CategoriasCubit` fica no topo do app, como o `ContasCubit`), `importacao`, `investimentos`, `configuracoes`.
 
 ### Autenticação

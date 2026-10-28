@@ -7,11 +7,17 @@ import '../apoio/auth_falso.dart';
 import '../apoio/categorias_falso.dart';
 import '../apoio/contas_falso.dart';
 import '../apoio/faturas_falso.dart';
+import '../apoio/importacoes_falso.dart';
 import '../apoio/revisao_falso.dart';
 import '../apoio/transacoes_falso.dart';
 
 /// App inteiro (router, abas, providers) com repositórios falsos.
-Future<Dependencias> _abrir(WidgetTester tester, {bool sessao = true}) async {
+Future<Dependencias> _abrir(
+  WidgetTester tester, {
+  bool sessao = true,
+  ImportacoesRepositorioFalso? importacoes,
+  FonteCompartilhamentoFalsa? compartilhamento,
+}) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
@@ -23,6 +29,9 @@ Future<Dependencias> _abrir(WidgetTester tester, {bool sessao = true}) async {
     faturas: FaturasRepositorioFalso(),
     categorias: CategoriasRepositorioFalso(),
     revisao: RevisaoRepositorioFalso(),
+    importacoes: importacoes ?? ImportacoesRepositorioFalso(),
+    seletorArquivo: SeletorArquivoFalso(arquivoExemplo()),
+    compartilhamento: compartilhamento ?? FonteCompartilhamentoFalsa(),
   );
   await dependencias.sessao.iniciar();
   await tester.pumpWidget(FinancasApp(dependencias));
@@ -90,7 +99,7 @@ void main() {
     await tester.tap(find.text('Mais'));
     await tester.pumpAndSettle();
     expect(find.text('Open Finance'), findsOneWidget);
-    expect(find.text('Em breve'), findsNWidgets(6));
+    expect(find.text('Em breve'), findsNWidgets(5));
 
     await tester.tap(find.text('Contas'));
     await tester.pumpAndSettle();
@@ -204,5 +213,64 @@ void main() {
 
     expect(find.text('Acesse suas finanças'), findsOneWidget);
     expect(find.textContaining('Sessão expirada.'), findsOneWidget);
+  });
+
+  testWidgets('Compartilhar um OFX abre a importação já preenchida', (
+    tester,
+  ) async {
+    final compartilhamento = FonteCompartilhamentoFalsa();
+    await _abrir(tester, compartilhamento: compartilhamento);
+
+    compartilhamento.controlador.add(
+      arquivoExemplo(nome: 'fatura-novembro.ofx', compartilhado: true),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Importar extrato'), findsOneWidget);
+    expect(find.text('fatura-novembro.ofx'), findsOneWidget);
+    expect(find.textContaining('Recebido pelo Compartilhar'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Fechar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Saldo disponível'), findsOneWidget);
+  });
+
+  testWidgets('Compartilhar com a sessão expirada abre depois do login', (
+    tester,
+  ) async {
+    final compartilhamento = FonteCompartilhamentoFalsa();
+    await _abrir(tester, sessao: false, compartilhamento: compartilhamento);
+
+    compartilhamento.controlador.add(arquivoExemplo(compartilhado: true));
+    await tester.pumpAndSettle();
+    expect(find.text('Acesse suas finanças'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'E-mail'),
+      'ana@exemplo.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Senha'),
+      'exemplo-123',
+    );
+    await tester.tap(find.text('Entrar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('extrato-outubro.ofx'), findsOneWidget);
+    expect(find.textContaining('Recebido pelo Compartilhar'), findsOneWidget);
+  });
+
+  testWidgets('Revisão → ícone de importar abre a importação', (tester) async {
+    await _abrir(tester);
+
+    await tester.tap(find.text('Revisão'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Importar extrato'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Escolher arquivo'), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('3 para revisar'), findsOneWidget);
   });
 }
