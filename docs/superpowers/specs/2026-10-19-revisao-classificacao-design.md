@@ -94,6 +94,8 @@ Lidos pela estrutura mascarada e por comparações agregadas (contagens e sim/n�
 
 ### Decisões de importação a partir das amostras
 
+O fluxo completo (tudo ou nada, desfazer, possível duplicata, fatura e saldo do extrato) está na spec `2026-10-28-importacao-design.md`.
+
 - **Nubank só por OFX**, conta e cartão, com um parser OFX genérico. Não há parser de CSV do Nubank; CSV é usado só para o Mercado Pago. `fonte` passa a ser `manual | ofx | csv_mercadopago | pluggy`.
 - **`id_externo` no OFX:** o `FITID`; a linha cujo `MEMO` começa com `IOF de` usa `FITID:iof`. Determinístico entre reimportações. Se ainda restar `FITID` repetido no mesmo arquivo, a importação falha com erro explícito em vez de descartar linha.
 - **Dados de fatura vindos do OFX:** `valor_informado` = −`BALAMT`; `data_fechamento` = `DTEND`; vencimento continua calculado pela regra do cartão e editável.

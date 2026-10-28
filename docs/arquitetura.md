@@ -223,11 +223,16 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 | fonte | text | `ofx` \| `csv_mercadopago` \| `pluggy` |
 | conta_id | uuid FK null | |
 | nome_arquivo | text null | |
-| hash_arquivo | text null unique | impede importar o mesmo arquivo duas vezes |
-| periodo_inicio / periodo_fim | date null | |
-| qtd_novas / qtd_duplicadas | int | resumo mostrado ao usuário |
-| status | text | `ok` \| `erro` |
+| hash_arquivo | text null unique | SHA-256 dos bytes; impede importar o mesmo arquivo duas vezes (global, independe da conta); só gravado quando a importação dá certo |
+| periodo_inicio / periodo_fim | date null | `DTSTART`/`DTEND` do OFX |
+| qtd_novas / qtd_possiveis_duplicatas / qtd_ja_importadas / qtd_parcelas | int | resumo mostrado ao usuário; "já importada" = mesmo `(conta_id, fonte, id_externo)`, inclusive ignorada |
+| fatura_id | uuid FK null | fatura que o OFX do cartão gravou |
+| fatura_valor_antes / fatura_fechamento_antes | numeric(14,2) / date null | o que a fatura tinha antes; o desfazer restaura |
+| fatura_valor_gravado / fatura_fechamento_gravado | numeric(14,2) / date null | o que a importação gravou; o desfazer só restaura se a fatura ainda estiver assim |
+| status | text | `ok` \| `erro` (erro só no sync da Pluggy: importação de arquivo com erro não grava nada) |
 | erro | text null | |
+
+**Importação de arquivo** (`POST /importacoes`, multipart): tudo ou nada; sem prévia, com **desfazer** (`DELETE /importacoes/{id}`) enquanto nenhuma transação dela está confirmada — apaga as transações, as compras parceladas sem parcela, o snapshot e a linha da importação, e devolve a fatura ao que era. Spec `2026-10-28-importacao`.
 
 **compra_parcelada** — `id`, `descricao`, `valor_total` (`CHECK > 0`), `qtd_parcelas` (`CHECK >= 2`; o máximo de 24 do lançamento manual fica na API), `data_compra`, `data_compra_estimada` (bool, padrão `false`). Agrupa as parcelas. Lançamento manual: `POST /transacoes/parceladas`. A Pluggy traz a data real da compra (`creditCardMetadata.purchaseDate`); o OFX só traz a data de cobrança, e aí a data da compra é estimada (parcela N recuada N−1 meses), marcada como estimada e editável na revisão. O app não projeta parcelas futuras a partir das fontes (a Pluggy já as envia como `PENDING`; o OFX traz a do mês); só o lançamento manual de compra parcelada gera as N parcelas.
 
@@ -245,13 +250,13 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 | status | text | `rascunho` \| `confirmada` \| `ignorada` |
 | fonte | text | `manual` \| `ofx` \| `csv_mercadopago` \| `pluggy` |
 | id_externo | text null | FITID, id da Pluggy ou hash gerado |
-| importacao_id | uuid FK null | |
+| importacao_id | uuid FK null | indexada; o desfazer apaga as transações da importação |
 | fatura_id | uuid FK null | obrigatório se a conta é cartão (regra no service); lançamento manual em cartão só aceita `despesa`. Em conta que não é cartão, só o `pagamento_fatura` tem (a fatura paga); sem `CHECK`, porque o pagamento vindo das fontes pode chegar como rascunho antes de a revisão saber a fatura |
 | compra_parcelada_id | uuid FK null | indexado; com `parcela_numero`, os dois juntos ou nenhum (`CHECK`) |
 | parcela_numero | smallint null | `CHECK >= 1`; até `qtd_parcelas` (regra no service). Sem unique com a compra: a mesma parcela pode chegar por duas fontes até a revisão decidir |
 | transferencia_par_id | uuid FK null | liga saída e entrada entre contas próprias; unique, e cada lado aponta para o outro (regra no service). `CHECK`: só `transferencia_saida`/`transferencia_entrada` têm par, e nenhuma é par de si mesma |
 | investimento_id | uuid FK null | para `aporte`/`resgate` |
-| possivel_duplicata_de | uuid FK null | marcada quando outra fonte trouxe algo igual; `ON DELETE SET NULL` (o sync apaga rascunho que sumiu da origem) |
+| possivel_duplicata_de | uuid FK null | marcada quando outra fonte trouxe algo igual (mesma conta, valor e sentido, ±2 dias, a outra de fonte diferente e não ignorada, um para um); `ON DELETE SET NULL` (o sync apaga rascunho que sumiu da origem; o desfazer apaga os da importação) |
 | removida_na_origem_em | timestamptz null | transação confirmada que sumiu da Pluggy na janela de reconciliação; alerta na revisão |
 | unique | (conta_id, fonte, id_externo) | coração da idempotência |
 
@@ -261,7 +266,9 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 
 **Regras de `id_externo`:** OFX → FITID, com sufixo `:iof` na linha de IOF (no Nubank, a compra e o IOF dela compartilham o FITID); se ainda sobrar FITID repetido no arquivo, a importação falha com erro explícito. Pluggy → id da transação. CSV (Mercado Pago) → identificador próprio, se o layout tiver; senão hash de (conta, data, valor, descrição original, ordem da linha no mesmo dia). Formatos observados: spec `2026-10-19-revisao-classificacao`.
 
-**Dados de fatura vindos do OFX do cartão:** `valor_informado` = −`BALAMT`; `data_fechamento` = `DTEND`. O arquivo não traz vencimento: ele continua calculado pela regra do cartão.
+**Dados de fatura vindos do OFX do cartão:** a fatura é a de fechamento mais perto de `DTEND`; `valor_informado` = −`BALAMT` (0 se credor); `data_fechamento` = `DTEND`. O arquivo não traz vencimento: ele continua calculado pela regra do cartão. Todas as linhas do arquivo vão para essa fatura, e compras das fontes nunca são realocadas por mudança de fechamento (só as manuais). "Pagamento recebido" do lado do cartão não é importado.
+
+**Linhas do OFX:** saída = `despesa` (`pagamento_fatura` se o `MEMO` começa com "Pagamento de fatura", na conta); entrada = `receita` (`estorno` se começa com "Estorno"; no cartão, toda entrada que não é pagamento é `estorno`). Parcela (`MEMO` com " - Parcela N/M") ganha `compra_parcelada` com a data da compra estimada. Tudo entra como rascunho.
 
 **Por que `transferencia_par_id`:** um Pix entre duas contas próprias aparece como saída numa e entrada na outra. Ligadas, não contam como gasto nem como renda. O app sugere o par (mesmo valor, sentidos opostos, contas próprias diferentes, até ±2 dias) e só liga com confirmação na revisão; depósito de dinheiro físico (carteira → corrente) também é transferência. No lançamento manual (`POST /transacoes/transferencias`), as duas linhas entram já ligadas, só entre correntes e carteiras ativas (pagar o cartão é pagamento de fatura); sem descrição, "Transferência". Spec `2026-10-24-pagamento-transferencia`.
 
@@ -344,12 +351,15 @@ Aportes e resgates são `transacao` com `investimento_id` (saem/entram na conta 
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
-| conta_id | uuid FK null | |
-| investimento_id | uuid FK null | um dos dois preenchido |
+| conta_id | uuid FK | obrigatório até os investimentos existirem |
+| investimento_id | uuid FK null | **ainda não existe:** entra com os investimentos; aí `conta_id` vira nulo, com `CHECK` de um dos dois |
 | data | date | |
 | saldo | numeric(14,2) | |
-| fonte | text | `manual` \| `ofx` (saldo final do extrato) \| `pluggy` |
-| unique | (conta_id, investimento_id, data) | |
+| fonte | text | `manual` \| `ofx` (`LEDGERBAL` do extrato) \| `pluggy` |
+| importacao_id | uuid FK null | importação que o gravou; o desfazer o apaga |
+| unique | (conta_id, data) | com os investimentos, `(conta_id, investimento_id, data)` com `NULLS NOT DISTINCT` |
+
+Snapshot que chega para uma data que já tem um substitui o valor e passa a ser da nova importação.
 
 Uso: conferir saldos, rendimento real (`saldo atual − saldo anterior − aportes + resgates`) e o 31/12 do IR.
 
@@ -381,6 +391,7 @@ fatura 1─N transacao
 compra_parcelada 1─N transacao
 transacao 1─1 transacao (transferencia_par_id)
 importacao 1─N transacao
+importacao 1─0..1 snapshot_saldo
 investimento 1─N transacao (aporte/resgate)
 conta|investimento 1─N snapshot_saldo
 instituicao 1─N conexao_pluggy
@@ -434,7 +445,7 @@ FinanceTracker/
 │   │   │   ├── transacoes/       #   service.py (regras de negócio)
 │   │   │   ├── categorias/       #   router.py  (endpoints HTTP)
 │   │   │   ├── revisao/          # lista da revisão, pares sugeridos, decisões
-│   │   │   ├── importacao/
+│   │   │   ├── importacao/       # service (tudo ou nada, desfazer), duplicatas.py (puro)
 │   │   │   │   └── parsers/      # ofx.py (Nubank conta e cartão), csv_mercadopago.py
 │   │   │   ├── planejamento/
 │   │   │   │   └── calculo.py    # funções puras: aporte, meses de reserva, alerta
