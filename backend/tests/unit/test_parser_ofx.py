@@ -162,3 +162,12 @@ def test_lancamento_incompleto_aponta_a_linha(trocar, por, trecho):
 
     assert "lançamento 2" in erro.value.mensagem
     assert trecho in erro.value.mensagem
+
+
+def test_muitas_aberturas_sem_fechamento_terminam_rapido():
+    # Proteção contra o regex quadrático: 5 MB de `<STMTTRN>` soltos.
+    dados = (FIXTURES / "conta.ofx").read_bytes().replace(
+        b"</BANKTRANLIST>", b"<STMTTRN>" * 500_000 + b"</BANKTRANLIST>"
+    )
+
+    assert len(ler_ofx(dados).linhas) == 5
