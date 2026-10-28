@@ -181,12 +181,28 @@ def _saldo(texto: str) -> Saldo | None:
 
 
 def _agregado(texto: str, tag: str) -> str | None:
-    achado = re.search(rf"<{tag}>(.*?)</{tag}>", texto, re.DOTALL | re.IGNORECASE)
-    return None if achado is None else achado.group(1)
+    blocos = _agregados(texto, tag, limite=1)
+    return blocos[0] if blocos else None
 
 
-def _agregados(texto: str, tag: str) -> list[str]:
-    return re.findall(rf"<{tag}>(.*?)</{tag}>", texto, re.DOTALL | re.IGNORECASE)
+def _agregados(texto: str, tag: str, limite: int | None = None) -> list[str]:
+    """O conteúdo de cada `<TAG>…</TAG>`, em ordem; um agregado sem fechamento
+    encerra a busca. Busca linear: `<TAG>(.*?)</TAG>` ficaria quadrático num
+    arquivo com muitas aberturas sem fechamento."""
+    abre = re.compile(rf"<{tag}>", re.IGNORECASE)
+    fecha = re.compile(rf"</{tag}>", re.IGNORECASE)
+    blocos: list[str] = []
+    posicao = 0
+    while limite is None or len(blocos) < limite:
+        inicio = abre.search(texto, posicao)
+        if inicio is None:
+            break
+        fim = fecha.search(texto, inicio.end())
+        if fim is None:
+            break
+        blocos.append(texto[inicio.end() : fim.start()])
+        posicao = fim.end()
+    return blocos
 
 
 def _folha(bloco: str, tag: str) -> str | None:
