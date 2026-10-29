@@ -81,7 +81,7 @@ class ImportacoesApi {
   /// Importa o arquivo na conta, tudo ou nada: as linhas entram como rascunho e a resposta é o resumo. Arquivo repetido devolve a importação anterior.
   ///
   /// Parameters:
-  /// * [arquivo] - O OFX do extrato da conta ou da fatura.
+  /// * [arquivo] - O OFX do extrato da conta ou da fatura, ou o CSV do Mercado Pago.
   /// * [contaId] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request

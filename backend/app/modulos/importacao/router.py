@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from app.core.deps import SessaoDep, get_usuario_atual
 from app.core.erros import RespostaErro
 from app.modulos.importacao import service
-from app.modulos.importacao.parsers.ofx import FitidRepetido
+from app.modulos.importacao.parsers.extrato import IdentificadorRepetido
 from app.modulos.importacao.schemas import (
     ErroImportacao,
     ImportacaoSaida,
@@ -44,7 +44,10 @@ router = APIRouter(
     },
 )
 def importar(
-    arquivo: Annotated[UploadFile, File(description="O OFX do extrato da conta ou da fatura.")],
+    arquivo: Annotated[
+        UploadFile,
+        File(description="O OFX do extrato da conta ou da fatura, ou o CSV do Mercado Pago."),
+    ],
     conta_id: Annotated[uuid.UUID, Form()],
     sessao: SessaoDep,
     response: Response,
@@ -57,11 +60,11 @@ def importar(
         resultado = service.importar(
             sessao, conta_id=conta_id, nome_arquivo=arquivo.filename, dados=dados
         )
-    except FitidRepetido as exc:
+    except IdentificadorRepetido as exc:
         erro = ErroImportacao(
             detail=(
                 "Nada foi importado: o arquivo tem lançamentos com o mesmo identificador"
-                " (FITID), e o app não escolhe sozinho qual descartar."
+                f" ({exc.campo}), e o app não escolhe sozinho qual descartar."
             ),
             linhas_repetidas=[linha_repetida_saida(linha) for linha in exc.linhas],
         )

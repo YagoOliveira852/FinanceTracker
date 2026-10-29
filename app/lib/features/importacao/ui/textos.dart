@@ -36,9 +36,13 @@ String? ajudaDaConta({
     return 'Depois de escolher o arquivo, o app sugere a conta.';
   }
   if (!contaSugerida) return null;
-  return arquivo.tipo == TipoArquivo.ofxFatura
-      ? 'O mesmo da última importação de OFX de fatura.'
-      : 'A mesma da última importação de OFX de conta.';
+  return switch (arquivo.tipo) {
+    TipoArquivo.ofxFatura => 'O mesmo da última importação de OFX de fatura.',
+    TipoArquivo.csvMercadoPago =>
+      'A mesma da última importação de CSV do Mercado Pago.',
+    TipoArquivo.ofxConta ||
+    TipoArquivo.outro => 'A mesma da última importação de OFX de conta.',
+  };
 }
 
 String avisoJaImportada(Importacao anterior) =>
@@ -49,9 +53,10 @@ String avisoJaImportada(Importacao anterior) =>
 
 String avisoFitidRepetido(int linhas) =>
     'Nada foi importado. O arquivo tem $linhas lançamentos com o mesmo '
-    'identificador (FITID), e o app não escolhe sozinho qual descartar.';
+    'identificador, e o app não escolhe sozinho qual descartar.';
 
-/// `7c1e…a42f`: o FITID inteiro não cabe na linha.
+/// `7c1e…a42f`: o identificador inteiro (FITID ou REFERENCE_ID) não cabe na
+/// linha.
 String fitidCurto(String fitid) => fitid.length <= 12
     ? fitid
     : '${fitid.substring(0, 4)}…${fitid.substring(fitid.length - 4)}';

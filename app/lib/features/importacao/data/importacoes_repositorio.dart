@@ -117,6 +117,9 @@ class ImportacoesRepositorioApi implements ImportacoesRepositorio {
       id: r.id,
       criadoEm: r.criadoEm.toLocal(),
       nomeArquivo: r.nomeArquivo,
+      formato: r.fonte == api.FonteImportacao.csvMercadopago
+          ? FormatoArquivo.csvMercadoPago
+          : FormatoArquivo.ofx,
       contaId: conta?.id,
       contaNome: conta?.nome,
       contaTipo: conta == null

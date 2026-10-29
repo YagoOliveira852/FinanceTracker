@@ -189,7 +189,7 @@ class _CampoArquivo extends StatelessWidget {
               ),
               const SizedBox(height: Espaco.x1),
               Text(
-                'OFX do extrato da conta ou da fatura do cartão',
+                'OFX do extrato ou da fatura, ou CSV do Mercado Pago',
                 style: textos.bodySmall?.copyWith(
                   color: esquema.onSurfaceVariant,
                 ),
@@ -405,7 +405,8 @@ class _AvisoFormato extends StatelessWidget {
       cor: cores.ritmoRisco,
       texto: Text(
         '$mensagem O app lê o OFX do extrato da conta ou da fatura do '
-        'cartão; PDF e planilhas não são lidos.',
+        'cartão e o CSV do extrato do Mercado Pago (baixado pelo site); PDF '
+        'e outras planilhas não são lidos.',
         style: context.textos.bodyMedium?.copyWith(
           color: cores.ritmoRisco,
           fontWeight: FontWeight.w600,
@@ -452,7 +453,7 @@ class _LinhasRepetidas extends StatelessWidget {
                     ),
                     Text(
                       '${formatarDiaMes(linha.data)} · '
-                      'FITID ${fitidCurto(linha.fitid)}',
+                      'id ${fitidCurto(linha.fitid)}',
                       style: textos.bodySmall?.copyWith(
                         color: esquema.onSurfaceVariant,
                       ),
@@ -470,8 +471,8 @@ class _LinhasRepetidas extends StatelessWidget {
             0,
           ),
           child: Text(
-            'Baixe o extrato de novo no app do banco. Se o erro continuar, o '
-            'leitor de OFX precisa tratar esse caso.',
+            'Baixe o extrato de novo no banco. Se o erro continuar, o leitor '
+            'do arquivo precisa tratar esse caso.',
             style: textos.bodySmall?.copyWith(color: esquema.onSurfaceVariant),
           ),
         ),

@@ -39,15 +39,20 @@ _SAIDAS_DE_PAR = frozenset({TipoTransacao.despesa, TipoTransacao.transferencia_s
 _ENTRADAS_DE_PAR = frozenset({TipoTransacao.receita, TipoTransacao.transferencia_entrada})
 _CONTAS_DE_TRANSFERENCIA = frozenset({TipoConta.corrente, TipoConta.carteira})
 # Tipos em que um rascunho é confirmado com categoria, por sentido.
-# Transferência e pagamento de fatura têm ações próprias; aporte e resgate
-# esperam os investimentos.
+# Transferência e pagamento de fatura têm ações próprias. Aporte e resgate (o
+# Cofrinho do Mercado Pago) só se confirmam como eles mesmos, com categoria de
+# investimento; os investimentos (S8) os ligam ao `investimento`.
 _CONFIRMAVEIS_SAIDA = frozenset({TipoTransacao.despesa})
 _CONFIRMAVEIS_ENTRADA = frozenset({TipoTransacao.receita, TipoTransacao.estorno})
+_CONFIRMAVEIS_APORTE = frozenset({TipoTransacao.aporte})
+_CONFIRMAVEIS_RESGATE = frozenset({TipoTransacao.resgate})
 _MENSAGEM_TIPO = {
     _CONFIRMAVEIS_SAIDA: "Uma saída é confirmada como despesa; transferência e pagamento de "
     "fatura têm opção própria.",
     _CONFIRMAVEIS_ENTRADA: "Uma entrada é confirmada como receita ou estorno; transferência "
     "tem opção própria.",
+    _CONFIRMAVEIS_APORTE: "Um aporte é confirmado como aporte.",
+    _CONFIRMAVEIS_RESGATE: "Um resgate é confirmado como resgate.",
 }
 
 
@@ -264,8 +269,16 @@ def _com_sugestao(sessao: Session, transacoes: list[Transacao]) -> list[Rascunho
 def _outros_tipos(transacao: Transacao) -> list[TipoTransacao]:
     """Os tipos com que o rascunho pode ser confirmado além do seu, na ordem
     do enum (como em `confirmar`, a saída só como despesa)."""
-    confirmaveis = _CONFIRMAVEIS_SAIDA if transacao.tipo in TIPOS_SAIDA else _CONFIRMAVEIS_ENTRADA
+    confirmaveis = _confirmaveis(TipoTransacao(transacao.tipo))
     return [tipo for tipo in TipoTransacao if tipo in confirmaveis and tipo != transacao.tipo]
+
+
+def _confirmaveis(tipo: TipoTransacao) -> frozenset[TipoTransacao]:
+    if tipo == TipoTransacao.aporte:
+        return _CONFIRMAVEIS_APORTE
+    if tipo == TipoTransacao.resgate:
+        return _CONFIRMAVEIS_RESGATE
+    return _CONFIRMAVEIS_SAIDA if tipo in TIPOS_SAIDA else _CONFIRMAVEIS_ENTRADA
 
 
 def confirmar(
@@ -281,8 +294,7 @@ def confirmar(
     a receita que era estorno); a descrição original nunca muda."""
     transacao = _rascunho_para_revisar(sessao, transacao_id)
     tipo = TipoTransacao(tipo or transacao.tipo)
-    saida = transacao.tipo in TIPOS_SAIDA
-    confirmaveis = _CONFIRMAVEIS_SAIDA if saida else _CONFIRMAVEIS_ENTRADA
+    confirmaveis = _confirmaveis(TipoTransacao(transacao.tipo))
     if tipo not in confirmaveis:
         raise CampoInvalido("tipo", _MENSAGEM_TIPO[confirmaveis])
     # Valida antes de mudar a transação: um 422 não deixa nada pela metade.

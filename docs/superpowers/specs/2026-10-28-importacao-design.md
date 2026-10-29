@@ -17,7 +17,7 @@ A revisão (S4) já trata rascunhos, duplicatas e pagamentos de fatura, mas nada
 
 ## Fora do escopo
 
-- CSV do Mercado Pago: o formato ainda não foi coletado (arquitetura §9). A tela já o cita; até o card dele, um CSV recebe "formato não reconhecido".
+- CSV do Mercado Pago: o formato ainda não foi coletado (arquitetura §9). A tela já o cita; até o card dele, um CSV recebe "formato não reconhecido". *(Feito no card seguinte: ver o adendo de 2026-10-29.)*
 - CSV e PDF do Nubank (decisão da spec da revisão: Nubank só por OFX).
 - Sync da Pluggy (S7): reaproveita o critério de duplicata daqui; o `status = erro` de `importacao` fica para ele.
 - Prévia antes de gravar (decisão do design: importa direto e oferece desfazer).
@@ -177,3 +177,50 @@ Tag `importacoes` (operationIds `importacoes_importar`, `importacoes_listar`, `i
 - `realocar_compras` passa a mexer só em compras manuais.
 - O sync da Pluggy (S7) reaproveita `duplicatas.py` e a tabela `importacao` (uma linha por execução, com `status`).
 - No app, feature `importacao` e duas dependências novas (`file_picker`, `receive_sharing_intent`), com intent-filter no `AndroidManifest`.
+
+## Adendo (2026-10-29): CSV do extrato do Mercado Pago
+
+Card "S5 · Importação CSV Mercado Pago". Formato lido de uma amostra real pela estrutura mascarada (formatos e contagens, sem conteúdo); decisões do mapeamento aprovadas pelo Yago em 29/10.
+
+### O arquivo
+
+- **Só pelo navegador:** o app do Mercado Pago exporta o extrato apenas em PDF; o CSV sai do site (relatório da conta). O app continua sem ler PDF.
+- UTF-8 sem BOM (cai para cp1252, como o OFX), separador `;`, sem aspas, quebra LF. Dois blocos separados por uma linha vazia:
+  - resumo: `INITIAL_BALANCE;CREDITS;DEBITS;FINAL_BALANCE` e uma linha de valores;
+  - lançamentos: `RELEASE_DATE;TRANSACTION_TYPE;REFERENCE_ID;TRANSACTION_NET_AMOUNT;PARTIAL_BALANCE`, em ordem crescente de data.
+- **Data** `dd-mm-aaaa`, já local (sem fuso). **Valor** `1.234,56` com sinal: negativo é saída. O `TRANSACTION_TYPE` é a descrição inteira (ex.: "Pix enviado <nome>") e às vezes termina com espaço.
+- Na amostra, saldo inicial + cada lançamento = `PARTIAL_BALANCE` em todas as linhas, e a última = `FINAL_BALANCE`.
+- **Reconhecimento:** é CSV do Mercado Pago o arquivo que tem a linha de cabeçalho dos lançamentos acima; o resto continua "formato não reconhecido". Parser em `modulos/importacao/parsers/csv_mercadopago.py`, função pura (bytes → extrato), com as mesmas regras do OFX: valor zero descartado, campo faltando ou ilegível = "formato não reconhecido" com o número da linha.
+
+### Conta, `id_externo` e saldo
+
+- Só em conta **`corrente`**; senão 422 em `conta_id`: "Este CSV é de extrato do Mercado Pago. Escolha uma conta corrente." `fonte = csv_mercadopago` na importação e nas transações.
+- **`id_externo` = `REFERENCE_ID`:** único em todas as linhas da amostra, então o hash previsto na arquitetura não é necessário. `REFERENCE_ID` repetido no arquivo = o mesmo erro do FITID repetido (422 com `linhas_repetidas`, nada gravado). *Hipótese a verificar:* uma devolução pode repetir o id da compra; se acontecer, o erro aparece e o critério muda.
+- Já importada, possível duplicata e desfazer: iguais ao OFX, comparando pela fonte `csv_mercadopago` (o OFX e a Pluggy da mesma conta são "outra fonte").
+- **Período** = primeira e última `RELEASE_DATE` (o arquivo não traz o intervalo pedido no site).
+- **Saldo:** o `PARTIAL_BALANCE` do último lançamento (igual ao `FINAL_BALANCE` do resumo, que não é lido) vira `snapshot_saldo` na data dele (o saldo não muda depois dele até o fim do período), com `fonte = csv_mercadopago` e a importação, como o `LEDGERBAL`. `snapshot_saldo.fonte` ganha `csv_mercadopago`. Arquivo sem lançamento não gera snapshot.
+
+### O que cada linha vira
+
+| Linha | `tipo` |
+|---|---|
+| saída começando por "Dinheiro reservado" (Cofrinho) | `aporte` |
+| entrada começando por "Dinheiro retirado" (Cofrinho) | `resgate` |
+| entrada começando por "Estorno" | `estorno` |
+| outra entrada (Pix recebido, "Rendimentos", "Venda de …") | `receita` |
+| outra saída (Pix enviado, compras) | `despesa` |
+
+- **Cofrinho como aporte e resgate** *(Yago, 29/10)*: guardar dinheiro no Cofrinho não é gasto. A Revisão passa a confirmar um rascunho `aporte` ou `resgate` como ele é, com categoria do grupo investimento e ainda sem `investimento_id`; os investimentos (S8) ligam essas transações ao Cofrinho. A Pluggy (S7) traz os mesmos movimentos (`TRANSFERENCIA_SALDO_RESERVADO`) e usa a mesma confirmação. O texto exato da retirada ainda não apareceu numa amostra: "Dinheiro retirado" é o par de "Dinheiro reservado" e fica a confirmar no primeiro resgate; até lá, outro texto entra como receita.
+- **Rendimentos** *(Yago, 29/10)*: uma receita por linha (uma por dia), para o saldo bater; a regra aprende "rendimentos" na primeira confirmação e o "confirmar todas" resolve o resto.
+- Transferência entre contas próprias (Pix do Nubank para o Mercado Pago) fica receita/despesa, e a Revisão sugere o par, como no OFX.
+
+### App
+
+- Seletor sem filtro, como antes; o Compartilhar aceita também `text/csv` e `text/comma-separated-values` no intent-filter.
+- O app reconhece o CSV do Mercado Pago pelo cabeçalho dos lançamentos e pré-seleciona a conta da última importação de CSV do Mercado Pago ("A mesma da última importação de CSV do Mercado Pago."). No histórico, o tipo do arquivo sai da `fonte` (CSV) ou, no OFX, do tipo da conta.
+- Na Revisão, o rascunho `aporte`/`resgate` mostra só o próprio tipo e as categorias de investimento.
+
+### Fora do escopo
+
+- **Fatura do cartão do Mercado Pago:** o formato só será verificado quando a primeira fechar (briefing). Até lá, o pagamento dessa fatura no extrato entra como despesa (a Revisão não transforma despesa em pagamento): o pagamento se lança pela fatura do cartão, e a linha do CSV aparece como possível duplicata dele (ou é ignorada, se veio antes). Quando o texto for conhecido, entra na tabela como `pagamento_fatura`, como o "Pagamento de fatura" do Nubank.
+- XLSX e PDF do Mercado Pago.

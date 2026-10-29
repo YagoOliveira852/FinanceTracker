@@ -14,6 +14,7 @@ abstract class Importacao with _$Importacao {
     required String id,
     required DateTime criadoEm,
     String? nomeArquivo,
+    @Default(FormatoArquivo.ofx) FormatoArquivo formato,
     String? contaId,
     String? contaNome,
     TipoConta? contaTipo,
@@ -47,10 +48,15 @@ abstract class Importacao with _$Importacao {
   /// O que foi para a Revisão: as novas e as possíveis duplicatas.
   int get qtdRascunhos => qtdNovas + qtdPossiveisDuplicatas;
 
-  /// Tipo do arquivo, para sugerir a conta da próxima importação igual.
-  TipoArquivo get tipoArquivo => contaTipo == TipoConta.cartaoCredito
-      ? TipoArquivo.ofxFatura
-      : TipoArquivo.ofxConta;
+  /// Tipo do arquivo, para sugerir a conta da próxima importação igual: o
+  /// CSV pela fonte; no OFX, a fatura é o que foi para um cartão.
+  TipoArquivo get tipoArquivo => switch (formato) {
+    FormatoArquivo.csvMercadoPago => TipoArquivo.csvMercadoPago,
+    FormatoArquivo.ofx =>
+      contaTipo == TipoConta.cartaoCredito
+          ? TipoArquivo.ofxFatura
+          : TipoArquivo.ofxConta,
+  };
 }
 
 @freezed
@@ -79,7 +85,8 @@ abstract class ResultadoImportacao with _$ResultadoImportacao {
   }) = _ResultadoImportacao;
 }
 
-/// Uma das linhas com o mesmo FITID que fizeram o arquivo ser recusado.
+/// Uma das linhas com o mesmo identificador (FITID no OFX, REFERENCE_ID no
+/// CSV) que fizeram o arquivo ser recusado.
 @freezed
 abstract class LinhaRepetida with _$LinhaRepetida {
   const factory LinhaRepetida({
@@ -106,13 +113,25 @@ abstract class ArquivoEscolhido with _$ArquivoEscolhido {
   TipoArquivo get tipo => tipoDoArquivo(bytes);
 }
 
-enum TipoArquivo { ofxConta, ofxFatura, outro }
+/// O formato do arquivo importado (a `fonte` da importação).
+enum FormatoArquivo { ofx, csvMercadoPago }
+
+enum TipoArquivo { ofxConta, ofxFatura, csvMercadoPago, outro }
+
+/// Cabeçalho dos lançamentos no CSV do extrato do Mercado Pago.
+const cabecalhoCsvMercadoPago =
+    'RELEASE_DATE;TRANSACTION_TYPE;REFERENCE_ID;TRANSACTION_NET_AMOUNT;'
+    'PARTIAL_BALANCE';
 
 /// Reconhece o arquivo só para sugerir a conta: a fatura do cartão tem a
-/// marca `CREDITCARDMSGSRSV1`; o servidor valida de novo.
+/// marca `CREDITCARDMSGSRSV1`, e o CSV do Mercado Pago, o cabeçalho dos
+/// lançamentos; o servidor valida de novo.
 TipoArquivo tipoDoArquivo(Uint8List bytes) {
-  // latin1 nunca falha: a marca é ASCII em qualquer encoding do OFX.
+  // latin1 nunca falha: as marcas são ASCII em qualquer encoding.
   final texto = String.fromCharCodes(bytes).toUpperCase();
+  if (texto.contains(cabecalhoCsvMercadoPago)) {
+    return TipoArquivo.csvMercadoPago;
+  }
   if (!texto.contains('<OFX>')) return TipoArquivo.outro;
   return texto.contains('CREDITCARDMSGSRSV1')
       ? TipoArquivo.ofxFatura

@@ -17,6 +17,13 @@ Uint8List ofxFicticio({bool fatura = false}) => Uint8List.fromList(
   ),
 );
 
+/// CSV fictício do extrato do Mercado Pago: o cabeçalho e um lançamento.
+Uint8List csvMercadoPagoFicticio() => Uint8List.fromList(
+  utf8.encode(
+    '$cabecalhoCsvMercadoPago\n01-10-2026;Pix recebido Exemplo;1;10,00;10,00\n',
+  ),
+);
+
 ArquivoEscolhido arquivoExemplo({
   String nome = 'extrato-outubro.ofx',
   bool fatura = false,
@@ -30,6 +37,7 @@ ArquivoEscolhido arquivoExemplo({
 Importacao importacaoExemplo({
   String id = 'imp1',
   String nomeArquivo = 'extrato-setembro.ofx',
+  FormatoArquivo formato = FormatoArquivo.ofx,
   String contaId = 'c1',
   String contaNome = 'Conta principal',
   TipoConta contaTipo = TipoConta.corrente,
@@ -46,6 +54,7 @@ Importacao importacaoExemplo({
   id: id,
   criadoEm: criadoEm ?? DateTime(2026, 10, 2, 9),
   nomeArquivo: nomeArquivo,
+  formato: formato,
   contaId: contaId,
   contaNome: contaNome,
   contaTipo: contaTipo,

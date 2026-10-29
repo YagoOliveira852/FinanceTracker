@@ -189,6 +189,16 @@ def test_saida_nao_tem_outro_tipo(api, sessao, conta):
     assert rascunho["outros_tipos"] == []
 
 
+@pytest.mark.parametrize("tipo", ["aporte", "resgate"])
+def test_aporte_e_resgate_so_tem_o_proprio_tipo(api, sessao, conta, tipo):
+    criar_transacao(sessao, conta, "DINHEIRO RESERVADO COFRINHO", tipo=tipo)
+
+    (rascunho,) = _lista(api)["rascunhos"]
+
+    assert rascunho["tipo"] == tipo
+    assert rascunho["outros_tipos"] == []
+
+
 def test_entrada_sem_categoria_traz_receita_e_estorno(api, sessao, conta):
     criar_transacao(sessao, conta, "PIX RECEBIDO FULANO", tipo="transferencia_entrada")
 
