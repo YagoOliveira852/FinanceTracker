@@ -24,6 +24,8 @@ Future<void> abrirFolhaRascunho(BuildContext context, Rascunho rascunho) {
   final revisao = context.read<RevisaoCubit>();
   return showModalBottomSheet<void>(
     context: context,
+    // No navegador raiz, a folha cobre a barra de abas, como no design.
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     useSafeArea: true,

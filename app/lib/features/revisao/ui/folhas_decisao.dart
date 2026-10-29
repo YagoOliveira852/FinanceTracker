@@ -37,6 +37,8 @@ Future<void> abrirFolhaPagamento(BuildContext context, ItemRevisao pagamento) {
   final revisao = context.read<RevisaoCubit>();
   return showModalBottomSheet<void>(
     context: context,
+    // No navegador raiz, a folha cobre a barra de abas, como no design.
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     useSafeArea: true,
@@ -69,6 +71,8 @@ Future<void> _abrirDecisao(
   final revisao = context.read<RevisaoCubit>();
   return showModalBottomSheet<void>(
     context: context,
+    // No navegador raiz, a folha cobre a barra de abas, como no design.
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     useSafeArea: true,
