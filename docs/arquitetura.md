@@ -293,14 +293,14 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 
 ### 7.4 Planejamento
 
-**configuracao** (linha única)
+**configuracao** (linha única, criada no primeiro salvamento; sem ela o aporte não é calculado)
 | coluna | tipo | nota |
 |---|---|---|
 | id | smallint PK = 1 | |
 | colchao | numeric(14,2) | valor mantido na conta após o aporte |
 | meta_reserva_meses | numeric(4,1) | meta da reserva em meses de gasto |
-| gasto_semanal_estimado | numeric(14,2) | usado até haver histórico |
-| gasto_mensal_referencia | numeric(14,2) null | para "meses de reserva"; null = média dos últimos 3 meses |
+| gasto_semanal_estimado | numeric(14,2) | piso dos gastos previstos (sozinho até 4 semanas de histórico) |
+| gasto_mensal_referencia | numeric(14,2) null | para "meses de reserva"; null = média dos 3 últimos meses fechados |
 
 **renda_prevista**
 | coluna | tipo | nota |
@@ -308,9 +308,9 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 | id | uuid PK | |
 | descricao | text | ex.: "Salário 1ª quinzena" |
 | valor | numeric(14,2) | |
-| dia_previsto | smallint | dia do mês |
+| dia_previsto | smallint | dia do mês, 1 a 31 (em mês curto, o último dia; depois, o dia útil seguinte) |
 | conta_id | uuid FK | onde cai |
-| ativa | bool | |
+| ativa | bool | renda é desativada, nunca excluída |
 
 O cálculo de aporte e o alerta de reserva **não são tabelas**: são funções puras no backend (`planejamento/calculo.py`) que recebem saldos, faturas, rendas previstas e configuração, e devolvem o resultado. Isso as torna fáceis de testar e de explicar.
 
