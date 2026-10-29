@@ -3027,7 +3027,7 @@
             "type": "string",
             "contentMediaType": "application/octet-stream",
             "title": "Arquivo",
-            "description": "O OFX do extrato da conta ou da fatura."
+            "description": "O OFX do extrato da conta ou da fatura, ou o CSV do Mercado Pago."
           },
           "conta_id": {
             "type": "string",
@@ -4423,7 +4423,8 @@
         "properties": {
           "fitid": {
             "type": "string",
-            "title": "Fitid"
+            "title": "Fitid",
+            "description": "O identificador repetido: FITID no OFX, REFERENCE_ID no CSV do Mercado Pago."
           },
           "data": {
             "type": "string",

@@ -37,6 +37,34 @@ void main() {
       expect((cubit.state.contaId, cubit.state.contaSugerida), ('c1', true));
     });
 
+    test(
+      'CSV do Mercado Pago sugere a conta da última importação de CSV',
+      () async {
+        repositorio.historico = [
+          importacaoExemplo(
+            id: 'imp3',
+            nomeArquivo: 'extrato-mp.csv',
+            formato: FormatoArquivo.csvMercadoPago,
+            contaId: 'm1',
+          ),
+          importacaoExemplo(),
+        ];
+        final cubit = criar();
+        await cubit.carregar();
+
+        cubit.receberArquivo(
+          ArquivoEscolhido(
+            nome: 'extrato.csv',
+            bytes: csvMercadoPagoFicticio(),
+          ),
+        );
+        expect((cubit.state.contaId, cubit.state.contaSugerida), ('m1', true));
+
+        cubit.receberArquivo(arquivoExemplo());
+        expect((cubit.state.contaId, cubit.state.contaSugerida), ('c1', true));
+      },
+    );
+
     test('arquivo do Compartilhar antes do histórico também sugere', () async {
       final cubit = criar()..receberArquivo(arquivoExemplo(fatura: true));
       expect(cubit.state.contaId, isNull);

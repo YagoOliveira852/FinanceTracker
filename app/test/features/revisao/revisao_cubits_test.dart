@@ -187,6 +187,12 @@ void main() {
       );
     });
 
+    test('tipos: aporte e resgate só como eles mesmos', () {
+      for (final tipo in [TipoTransacao.aporte, TipoTransacao.resgate]) {
+        expect(FolhaRascunhoCubit.tiposPara(itemExemplo(tipo: tipo)), [tipo]);
+      }
+    });
+
     test('entrada como estorno: sugestão e efeito do estorno', () {
       final cubit = FolhaRascunhoCubit(
         RevisaoRepositorioFalso(),

@@ -12,12 +12,13 @@ part 'linha_repetida_saida.g.dart';
 /// LinhaRepetidaSaida
 ///
 /// Properties:
-/// * [fitid] 
+/// * [fitid] - O identificador repetido: FITID no OFX, REFERENCE_ID no CSV do Mercado Pago.
 /// * [data] 
 /// * [valor] - Com sinal, como no arquivo: negativo é saída.
 /// * [descricao] 
 @BuiltValue()
 abstract class LinhaRepetidaSaida implements Built<LinhaRepetidaSaida, LinhaRepetidaSaidaBuilder> {
+  /// O identificador repetido: FITID no OFX, REFERENCE_ID no CSV do Mercado Pago.
   @BuiltValueField(wireName: r'fitid')
   String get fitid;
 

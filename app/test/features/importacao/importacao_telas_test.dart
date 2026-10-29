@@ -233,7 +233,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Mercado do Bairro'), findsNWidgets(2));
-    expect(find.text('12 out · FITID 7c1e…a42f'), findsNWidgets(2));
+    expect(find.text('12 out · id 7c1e…a42f'), findsNWidgets(2));
     expect(find.textContaining('Baixe o extrato de novo'), findsOneWidget);
   });
 

@@ -48,8 +48,13 @@ class FolhaRascunhoCubit extends Cubit<FolhaRascunhoEstado> {
 
   /// Os tipos do rascunho, no mesmo sentido (como a API): saída é despesa;
   /// entrada, receita ou estorno; em corrente e carteira, também
-  /// transferência entre contas próprias.
+  /// transferência entre contas próprias. Aporte e resgate (o Cofrinho) só
+  /// como eles mesmos.
   static List<TipoTransacao> tiposPara(ItemRevisao item) {
+    if (item.tipo == TipoTransacao.aporte ||
+        item.tipo == TipoTransacao.resgate) {
+      return [item.tipo];
+    }
     final transfere = item.contaTipo != TipoConta.cartaoCredito;
     return item.tipo.entrada
         ? [

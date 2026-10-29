@@ -17,6 +17,7 @@ const _id = '7a1c2b3a-0000-4000-8000-000000000001';
 const _conta = '7a1c2b3a-0000-4000-8000-0000000000c1';
 
 Map<String, Object?> _importacaoJson({
+  String fonte = 'ofx',
   String tipoConta = 'corrente',
   Map<String, Object?>? saldo,
   Map<String, Object?>? fatura,
@@ -24,7 +25,7 @@ Map<String, Object?> _importacaoJson({
   'id': _id,
   'criado_em': '2026-10-28T12:00:00Z',
   'nome_arquivo': 'extrato-outubro.ofx',
-  'fonte': 'ofx',
+  'fonte': fonte,
   'conta': {'id': _conta, 'nome': 'Conta principal', 'tipo': tipoConta},
   'periodo_inicio': '2026-10-01',
   'periodo_fim': '2026-10-25',
@@ -46,7 +47,17 @@ void main() {
       expect(tipoDoArquivo(ofxFicticio(fatura: true)), TipoArquivo.ofxFatura);
     });
 
-    test('o que não é OFX é outro', () {
+    test('reconhece o CSV do Mercado Pago pelo cabeçalho dos lançamentos', () {
+      final csv = Uint8List.fromList(
+        utf8.encode(
+          'INITIAL_BALANCE;CREDITS;DEBITS;FINAL_BALANCE\n'
+          '100,00;0,00;0,00;100,00\n\n$cabecalhoCsvMercadoPago\n',
+        ),
+      );
+      expect(tipoDoArquivo(csv), TipoArquivo.csvMercadoPago);
+    });
+
+    test('o que não é OFX nem CSV do Mercado Pago é outro', () {
       final csv = Uint8List.fromList(utf8.encode('Data,Valor\n'));
       expect(tipoDoArquivo(csv), TipoArquivo.outro);
     });
@@ -109,6 +120,18 @@ void main() {
       expect(importacao.tipoArquivo, TipoArquivo.ofxFatura);
       expect(importacao.fatura?.valorInformado, Decimal.parse('1032.15'));
       expect(importacao.fatura?.dataFechamento, DateTime(2026, 10, 3));
+    });
+
+    test('o CSV do Mercado Pago é outro tipo de arquivo, pela fonte', () async {
+      responder((
+        status: 200,
+        corpo: [_importacaoJson(fonte: 'csv_mercadopago')],
+      ));
+
+      final importacao = (await repositorio.listar()).single;
+
+      expect(importacao.formato, FormatoArquivo.csvMercadoPago);
+      expect(importacao.tipoArquivo, TipoArquivo.csvMercadoPago);
     });
 
     test('importar manda o arquivo e a conta em multipart', () async {
