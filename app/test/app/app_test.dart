@@ -99,6 +99,21 @@ void main() {
     expect(find.text('Padaria Pão Quente'), findsOneWidget);
   });
 
+  testWidgets('a folha do rascunho cobre a barra de abas', (tester) async {
+    await _abrir(tester);
+
+    await tester.tap(find.text('Revisão'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Padaria Pão Quente'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Como veio do banco'), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(ModalBarrier).last).bottom,
+      tester.getRect(find.byType(NavigationBar)).bottom,
+    );
+  });
+
   testWidgets('Mais → Contas, com itens em breve visíveis', (tester) async {
     await _abrir(tester);
 

@@ -13,6 +13,8 @@ Future<void> abrirAjuste(BuildContext context, DetalheFatura detalhe) {
   final cubit = context.read<FaturaCubit>();
   return showModalBottomSheet<void>(
     context: context,
+    // No navegador raiz, a folha cobre a barra de abas, como no design.
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     builder: (_) =>
