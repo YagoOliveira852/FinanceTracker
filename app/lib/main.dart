@@ -14,9 +14,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final dependencias = Dependencias.api();
-  // Lê os tokens guardados antes da primeira tela: assim o app abre direto
-  // no Início ou no login, sem piscar.
-  await dependencias.sessao.iniciar();
+  // Lê os tokens e o tema guardados antes da primeira tela: assim o app abre
+  // direto no Início ou no login, já no tema escolhido, sem piscar.
+  await Future.wait([
+    dependencias.sessao.iniciar(),
+    dependencias.tema.iniciar(),
+  ]);
 
   runApp(FinancasApp(dependencias));
 }

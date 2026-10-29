@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/categorias/cubit/categorias_cubit.dart';
+import '../features/configuracoes/cubit/tema_cubit.dart';
 import '../features/contas/cubit/contas_cubit.dart';
 import '../features/importacao/cubit/compartilhado_cubit.dart';
 import '../features/importacao/data/importacao.dart';
@@ -23,7 +24,8 @@ import 'tema.dart';
 /// [CategoriasCubit] pelo mesmo motivo: Categorias e Lançamento. O
 /// [RevisaoCubit] porque a barra de abas mostra o contador da Revisão. O
 /// [CompartilhadoCubit] porque o extrato do Compartilhar pode chegar antes
-/// do login e só abre a importação com a sessão conectada.
+/// do login e só abre a importação com a sessão conectada. O [TemaCubit]
+/// porque o `MaterialApp` lê dele o tema escolhido em Mais.
 class FinancasApp extends StatefulWidget {
   const FinancasApp(this.dependencias, {super.key});
 
@@ -59,6 +61,7 @@ class _FinancasAppState extends State<FinancasApp> {
       child: MultiBlocProvider(
         providers: [
           BlocProvider.value(value: dependencias.sessao),
+          BlocProvider.value(value: dependencias.tema),
           BlocProvider(
             // Criado já na abertura: o listener abaixo só recarrega nas
             // trocas para "conectada", sem uma segunda carga na criação.
@@ -114,15 +117,18 @@ class _FinancasAppState extends State<FinancasApp> {
               listener: (context, _) => _abrirCompartilhado(context),
             ),
           ],
-          child: MaterialApp.router(
-            title: 'Finanças',
-            debugShowCheckedModeBanner: false,
-            theme: temaClaro(),
-            darkTheme: temaEscuro(),
-            locale: const Locale('pt', 'BR'),
-            supportedLocales: const [Locale('pt', 'BR')],
-            localizationsDelegates: GlobalMaterialLocalizations.delegates,
-            routerConfig: _router,
+          child: BlocBuilder<TemaCubit, ThemeMode>(
+            builder: (context, modo) => MaterialApp.router(
+              title: 'Finanças',
+              debugShowCheckedModeBanner: false,
+              theme: temaClaro(),
+              darkTheme: temaEscuro(),
+              themeMode: modo,
+              locale: const Locale('pt', 'BR'),
+              supportedLocales: const [Locale('pt', 'BR')],
+              localizationsDelegates: GlobalMaterialLocalizations.delegates,
+              routerConfig: _router,
+            ),
           ),
         ),
       ),

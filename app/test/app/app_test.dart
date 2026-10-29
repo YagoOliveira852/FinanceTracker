@@ -8,6 +8,7 @@ import '../apoio/categorias_falso.dart';
 import '../apoio/contas_falso.dart';
 import '../apoio/faturas_falso.dart';
 import '../apoio/importacoes_falso.dart';
+import '../apoio/preferencia_tema_falsa.dart';
 import '../apoio/revisao_falso.dart';
 import '../apoio/transacoes_falso.dart';
 
@@ -17,6 +18,7 @@ Future<Dependencias> _abrir(
   bool sessao = true,
   ImportacoesRepositorioFalso? importacoes,
   FonteCompartilhamentoFalsa? compartilhamento,
+  PreferenciaTemaFalsa? preferenciaTema,
 }) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
@@ -32,8 +34,12 @@ Future<Dependencias> _abrir(
     importacoes: importacoes ?? ImportacoesRepositorioFalso(),
     seletorArquivo: SeletorArquivoFalso(arquivoExemplo()),
     compartilhamento: compartilhamento ?? FonteCompartilhamentoFalsa(),
+    preferenciaTema: preferenciaTema ?? PreferenciaTemaFalsa(),
   );
-  await dependencias.sessao.iniciar();
+  await Future.wait([
+    dependencias.sessao.iniciar(),
+    dependencias.tema.iniciar(),
+  ]);
   await tester.pumpWidget(FinancasApp(dependencias));
   await tester.pumpAndSettle();
   return dependencias;
@@ -190,6 +196,42 @@ void main() {
     expect(find.text('Categorias e regras'), findsOneWidget);
     expect(find.text('Feira'), findsOneWidget);
     expect(find.text('Mercado'), findsNothing);
+  });
+
+  testWidgets('abre no tema guardado', (tester) async {
+    await _abrir(tester, preferenciaTema: PreferenciaTemaFalsa(ThemeMode.dark));
+
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(app.themeMode, ThemeMode.dark);
+  });
+
+  testWidgets('Mais → Aparência troca o tema e guarda a escolha', (
+    tester,
+  ) async {
+    final preferencia = PreferenciaTemaFalsa();
+    await _abrir(tester, preferenciaTema: preferencia);
+
+    await tester.tap(find.text('Mais'));
+    await tester.pumpAndSettle();
+    // Até o Sair, logo abaixo: assim a Aparência sai de baixo da barra de abas.
+    await tester.scrollUntilVisible(find.text('Sair'), 200);
+    expect(find.text('Tema: Do sistema'), findsOneWidget);
+
+    await tester.tap(find.text('Aparência'));
+    await tester.pumpAndSettle();
+    // A folha cobre a barra de abas: o fundo escurecido vai até embaixo.
+    expect(
+      tester.getRect(find.byType(ModalBarrier).last).bottom,
+      tester.getRect(find.byType(NavigationBar)).bottom,
+    );
+    await tester.tap(find.text('Escuro'));
+    await tester.pumpAndSettle();
+
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(app.themeMode, ThemeMode.dark);
+    expect(preferencia.modo, ThemeMode.dark);
+    expect(find.text('Tema: Escuro'), findsOneWidget);
+    expect(find.byType(RadioListTile<ThemeMode>), findsNothing);
   });
 
   testWidgets('Sair volta ao login', (tester) async {
