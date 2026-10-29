@@ -5,6 +5,7 @@
 // ignore_for_file: unused_element
 import 'package:api_client/src/model/transferencia_par_saida.dart';
 import 'package:api_client/src/model/status_transacao.dart';
+import 'package:api_client/src/model/fatura_da_transacao_saida.dart';
 import 'package:api_client/src/model/tipo_transacao.dart';
 import 'package:api_client/src/model/parcela_saida.dart';
 import 'package:api_client/src/model/categoria_resumo.dart';
@@ -28,7 +29,8 @@ part 'transacao_saida.g.dart';
 /// * [categoria] - Confirmada na revisão ou escolhida no lançamento; a sugestão não vem aqui.
 /// * [status] 
 /// * [fonte] 
-/// * [faturaId] - Fatura da transação, se a conta é cartão.
+/// * [faturaId] - Fatura da compra, no cartão, ou a fatura paga, no pagamento de fatura.
+/// * [fatura] - Cartão e competência da fatura de `fatura_id`, para a lista dizer qual é.
 /// * [parcela] - Número da parcela, se é compra parcelada.
 /// * [transferencia] - O par e as duas contas, se é transferência ligada.
 @BuiltValue()
@@ -67,9 +69,13 @@ abstract class TransacaoSaida implements Built<TransacaoSaida, TransacaoSaidaBui
   FonteTransacao get fonte;
   // enum fonteEnum {  manual,  ofx,  csv_mercadopago,  pluggy,  };
 
-  /// Fatura da transação, se a conta é cartão.
+  /// Fatura da compra, no cartão, ou a fatura paga, no pagamento de fatura.
   @BuiltValueField(wireName: r'fatura_id')
   String? get faturaId;
+
+  /// Cartão e competência da fatura de `fatura_id`, para a lista dizer qual é.
+  @BuiltValueField(wireName: r'fatura')
+  FaturaDaTransacaoSaida? get fatura;
 
   /// Número da parcela, se é compra parcelada.
   @BuiltValueField(wireName: r'parcela')
@@ -156,6 +162,11 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
     yield object.faturaId == null ? null : serializers.serialize(
       object.faturaId,
       specifiedType: const FullType.nullable(String),
+    );
+    yield r'fatura';
+    yield object.fatura == null ? null : serializers.serialize(
+      object.fatura,
+      specifiedType: const FullType.nullable(FaturaDaTransacaoSaida),
     );
     yield r'parcela';
     yield object.parcela == null ? null : serializers.serialize(
@@ -268,6 +279,14 @@ class _$TransacaoSaidaSerializer implements PrimitiveSerializer<TransacaoSaida> 
           ) as String?;
           if (valueDes == null) continue;
           result.faturaId = valueDes;
+          break;
+        case r'fatura':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(FaturaDaTransacaoSaida),
+          ) as FaturaDaTransacaoSaida?;
+          if (valueDes == null) continue;
+          result.fatura.replace(valueDes);
           break;
         case r'parcela':
           final valueDes = serializers.deserialize(

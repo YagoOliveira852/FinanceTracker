@@ -141,6 +141,7 @@ Class | Method | HTTP request | Description
  - [ExemploRascunho](doc/ExemploRascunho.md)
  - [FaturaCandidataSaida](doc/FaturaCandidataSaida.md)
  - [FaturaDaImportacao](doc/FaturaDaImportacao.md)
+ - [FaturaDaTransacaoSaida](doc/FaturaDaTransacaoSaida.md)
  - [FaturaDetalheSaida](doc/FaturaDetalheSaida.md)
  - [FaturaEdicao](doc/FaturaEdicao.md)
  - [FaturaResumo](doc/FaturaResumo.md)

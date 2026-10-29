@@ -42,6 +42,7 @@ import 'package:api_client/src/model/erro_importacao.dart';
 import 'package:api_client/src/model/exemplo_rascunho.dart';
 import 'package:api_client/src/model/fatura_candidata_saida.dart';
 import 'package:api_client/src/model/fatura_da_importacao.dart';
+import 'package:api_client/src/model/fatura_da_transacao_saida.dart';
 import 'package:api_client/src/model/fatura_detalhe_saida.dart';
 import 'package:api_client/src/model/fatura_edicao.dart';
 import 'package:api_client/src/model/fatura_resumo.dart';
@@ -124,6 +125,7 @@ part 'serializers.g.dart';
   ExemploRascunho,
   FaturaCandidataSaida,
   FaturaDaImportacao,
+  FaturaDaTransacaoSaida,
   FaturaDetalheSaida,
   FaturaEdicao,
   FaturaResumo,

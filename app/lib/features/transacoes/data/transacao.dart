@@ -42,8 +42,11 @@ abstract class Transacao with _$Transacao {
     /// Confirmada na revisão ou escolhida no lançamento; nula sem categoria.
     CategoriaDaTransacao? categoria,
 
-    /// Fatura da transação, quando a conta é cartão de crédito.
+    /// Fatura da compra, no cartão, ou a fatura paga, no pagamento de fatura.
     String? faturaId,
+
+    /// Cartão e mês da mesma fatura de [faturaId], para a lista dizer qual é.
+    FaturaDaTransacao? fatura,
 
     /// Número da parcela, quando é compra parcelada.
     Parcela? parcela,
@@ -71,6 +74,16 @@ abstract class ParTransferencia with _$ParTransferencia {
     required String contaOrigemId,
     required String contaDestinoId,
   }) = _ParTransferencia;
+}
+
+/// A fatura de uma transação: o cartão e a [competencia] (primeiro dia do mês
+/// do vencimento).
+@freezed
+abstract class FaturaDaTransacao with _$FaturaDaTransacao {
+  const factory FaturaDaTransacao({
+    required String cartaoId,
+    required DateTime competencia,
+  }) = _FaturaDaTransacao;
 }
 
 /// "Parcela 3/10": a [numero] de [total] parcelas de uma compra.

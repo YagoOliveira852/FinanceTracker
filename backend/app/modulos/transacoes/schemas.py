@@ -78,6 +78,13 @@ class TransferenciaParSaida(BaseModel):
     conta_destino_id: uuid.UUID
 
 
+class FaturaDaTransacaoSaida(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    cartao_id: uuid.UUID
+    competencia: date = Field(description="Primeiro dia do mês do vencimento.")
+
+
 class TransacaoSaida(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -93,7 +100,12 @@ class TransacaoSaida(BaseModel):
     )
     status: StatusTransacao
     fonte: FonteTransacao
-    fatura_id: uuid.UUID | None = Field(description="Fatura da transação, se a conta é cartão.")
+    fatura_id: uuid.UUID | None = Field(
+        description="Fatura da compra, no cartão, ou a fatura paga, no pagamento de fatura."
+    )
+    fatura: FaturaDaTransacaoSaida | None = Field(
+        description="Cartão e competência da fatura de `fatura_id`, para a lista dizer qual é."
+    )
     parcela: ParcelaSaida | None = Field(description="Número da parcela, se é compra parcelada.")
     transferencia: TransferenciaParSaida | None = Field(
         description="O par e as duas contas, se é transferência ligada."

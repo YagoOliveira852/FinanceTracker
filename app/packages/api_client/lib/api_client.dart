@@ -49,6 +49,7 @@ export 'package:api_client/src/model/erro_importacao.dart';
 export 'package:api_client/src/model/exemplo_rascunho.dart';
 export 'package:api_client/src/model/fatura_candidata_saida.dart';
 export 'package:api_client/src/model/fatura_da_importacao.dart';
+export 'package:api_client/src/model/fatura_da_transacao_saida.dart';
 export 'package:api_client/src/model/fatura_detalhe_saida.dart';
 export 'package:api_client/src/model/fatura_edicao.dart';
 export 'package:api_client/src/model/fatura_resumo.dart';
