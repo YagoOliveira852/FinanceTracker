@@ -70,6 +70,15 @@ class SugestaoSaida(BaseModel):
     categoria: CategoriaResumo
 
 
+class PrevisaoDoTipoSaida(BaseModel):
+    tipo: TipoTransacao
+    sugestao: SugestaoSaida | None = Field(
+        description="A sugestão como se o rascunho tivesse este tipo."
+    )
+    efeito_confirmando: EfeitoAprendizado
+    efeito_corrigindo: EfeitoAprendizado
+
+
 class RascunhoSaida(TransacaoRevisao):
     padrao: str = Field(
         description="A descrição original normalizada (vazia: só termos genéricos)."
@@ -83,6 +92,10 @@ class RascunhoSaida(TransacaoRevisao):
     )
     efeito_corrigindo: EfeitoAprendizado = Field(
         description="O que acontece com as regras se escolher outra categoria."
+    )
+    outros_tipos: list[PrevisaoDoTipoSaida] = Field(
+        description="Sugestão e efeitos se confirmar com outro tipo (entrada como receita ou "
+        "estorno): a sugestão depende do tipo."
     )
 
 

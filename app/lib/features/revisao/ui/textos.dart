@@ -16,10 +16,11 @@ String textoDoLote(int quantidade) => quantidade == 1
 /// Nulo quando nada muda nem há regra para citar.
 String? textoDoEfeito(
   Rascunho rascunho,
+  PrevisaoDoTipo? previsao,
   EfeitoRegra? efeito,
   String categoria,
 ) {
-  final sugestao = rascunho.sugestao;
+  final sugestao = previsao?.sugestao;
   final padrao = rascunho.padrao;
   return switch (efeito) {
     null || EfeitoRegra.nenhuma => null,

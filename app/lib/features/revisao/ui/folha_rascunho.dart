@@ -86,6 +86,7 @@ class _FolhaRascunhoState extends State<_FolhaRascunho> {
             .firstOrNull;
         final efeito = textoDoEfeito(
           rascunho,
+          cubit.previsao,
           cubit.efeito,
           escolhida?.nome ?? '',
         );

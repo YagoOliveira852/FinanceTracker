@@ -75,6 +75,7 @@ lib/src/model/par_entrada.dart
 lib/src/model/par_recusa_entrada.dart
 lib/src/model/par_saida.dart
 lib/src/model/parcela_saida.dart
+lib/src/model/previsao_do_tipo_saida.dart
 lib/src/model/rascunho_saida.dart
 lib/src/model/rascunhos_casados_saida.dart
 lib/src/model/refresh_entrada.dart

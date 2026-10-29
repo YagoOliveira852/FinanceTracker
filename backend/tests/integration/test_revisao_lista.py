@@ -152,6 +152,51 @@ def test_regra_de_renda_nao_sugere_para_despesa(api, sessao, conta, categoria):
     assert _lista(api)["rascunhos"][0]["sugestao"] is None
 
 
+def test_entrada_traz_sugestao_e_efeitos_do_outro_tipo(api, sessao, conta, categoria):
+    """A sugestão depende do tipo: como receita, a regra de renda; como estorno,
+    a de gasto. A folha mostra o efeito certo ao trocar o tipo."""
+    renda = _regra(sessao, "loja exemplo", categoria("Outras receitas"))
+    gasto = _regra(sessao, "loja exemplo", categoria("Compras"))
+    criar_transacao(sessao, conta, "LOJA EXEMPLO", tipo="receita")
+
+    (rascunho,) = _lista(api)["rascunhos"]
+
+    assert rascunho["sugestao"]["regra_id"] == str(renda.id)
+    (estorno,) = rascunho["outros_tipos"]
+    assert estorno["tipo"] == "estorno"
+    assert estorno["sugestao"]["regra_id"] == str(gasto.id)
+    assert estorno["efeito_confirmando"] == "reforcada"
+    assert estorno["efeito_corrigindo"] == "corrigida"
+
+
+def test_outro_tipo_sem_regra_compativel_cria(api, sessao, conta, categoria):
+    _regra(sessao, "loja exemplo", categoria("Outras receitas"))
+    criar_transacao(sessao, conta, "LOJA EXEMPLO", tipo="receita")
+
+    (rascunho,) = _lista(api)["rascunhos"]
+
+    (estorno,) = rascunho["outros_tipos"]
+    assert estorno["sugestao"] is None
+    assert estorno["efeito_confirmando"] == "criada"
+    assert estorno["efeito_corrigindo"] == "criada"
+
+
+def test_saida_nao_tem_outro_tipo(api, sessao, conta):
+    criar_transacao(sessao, conta, "PADARIA PAO QUENTE")
+
+    (rascunho,) = _lista(api)["rascunhos"]
+
+    assert rascunho["outros_tipos"] == []
+
+
+def test_entrada_sem_categoria_traz_receita_e_estorno(api, sessao, conta):
+    criar_transacao(sessao, conta, "PIX RECEBIDO FULANO", tipo="transferencia_entrada")
+
+    (rascunho,) = _lista(api)["rascunhos"]
+
+    assert [o["tipo"] for o in rascunho["outros_tipos"]] == ["receita", "estorno"]
+
+
 def test_rascunhos_da_data_mais_recente(api, sessao, conta):
     criar_transacao(sessao, conta, "PADARIA PAO QUENTE", data=date(2026, 10, 18))
     criar_transacao(sessao, conta, "STREAMING EXEMPLO", data=date(2026, 10, 19))

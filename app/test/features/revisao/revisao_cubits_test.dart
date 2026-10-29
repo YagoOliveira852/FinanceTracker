@@ -187,12 +187,31 @@ void main() {
       );
     });
 
-    test('entrada troca entre receita e estorno, sem efeito', () {
+    test('entrada como estorno: sugestão e efeito do estorno', () {
       final cubit = FolhaRascunhoCubit(
         RevisaoRepositorioFalso(),
-        rascunhoSugerido().copyWith(
-          item: itemExemplo(tipo: TipoTransacao.receita),
-        ),
+        rascunhoEntrada(),
+      );
+      addTearDown(cubit.close);
+      expect(cubit.state.categoriaId, 'cat-outras-receitas');
+
+      cubit.escolherTipo(TipoTransacao.estorno);
+
+      expect(cubit.state.categoriaId, 'cat-compras');
+      expect(cubit.efeito, EfeitoRegra.reforcada);
+      expect(cubit.previsao?.sugestao?.categoria.nome, 'Compras');
+      cubit.escolherCategoria('cat-mercado');
+      expect(cubit.efeito, EfeitoRegra.corrigida);
+
+      cubit.escolherTipo(TipoTransacao.receita);
+      expect(cubit.state.categoriaId, 'cat-outras-receitas');
+      expect(cubit.efeito, EfeitoRegra.reforcada);
+    });
+
+    test('tipo que a API não previu fica sem efeito', () {
+      final cubit = FolhaRascunhoCubit(
+        RevisaoRepositorioFalso(),
+        rascunhoEntrada().copyWith(outrosTipos: []),
       );
       addTearDown(cubit.close);
 

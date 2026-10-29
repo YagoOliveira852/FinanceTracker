@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.deps import HojeDep, SessaoDep, get_usuario_atual
 from app.core.erros import RespostaErro
+from app.modulos.categorias.models import RegraClassificacao
 from app.modulos.categorias.schemas import CategoriaResumo
 from app.modulos.revisao import service
 from app.modulos.revisao.schemas import (
@@ -23,6 +24,7 @@ from app.modulos.revisao.schemas import (
     ParEntrada,
     ParRecusaEntrada,
     ParSaida,
+    PrevisaoDoTipoSaida,
     RascunhoSaida,
     RevisaoSaida,
     SugestaoSaida,
@@ -218,21 +220,32 @@ def remover(transacao_id: uuid.UUID, sessao: SessaoDep) -> None:
 
 
 def _rascunho(rascunho: service.Rascunho) -> RascunhoSaida:
-    regra = rascunho.sugerida
-    sugestao = None
-    if regra is not None:
-        sugestao = SugestaoSaida(
-            regra_id=regra.id,
-            padrao=regra.padrao,
-            origem=regra.origem,
-            categoria=CategoriaResumo.model_validate(regra.categoria),
-        )
     return RascunhoSaida(
         **TransacaoRevisao.model_validate(rascunho.transacao).model_dump(),
         padrao=rascunho.padrao,
-        sugestao=sugestao,
+        sugestao=_sugestao(rascunho.sugerida),
         efeito_confirmando=rascunho.efeito_confirmando,
         efeito_corrigindo=rascunho.efeito_corrigindo,
+        outros_tipos=[
+            PrevisaoDoTipoSaida(
+                tipo=previsao.tipo,
+                sugestao=_sugestao(previsao.sugerida),
+                efeito_confirmando=previsao.efeito_confirmando,
+                efeito_corrigindo=previsao.efeito_corrigindo,
+            )
+            for previsao in rascunho.outros_tipos
+        ],
+    )
+
+
+def _sugestao(regra: RegraClassificacao | None) -> SugestaoSaida | None:
+    if regra is None:
+        return None
+    return SugestaoSaida(
+        regra_id=regra.id,
+        padrao=regra.padrao,
+        origem=regra.origem,
+        categoria=CategoriaResumo.model_validate(regra.categoria),
     )
 
 

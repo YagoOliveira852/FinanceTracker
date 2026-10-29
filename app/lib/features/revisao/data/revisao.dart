@@ -97,9 +97,42 @@ abstract class Rascunho with _$Rascunho {
 
     /// Efeito se escolher outra categoria.
     required EfeitoRegra efeitoCorrigindo,
+
+    /// Sugestão e efeitos se confirmar com outro tipo (entrada como receita
+    /// ou estorno): cada tipo combina com outros grupos de categoria.
+    @Default([]) List<PrevisaoDoTipo> outrosTipos,
   }) = _Rascunho;
 
   const Rascunho._();
+
+  /// O efeito de confirmar com a categoria [categoriaId], no tipo original.
+  EfeitoRegra efeitoPara(String categoriaId) =>
+      previsaoPara(item.tipo)!.efeitoPara(categoriaId);
+
+  /// Sugestão e efeitos se confirmar como [tipo]; nulo se o tipo não está
+  /// entre os que a API previu.
+  PrevisaoDoTipo? previsaoPara(TipoTransacao tipo) => tipo == item.tipo
+      ? PrevisaoDoTipo(
+          tipo: tipo,
+          sugestao: sugestao,
+          efeitoConfirmando: efeitoConfirmando,
+          efeitoCorrigindo: efeitoCorrigindo,
+        )
+      : outrosTipos.where((p) => p.tipo == tipo).firstOrNull;
+}
+
+/// A sugestão e o que acontece com as regras ao confirmar o rascunho como
+/// [tipo].
+@freezed
+abstract class PrevisaoDoTipo with _$PrevisaoDoTipo {
+  const factory PrevisaoDoTipo({
+    required TipoTransacao tipo,
+    Sugestao? sugestao,
+    required EfeitoRegra efeitoConfirmando,
+    required EfeitoRegra efeitoCorrigindo,
+  }) = _PrevisaoDoTipo;
+
+  const PrevisaoDoTipo._();
 
   /// O efeito de confirmar com a categoria [categoriaId].
   EfeitoRegra efeitoPara(String categoriaId) =>

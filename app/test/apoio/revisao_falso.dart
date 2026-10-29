@@ -77,6 +77,38 @@ Rascunho rascunhoDeManual() => Rascunho(
   efeitoCorrigindo: EfeitoRegra.manualMantida,
 );
 
+/// Entrada da Loja Exemplo: como receita, sugere Outras receitas; como
+/// estorno, Compras (regras de mesmo padrão, uma de renda e outra de gasto).
+Rascunho rascunhoEntrada() => Rascunho(
+  item: itemExemplo(
+    id: 'i4',
+    tipo: TipoTransacao.receita,
+    valor: '89.90',
+    descricao: 'Loja Exemplo',
+    descricaoOriginal: 'LOJA EXEMPLO',
+  ),
+  padrao: 'loja exemplo',
+  sugestao: sugestaoExemplo(
+    padrao: 'loja exemplo',
+    categoriaId: 'cat-outras-receitas',
+    categoriaNome: 'Outras receitas',
+  ),
+  efeitoConfirmando: EfeitoRegra.reforcada,
+  efeitoCorrigindo: EfeitoRegra.corrigida,
+  outrosTipos: [
+    PrevisaoDoTipo(
+      tipo: TipoTransacao.estorno,
+      sugestao: sugestaoExemplo(
+        padrao: 'loja exemplo',
+        categoriaId: 'cat-compras',
+        categoriaNome: 'Compras',
+      ),
+      efeitoConfirmando: EfeitoRegra.reforcada,
+      efeitoCorrigindo: EfeitoRegra.corrigida,
+    ),
+  ],
+);
+
 /// Posto sem sugestão, num cartão, no dia anterior.
 Rascunho rascunhoSemSugestao() => Rascunho(
   item: itemExemplo(

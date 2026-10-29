@@ -35,12 +35,16 @@ Map<String, Object?> _transacaoJson({
   'removida_na_origem_em': null,
 };
 
-Map<String, Object?> _rascunhoJson({Map<String, Object?>? sugestao}) => {
+Map<String, Object?> _rascunhoJson({
+  Map<String, Object?>? sugestao,
+  List<Object> outrosTipos = const [],
+}) => {
   ..._transacaoJson(faturaCompetencia: '2026-11-01'),
   'padrao': 'posto ficticio fortaleza br',
   'sugestao': sugestao,
   'efeito_confirmando': 'reforcada',
   'efeito_corrigindo': 'manual_mantida',
+  'outros_tipos': outrosTipos,
 };
 
 const _categoria = {
@@ -92,6 +96,14 @@ void main() {
               'origem': 'manual',
               'categoria': _categoria,
             },
+            outrosTipos: [
+              {
+                'tipo': 'estorno',
+                'sugestao': null,
+                'efeito_confirmando': 'criada',
+                'efeito_corrigindo': 'criada',
+              },
+            ],
           ),
         ],
       },
@@ -114,6 +126,9 @@ void main() {
     expect(rascunho.sugestao?.categoria.nome, 'Transporte');
     expect(rascunho.efeitoConfirmando, EfeitoRegra.reforcada);
     expect(rascunho.efeitoCorrigindo, EfeitoRegra.manualMantida);
+    final estorno = rascunho.previsaoPara(TipoTransacao.estorno)!;
+    expect(estorno.sugestao, isNull);
+    expect(estorno.efeitoConfirmando, EfeitoRegra.criada);
   });
 
   test('rascunho sem sugestão', () async {
