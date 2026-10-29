@@ -41,18 +41,16 @@ class FaturasTela extends StatelessWidget {
     if (context.mounted) await context.read<FaturasCubit>().carregar();
   }
 
-  /// Depois de editar, recarrega as contas (nome, dias, ativo) e as faturas
-  /// (dias novos mudam as datas das próximas).
+  /// Depois de editar, recarrega as contas (nome, dias, ativo); as faturas
+  /// recarregam junto (listener no build), porque dias novos mudam as datas
+  /// das próximas.
   Future<void> _editarCartao(BuildContext context, Conta conta) async {
     final salvou = await context.push<bool>(
       rotaEditarCartao(contaId),
       extra: conta,
     );
     if (salvou == true && context.mounted) {
-      await Future.wait([
-        context.read<ContasCubit>().carregar(),
-        context.read<FaturasCubit>().carregar(),
-      ]);
+      await context.read<ContasCubit>().carregar();
     }
   }
 
@@ -65,93 +63,100 @@ class FaturasTela extends StatelessWidget {
     };
     final estado = context.watch<FaturasCubit>().state;
 
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: Espaco.x1,
-        title: Text(conta?.nome ?? 'Cartão'),
-        actions: [
-          if (conta?.cartao != null)
-            IconButton(
-              tooltip: 'Editar cartão',
-              icon: const Icon(Icons.edit_rounded),
-              onPressed: () => _editarCartao(context, conta!),
-            ),
-        ],
-      ),
-      body: switch (estado) {
-        FaturasCarregando() => const Carregando(),
-        FaturasErro(:final mensagem) => ErroComTentar(
-          mensagem: mensagem,
-          aoTentar: context.read<FaturasCubit>().carregar,
+    // Como no detalhe: o status e os valores das faturas mudam com ações em
+    // outras telas, que terminam recarregando as contas.
+    return BlocListener<ContasCubit, ContasEstado>(
+      listenWhen: (antes, depois) =>
+          depois is ContasCarregado && antes != depois,
+      listener: (context, _) => context.read<FaturasCubit>().carregar(),
+      child: Scaffold(
+        appBar: AppBar(
+          titleSpacing: Espaco.x1,
+          title: Text(conta?.nome ?? 'Cartão'),
+          actions: [
+            if (conta?.cartao != null)
+              IconButton(
+                tooltip: 'Editar cartão',
+                icon: const Icon(Icons.edit_rounded),
+                onPressed: () => _editarCartao(context, conta!),
+              ),
+          ],
         ),
-        FaturasCarregado(:final lista) => RefreshIndicator(
-          onRefresh: context.read<FaturasCubit>().carregar,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              Espaco.x4,
-              0,
-              Espaco.x4,
-              Espaco.x6,
-            ),
-            children: [
-              if (conta?.cartao case final cartao?)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    Espaco.x1,
-                    0,
-                    Espaco.x1,
-                    Espaco.x2,
-                  ),
-                  child: Text(
-                    _resumoDoCartao(conta!, cartao),
-                    style: context.textos.bodyMedium?.copyWith(
-                      color: context.esquema.onSurfaceVariant,
+        body: switch (estado) {
+          FaturasCarregando() => const Carregando(),
+          FaturasErro(:final mensagem) => ErroComTentar(
+            mensagem: mensagem,
+            aoTentar: context.read<FaturasCubit>().carregar,
+          ),
+          FaturasCarregado(:final lista) => RefreshIndicator(
+            onRefresh: context.read<FaturasCubit>().carregar,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                Espaco.x4,
+                0,
+                Espaco.x4,
+                Espaco.x6,
+              ),
+              children: [
+                if (conta?.cartao case final cartao?)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      Espaco.x1,
+                      0,
+                      Espaco.x1,
+                      Espaco.x2,
+                    ),
+                    child: Text(
+                      _resumoDoCartao(conta!, cartao),
+                      style: context.textos.bodyMedium?.copyWith(
+                        color: context.esquema.onSurfaceVariant,
+                      ),
                     ),
                   ),
-                ),
-              if (lista.proximas.isNotEmpty) ...[
-                const TituloSecao('Próximas', pequeno: true),
+                if (lista.proximas.isNotEmpty) ...[
+                  const TituloSecao('Próximas', pequeno: true),
+                  GrupoLista(
+                    itens: [
+                      for (final f in lista.proximas.reversed)
+                        _ItemFatura(
+                          fatura: f,
+                          icone: Icons.event_rounded,
+                          comStatus: false,
+                          aoTocar: () => _abrir(context, f, lista),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: Espaco.x4),
+                ],
+                const TituloSecao('Atual', pequeno: true),
                 GrupoLista(
                   itens: [
-                    for (final f in lista.proximas.reversed)
-                      _ItemFatura(
-                        fatura: f,
-                        icone: Icons.event_rounded,
-                        comStatus: false,
-                        aoTocar: () => _abrir(context, f, lista),
-                      ),
+                    _ItemFatura(
+                      fatura: lista.atual,
+                      icone: Icons.credit_card_rounded,
+                      aoTocar: () => _abrir(context, lista.atual, lista),
+                    ),
                   ],
                 ),
-                const SizedBox(height: Espaco.x4),
-              ],
-              const TituloSecao('Atual', pequeno: true),
-              GrupoLista(
-                itens: [
-                  _ItemFatura(
-                    fatura: lista.atual,
-                    icone: Icons.credit_card_rounded,
-                    aoTocar: () => _abrir(context, lista.atual, lista),
+                if (lista.anteriores.isNotEmpty) ...[
+                  const SizedBox(height: Espaco.x4),
+                  const TituloSecao('Anteriores', pequeno: true),
+                  GrupoLista(
+                    itens: [
+                      for (final f in lista.anteriores)
+                        _ItemFatura(
+                          fatura: f,
+                          icone: Icons.lock_rounded,
+                          aoTocar: () => _abrir(context, f, lista),
+                        ),
+                    ],
                   ),
                 ],
-              ),
-              if (lista.anteriores.isNotEmpty) ...[
-                const SizedBox(height: Espaco.x4),
-                const TituloSecao('Anteriores', pequeno: true),
-                GrupoLista(
-                  itens: [
-                    for (final f in lista.anteriores)
-                      _ItemFatura(
-                        fatura: f,
-                        icone: Icons.lock_rounded,
-                        aoTocar: () => _abrir(context, f, lista),
-                      ),
-                  ],
-                ),
               ],
-            ],
+            ),
           ),
-        ),
-      },
+        },
+      ),
     );
   }
 
