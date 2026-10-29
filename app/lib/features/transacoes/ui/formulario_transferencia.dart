@@ -7,6 +7,7 @@ import '../../../app/widgets/campos.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
+import '../../contas/ui/opcao_conta.dart';
 import '../cubit/transferencia_cubit.dart';
 import 'lancamento_tela.dart';
 
@@ -187,24 +188,13 @@ class _CampoConta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      initialValue: valor,
-      isExpanded: true,
-      hint: const Text('Selecione uma conta'),
-      decoration: InputDecoration(labelText: rotulo, errorText: erro),
-      items: [
-        for (final conta in contas)
-          DropdownMenuItem(
-            value: conta.id,
-            child: Text(
-              conta.instituicao == null
-                  ? conta.nome
-                  : '${conta.nome} · ${conta.instituicao}',
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-      ],
-      onChanged: aoMudar,
+    return CampoSelecao<String>(
+      rotulo: rotulo,
+      valor: valor,
+      vazio: 'Selecione uma conta',
+      erro: erro,
+      opcoes: [for (final conta in contas) opcaoDeConta(conta)],
+      aoMudar: aoMudar,
     );
   }
 }

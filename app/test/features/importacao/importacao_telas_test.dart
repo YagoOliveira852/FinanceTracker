@@ -7,6 +7,7 @@ import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/importacao/data/importacao.dart';
 import 'package:financas/features/importacao/data/importacoes_repositorio.dart';
 import 'package:flutter/material.dart';
+import 'package:financas/app/widgets/campos.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../apoio/auth_falso.dart';
@@ -127,9 +128,9 @@ void main() {
     final importacoes = ImportacoesRepositorioFalso()..segurar = Completer();
     await _abrirImportar(tester, importacoes);
     await _tocar(tester, find.text('Escolher arquivo'));
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.tap(find.byType(CampoSelecao<String>));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Conta principal · Banco Exemplo').last);
+    await tester.tap(find.text('Conta principal').last);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Importar'));

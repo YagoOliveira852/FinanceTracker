@@ -12,6 +12,7 @@ import 'package:financas/features/categorias/ui/textos.dart';
 import 'package:financas/features/contas/cubit/contas_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:financas/app/widgets/campos.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -342,7 +343,7 @@ void main() {
     expect(find.text('Escolha a categoria.'), findsOneWidget);
 
     await tester.enterText(find.widgetWithText(TextField, 'Padrão'), 'Cinema');
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.tap(find.byType(CampoSelecao<String>));
     await tester.pumpAndSettle();
     // Educação está desativada: fora das opções.
     expect(find.text('Educação'), findsNothing);

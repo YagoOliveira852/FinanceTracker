@@ -10,6 +10,7 @@ import '../../../core/formatacao/dinheiro.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
 import '../../contas/ui/contas_tela.dart';
+import '../../contas/ui/opcao_conta.dart';
 import '../../transacoes/ui/lancamento_tela.dart';
 import '../cubit/pagamento_cubit.dart';
 import '../data/fatura.dart';
@@ -139,70 +140,37 @@ class _FormularioPagamentoState extends State<FormularioPagamento> {
               const _SemCartao(),
               const SizedBox(height: Espaco.x6),
             ],
-            DropdownButtonFormField<String>(
-              key: ValueKey(('cartao', estadoContas.runtimeType, cartao?.id)),
-              initialValue: cartao?.id,
-              isExpanded: true,
-              hint: Text(semCartao ? 'Nenhum cartão ativo' : 'Selecione'),
-              decoration: const InputDecoration(labelText: 'Cartão'),
-              items: [
-                for (final c in cartoes)
-                  DropdownMenuItem(value: c.id, child: Text(_nomeDaConta(c))),
-              ],
-              onChanged: livre && widget.inicial == null
-                  ? (id) => id == null ? null : _escolherCartao(id)
-                  : null,
+            CampoSelecao<String>(
+              rotulo: 'Cartão',
+              valor: cartao?.id,
+              vazio: semCartao ? 'Nenhum cartão ativo' : 'Selecione',
+              opcoes: [for (final c in cartoes) opcaoDeConta(c)],
+              aoMudar: livre && widget.inicial == null ? _escolherCartao : null,
             ),
             const SizedBox(height: Espaco.x6),
-            DropdownButtonFormField<DateTime>(
-              key: ValueKey(('fatura', estado.cartaoId, estado.faturas.length)),
-              initialValue: fatura?.competencia,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: 'Fatura',
-                helperText: estado.carregando
-                    ? 'Carregando as faturas…'
-                    : fatura == null
-                    ? null
-                    : 'Valor da fatura: ${formatarDinheiro(fatura.valor)}.',
-              ),
-              items: [
+            CampoSelecao<DateTime>(
+              rotulo: 'Fatura',
+              valor: fatura?.competencia,
+              ajuda: estado.carregando
+                  ? 'Carregando as faturas…'
+                  : fatura == null
+                  ? null
+                  : 'Valor da fatura: ${formatarDinheiro(fatura.valor)}.',
+              opcoes: [
                 for (final f in estado.faturas)
-                  DropdownMenuItem(
-                    value: f.competencia,
-                    child: Text(_opcaoDeFatura(f)),
-                  ),
+                  OpcaoSelecao(valor: f.competencia, rotulo: _opcaoDeFatura(f)),
               ],
-              onChanged: livre
-                  ? (competencia) {
-                      if (competencia != null) {
-                        cubit.escolherFatura(competencia);
-                      }
-                    }
-                  : null,
+              aoMudar: livre ? cubit.escolherFatura : null,
             ),
             const SizedBox(height: Espaco.x6),
-            DropdownButtonFormField<String>(
-              key: ValueKey(('conta', estadoContas.runtimeType, conta)),
-              initialValue: conta,
-              isExpanded: true,
-              hint: const Text('Selecione uma conta'),
-              decoration: InputDecoration(
-                labelText: 'Pagar com',
-                errorText: estado.erros['conta_id'],
-                helperText: 'Conta de pagamento do cartão; dá para trocar.',
-              ),
-              items: [
-                for (final c in pagadoras)
-                  DropdownMenuItem(
-                    value: c.id,
-                    child: Text(
-                      _nomeDaConta(c),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-              ],
-              onChanged: livre
+            CampoSelecao<String>(
+              rotulo: 'Pagar com',
+              valor: conta,
+              vazio: 'Selecione uma conta',
+              erro: estado.erros['conta_id'],
+              ajuda: 'Conta de pagamento do cartão; dá para trocar.',
+              opcoes: [for (final c in pagadoras) opcaoDeConta(c)],
+              aoMudar: livre
                   ? (id) {
                       setState(() => _contaEscolhida = id);
                       cubit.limparErro('conta_id');
@@ -251,9 +219,6 @@ class _FormularioPagamentoState extends State<FormularioPagamento> {
       },
     );
   }
-
-  static String _nomeDaConta(Conta c) =>
-      c.instituicao == null ? c.nome : '${c.nome} · ${c.instituicao}';
 
   /// "Outubro · fechada · vence ter, 13 out".
   static String _opcaoDeFatura(ResumoFatura f) {

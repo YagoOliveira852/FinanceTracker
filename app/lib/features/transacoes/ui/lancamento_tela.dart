@@ -11,8 +11,10 @@ import '../../../core/formatacao/datas.dart';
 import '../../../core/formatacao/dinheiro.dart';
 import '../../categorias/cubit/categorias_cubit.dart';
 import '../../categorias/data/categoria.dart';
+import '../../categorias/ui/opcao_categoria.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
+import '../../contas/ui/opcao_conta.dart';
 import '../../faturas/data/fatura.dart';
 import '../../faturas/ui/formulario_pagamento.dart';
 import '../cubit/lancamento_cubit.dart';
@@ -179,31 +181,14 @@ class _LancamentoTelaState extends State<LancamentoTela> {
           livre: livre,
           erroGeral: estado.erroGeral,
           campos: [
-            DropdownButtonFormField<String>(
-              // initialValue só é lido na criação: a chave recria o campo
-              // quando as contas carregam ou o tipo muda a lista.
-              key: ValueKey((estadoContas.runtimeType, tipo)),
-              initialValue: contaSelecionada?.id,
-              isExpanded: true,
-              hint: const Text('Selecione uma conta'),
-              decoration: InputDecoration(
-                labelText: 'Conta',
-                errorText: estado.erros['conta_id'],
-                helperText: ajudaConta,
-              ),
-              items: [
-                for (final conta in contas)
-                  DropdownMenuItem(
-                    value: conta.id,
-                    child: Text(
-                      conta.instituicao == null
-                          ? conta.nome
-                          : '${conta.nome} · ${conta.instituicao}',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-              ],
-              onChanged: livre
+            CampoSelecao<String>(
+              rotulo: 'Conta',
+              valor: contaSelecionada?.id,
+              vazio: 'Selecione uma conta',
+              erro: estado.erros['conta_id'],
+              ajuda: ajudaConta,
+              opcoes: [for (final conta in contas) opcaoDeConta(conta)],
+              aoMudar: livre
                   ? (id) {
                       setState(() {
                         _contaEscolhida = id;
@@ -253,23 +238,20 @@ class _LancamentoTelaState extends State<LancamentoTela> {
                   const SizedBox(width: Espaco.x4),
                   SizedBox(
                     width: 128,
-                    child: DropdownButtonFormField<int>(
-                      initialValue: _parcelas,
-                      isExpanded: true,
-                      decoration: InputDecoration(
-                        labelText: 'Parcelas',
-                        errorText: estado.erros['parcelas'],
-                      ),
-                      items: [
+                    child: CampoSelecao<int>(
+                      rotulo: 'Parcelas',
+                      valor: _parcelas,
+                      erro: estado.erros['parcelas'],
+                      opcoes: [
                         for (var n = 1; n <= _maximoDeParcelas; n++)
-                          DropdownMenuItem(
-                            value: n,
-                            child: Text(n == 1 ? 'À vista' : '${n}x'),
+                          OpcaoSelecao(
+                            valor: n,
+                            rotulo: n == 1 ? 'À vista' : '${n}x',
                           ),
                       ],
-                      onChanged: livre
+                      aoMudar: livre
                           ? (n) {
-                              setState(() => _parcelas = n ?? 1);
+                              setState(() => _parcelas = n);
                               cubit.limparErro('parcelas');
                             }
                           : null,
@@ -313,30 +295,16 @@ class _LancamentoTelaState extends State<LancamentoTela> {
               ),
             ),
             const SizedBox(height: Espaco.x6),
-            DropdownButtonFormField<String?>(
-              // A chave recria o campo quando as categorias carregam ou o
-              // tipo muda as opções.
-              key: ValueKey((estadoCategorias.runtimeType, tipo)),
-              initialValue: _categoriaSelecionada(categorias),
-              isExpanded: true,
-              hint: const Text('Sem categoria'),
-              decoration: InputDecoration(
-                labelText: 'Categoria (opcional)',
-                errorText: estado.erros['categoria_id'],
-                helperText: ajudaCategoria,
-              ),
-              items: [
-                const DropdownMenuItem(child: Text('Sem categoria')),
-                for (final categoria in categorias)
-                  DropdownMenuItem(
-                    value: categoria.id,
-                    child: Text(
-                      categoria.nome,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+            CampoSelecao<String?>(
+              rotulo: 'Categoria (opcional)',
+              valor: _categoriaSelecionada(categorias),
+              erro: estado.erros['categoria_id'],
+              ajuda: ajudaCategoria,
+              opcoes: [
+                const OpcaoSelecao(valor: null, rotulo: 'Sem categoria'),
+                for (final categoria in categorias) opcaoDeCategoria(categoria),
               ],
-              onChanged: livre
+              aoMudar: livre
                   ? (id) {
                       setState(() => _categoriaEscolhida = id);
                       cubit.limparErro('categoria_id');
