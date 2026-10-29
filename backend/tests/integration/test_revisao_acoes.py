@@ -129,6 +129,47 @@ def test_receita_vira_estorno_com_categoria_de_gasto(api, sessao, conta, categor
     assert (transacao.tipo, transacao.categoria.nome) == ("estorno", "Alimentação")
 
 
+@pytest.mark.parametrize(
+    ("tipo", "descricao"),
+    [("aporte", "DINHEIRO RESERVADO COFRINHO"), ("resgate", "DINHEIRO RETIRADO COFRINHO")],
+)
+def test_aporte_e_resgate_confirmados_com_categoria_de_investimento(
+    api, sessao, conta, categoria, tipo, descricao
+):
+    # O Cofrinho do CSV do Mercado Pago: ainda sem investimento ligado (S8).
+    transacao = criar_transacao(sessao, conta, descricao, tipo=tipo)
+
+    resposta = _confirmar(api, transacao, categoria("Investimento"))
+
+    assert resposta.status_code == 200, resposta.text
+    sessao.refresh(transacao)
+    assert (transacao.status, transacao.tipo, transacao.categoria.nome) == (
+        "confirmada",
+        tipo,
+        "Investimento",
+    )
+
+
+def test_aporte_nao_vira_despesa(api, sessao, conta, categoria):
+    transacao = criar_transacao(sessao, conta, "DINHEIRO RESERVADO COFRINHO", tipo="aporte")
+
+    resposta = _confirmar(api, transacao, categoria("Compras"), tipo="despesa")
+
+    assert resposta.status_code == 422
+    assert resposta.json()["campos"] == [
+        {"campo": "body.tipo", "mensagem": "Um aporte é confirmado como aporte."}
+    ]
+
+
+def test_aporte_com_categoria_de_gasto_e_recusado(api, sessao, conta, categoria):
+    transacao = criar_transacao(sessao, conta, "DINHEIRO RESERVADO COFRINHO", tipo="aporte")
+
+    resposta = _confirmar(api, transacao, categoria("Compras"))
+
+    assert resposta.status_code == 422
+    assert [campo["campo"] for campo in resposta.json()["campos"]] == ["body.categoria_id"]
+
+
 def test_pagamento_que_era_outra_coisa_perde_a_fatura(api, sessao, conta, categoria):
     cartao = cartoes_service.criar_cartao(
         sessao,

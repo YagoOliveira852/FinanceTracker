@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from app.modulos.importacao.parsers.ofx import (
-    FitidRepetido,
+from app.modulos.importacao.parsers.extrato import (
     FormatoNaoReconhecido,
+    IdentificadorRepetido,
     TipoExtrato,
-    ler_ofx,
 )
+from app.modulos.importacao.parsers.ofx import ler_ofx
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "ofx"
 
@@ -41,7 +41,7 @@ def test_descricao_em_utf8_e_fitid_como_id_externo():
     linha = _ler("conta.ofx").linhas[1]
 
     assert linha.descricao == "Compra no débito - Padaria Pão Quente"
-    assert linha.fitid == linha.id_externo == "0a1b2c3d-0000-4000-8000-000000000002"
+    assert linha.identificador == linha.id_externo == "0a1b2c3d-0000-4000-8000-000000000002"
     assert linha.parcela is None
 
 
@@ -58,9 +58,9 @@ def test_fatura_do_cartao():
 def test_iof_usa_fitid_com_sufixo():
     compra, iof = _ler("fatura.ofx").linhas[1:3]
 
-    assert compra.fitid == iof.fitid
-    assert compra.id_externo == compra.fitid
-    assert iof.id_externo == f"{iof.fitid}:iof"
+    assert compra.identificador == iof.identificador
+    assert compra.id_externo == compra.identificador
+    assert iof.id_externo == f"{iof.identificador}:iof"
     assert iof.descricao == 'IOF de "Streaming Exemplo"'
 
 
@@ -98,10 +98,10 @@ def test_reconhece_parcela_pelo_sufixo(memo, parcela):
 
 
 def test_fitid_repetido_falha_com_as_linhas():
-    with pytest.raises(FitidRepetido) as erro:
+    with pytest.raises(IdentificadorRepetido) as erro:
         _ler("fitid_repetido.ofx")
 
-    assert [linha.fitid for linha in erro.value.linhas] == [
+    assert [linha.identificador for linha in erro.value.linhas] == [
         "1b2c3d4e-0000-4000-8000-000000000005",
         "1b2c3d4e-0000-4000-8000-000000000005",
     ]

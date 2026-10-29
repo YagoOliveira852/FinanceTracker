@@ -10,7 +10,7 @@ from app.core.dinheiro import Dinheiro
 from app.core.erros import RespostaErro
 from app.modulos.contas.models import TipoConta
 from app.modulos.importacao.models import FonteImportacao
-from app.modulos.importacao.parsers.ofx import LinhaOfx
+from app.modulos.importacao.parsers.extrato import Linha
 from app.modulos.importacao.service import ResumoImportacao
 
 
@@ -60,7 +60,9 @@ class ResultadoImportacaoSaida(BaseModel):
 
 
 class LinhaRepetidaSaida(BaseModel):
-    fitid: str
+    fitid: str = Field(
+        description="O identificador repetido: FITID no OFX, REFERENCE_ID no CSV do Mercado Pago."
+    )
     data: date
     valor: Dinheiro = Field(description="Com sinal, como no arquivo: negativo é saída.")
     descricao: str
@@ -106,7 +108,7 @@ def importacao_saida(resumo: ResumoImportacao) -> ImportacaoSaida:
     )
 
 
-def linha_repetida_saida(linha: LinhaOfx) -> LinhaRepetidaSaida:
+def linha_repetida_saida(linha: Linha) -> LinhaRepetidaSaida:
     return LinhaRepetidaSaida(
-        fitid=linha.fitid, data=linha.data, valor=linha.valor, descricao=linha.descricao
+        fitid=linha.identificador, data=linha.data, valor=linha.valor, descricao=linha.descricao
     )

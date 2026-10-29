@@ -1,4 +1,4 @@
-"""Leitor de OFX 1.x (SGML) e 2.x (XML): função pura, bytes → `ExtratoOfx`.
+"""Leitor de OFX 1.x (SGML) e 2.x (XML): função pura, bytes → `Extrato`.
 
 Spec `2026-10-28-importacao-design`, "Leitura do OFX". Atende o extrato da
 conta (`BANKMSGSRSV1`) e a fatura do cartão (`CREDITCARDMSGSRSV1`) do Nubank.
@@ -10,10 +10,20 @@ próximo `<` ou o fim da linha. O Nubank fecha todas; outros bancos, não.
 
 import html
 import re
-from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
-from enum import StrEnum
+
+from app.modulos.importacao.models import FonteImportacao
+from app.modulos.importacao.parsers.extrato import (
+    Extrato,
+    FormatoNaoReconhecido,
+    Linha,
+    Parcela,
+    Saldo,
+    TipoExtrato,
+    decodificar,
+    recusar_repetidos,
+)
 
 SUFIXO_IOF = ":iof"
 _CENTAVO = Decimal("0.01")
@@ -22,66 +32,12 @@ _PARCELA = re.compile(r"^(?P<descricao>.+?)\s+-\s+Parcela\s+(?P<numero>\d+)/(?P<
 _MARCAS = {"BANKMSGSRSV1": "conta", "CREDITCARDMSGSRSV1": "fatura"}
 
 
-class TipoExtrato(StrEnum):
-    conta = "conta"
-    fatura = "fatura"
-
-
-@dataclass(frozen=True)
-class Parcela:
-    numero: int
-    total: int
-    # A descrição sem o sufixo " - Parcela N/M": a da compra parcelada.
-    descricao: str
-
-
-@dataclass(frozen=True)
-class LinhaOfx:
-    fitid: str
-    # O FITID; na linha de IOF, `FITID:iof` (o Nubank repete o FITID da compra).
-    id_externo: str
-    data: date
-    # Com sinal, como no arquivo: negativo é saída.
-    valor: Decimal
-    descricao: str
-    parcela: Parcela | None
-
-
-@dataclass(frozen=True)
-class Saldo:
-    valor: Decimal
-    data: date
-
-
-@dataclass(frozen=True)
-class ExtratoOfx:
-    tipo: TipoExtrato
-    periodo_inicio: date | None
-    periodo_fim: date | None
-    # `LEDGERBAL`: saldo da conta ou, no cartão, o total da fatura (negativo).
-    saldo: Saldo | None
-    linhas: list[LinhaOfx]
-
-
-class FormatoNaoReconhecido(Exception):
-    def __init__(self, mensagem: str) -> None:
-        super().__init__(mensagem)
-        self.mensagem = mensagem
-
-
-class FitidRepetido(Exception):
-    """O arquivo tem lançamentos com o mesmo identificador: nada é importado,
-    porque o app não escolhe sozinho qual descartar."""
-
-    def __init__(self, linhas: list[LinhaOfx]) -> None:
-        super().__init__(f"{len(linhas)} lançamentos com FITID repetido.")
-        self.linhas = linhas
-
-
-def ler_ofx(dados: bytes) -> ExtratoOfx:
+def ler_ofx(dados: bytes) -> Extrato:
     """Lê o arquivo inteiro ou falha: `FormatoNaoReconhecido` se não é um
-    extrato OFX legível, `FitidRepetido` se sobra identificador repetido."""
-    texto = _decodificar(dados)
+    extrato OFX legível, `IdentificadorRepetido` se sobra FITID repetido."""
+    # O cabeçalho do Nubank diz CHARSET:1252 na fatura, mas o extrato da conta
+    # vem em UTF-8.
+    texto = decodificar(dados)
     if "<OFX>" not in texto.upper():
         raise FormatoNaoReconhecido("Não reconheci este arquivo: não é um OFX.")
     tipo = _tipo(texto)
@@ -91,23 +47,15 @@ def ler_ofx(dados: bytes) -> ExtratoOfx:
         for numero, bloco in enumerate(_agregados(lista, "STMTTRN"), start=1)
         if (linha := _linha(bloco, numero)) is not None
     ]
-    _recusar_repetidos(linhas)
-    return ExtratoOfx(
+    recusar_repetidos(linhas, "FITID")
+    return Extrato(
+        fonte=FonteImportacao.ofx,
         tipo=tipo,
         periodo_inicio=_data_opcional(lista, "DTSTART"),
         periodo_fim=_data_opcional(lista, "DTEND"),
         saldo=_saldo(texto),
         linhas=linhas,
     )
-
-
-def _decodificar(dados: bytes) -> str:
-    # O cabeçalho do Nubank diz CHARSET:1252 na fatura, mas o extrato da conta
-    # vem em UTF-8: tenta UTF-8 (com ou sem BOM) e cai para cp1252.
-    try:
-        return dados.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        return dados.decode("cp1252", errors="replace")
 
 
 def _tipo(texto: str) -> TipoExtrato:
@@ -119,7 +67,7 @@ def _tipo(texto: str) -> TipoExtrato:
     )
 
 
-def _linha(bloco: str, numero: int) -> LinhaOfx | None:
+def _linha(bloco: str, numero: int) -> Linha | None:
     fitid = _folha(bloco, "FITID")
     if not fitid:
         raise _incompleto(numero, "não tem identificador (FITID)")
@@ -134,8 +82,8 @@ def _linha(bloco: str, numero: int) -> LinhaOfx | None:
         return None
     descricao = _folha(bloco, "MEMO") or _folha(bloco, "NAME") or ""
     iof = descricao.startswith(_PREFIXO_IOF)
-    return LinhaOfx(
-        fitid=fitid,
+    return Linha(
+        identificador=fitid,
         id_externo=f"{fitid}{SUFIXO_IOF}" if iof else fitid,
         data=data,
         valor=valor,
@@ -156,15 +104,6 @@ def _parcela(descricao: str) -> Parcela | None:
     if not 1 <= numero <= total or total < 2:
         return None
     return Parcela(numero=numero, total=total, descricao=achado["descricao"])
-
-
-def _recusar_repetidos(linhas: list[LinhaOfx]) -> None:
-    contagem: dict[str, int] = {}
-    for linha in linhas:
-        contagem[linha.id_externo] = contagem.get(linha.id_externo, 0) + 1
-    repetidas = [linha for linha in linhas if contagem[linha.id_externo] > 1]
-    if repetidas:
-        raise FitidRepetido(repetidas)
 
 
 def _saldo(texto: str) -> Saldo | None:

@@ -59,6 +59,7 @@ class Conta(ComTimestamps, Base):
 class FonteSnapshot(StrEnum):
     manual = "manual"
     ofx = "ofx"
+    csv_mercadopago = "csv_mercadopago"
     pluggy = "pluggy"
 
 
@@ -66,8 +67,9 @@ class SnapshotSaldo(ComTimestamps, Base):
     """Saldo real de uma conta numa data, como o banco informou: serve para
     conferir o saldo calculado e para o 31/12 do IR.
 
-    Vem do `LEDGERBAL` do extrato OFX (com a importação que o gravou, para o
-    desfazer apagá-lo) ou da Pluggy. Investimentos entram aqui quando existirem
+    Vem do saldo de um extrato importado (`LEDGERBAL` do OFX ou a última linha
+    do CSV do Mercado Pago, com a importação que o gravou, para o desfazer
+    apagá-lo) ou da Pluggy. Investimentos entram aqui quando existirem
     (`investimento_id`, e `conta_id` passa a ser opcional).
     """
 

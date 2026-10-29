@@ -23,13 +23,13 @@ from app.modulos.cartoes.models import Cartao, Fatura
 from app.modulos.contas.models import Conta, FonteSnapshot, SnapshotSaldo, TipoConta
 from app.modulos.importacao.duplicatas import DIAS_MAXIMOS, marcar_duplicatas
 from app.modulos.importacao.models import FonteImportacao, Importacao, StatusImportacao
-from app.modulos.importacao.parsers.ofx import (
-    ExtratoOfx,
+from app.modulos.importacao.parsers import ler_extrato
+from app.modulos.importacao.parsers.extrato import (
+    Extrato,
     FormatoNaoReconhecido,
-    LinhaOfx,
+    Linha,
     Parcela,
     TipoExtrato,
-    ler_ofx,
 )
 from app.modulos.transacoes import service as transacoes_service
 from app.modulos.transacoes.models import (
@@ -51,6 +51,9 @@ DESCRICAO_VAZIA = "Lançamento sem descrição"
 _PAGAMENTO_FATURA = "Pagamento de fatura"
 _PAGAMENTO_RECEBIDO = "Pagamento recebido"
 _ESTORNO = "Estorno"
+# Cofrinho do Mercado Pago: guardar e tirar dinheiro não é gasto nem renda.
+_COFRINHO_GUARDADO = "Dinheiro reservado"
+_COFRINHO_RETIRADO = "Dinheiro retirado"
 
 
 class ImportacaoNaoEncontrada(Exception):
@@ -93,10 +96,11 @@ class _Lancamento:
 def importar(
     sessao: Session, *, conta_id: uuid.UUID, nome_arquivo: str | None, dados: bytes
 ) -> ResultadoImportacao:
-    """Importa um OFX na conta, ou devolve a importação anterior do mesmo arquivo.
+    """Importa um extrato (OFX ou CSV do Mercado Pago) na conta, ou devolve a
+    importação anterior do mesmo arquivo.
 
-    Levanta `CampoInvalido` (arquivo ou conta) e `FitidRepetido` (do parser);
-    nos dois casos nada é gravado.
+    Levanta `CampoInvalido` (arquivo ou conta) e `IdentificadorRepetido` (do
+    parser); nos dois casos nada é gravado.
     """
     if len(dados) > TAMANHO_MAXIMO:
         raise CampoInvalido("arquivo", "O arquivo passa de 5 MB.")
@@ -106,11 +110,11 @@ def importar(
         return ResultadoImportacao(importacao=anterior, ja_importada=True)
 
     try:
-        extrato = ler_ofx(dados)
+        extrato = ler_extrato(dados)
     except FormatoNaoReconhecido as erro:
         raise CampoInvalido("arquivo", erro.mensagem) from erro
     conta = transacoes_service.conta_ativa(sessao, conta_id)
-    _validar_conta(conta, extrato.tipo)
+    _validar_conta(conta, extrato)
     # Tudo o que pode recusar o arquivo vem antes da primeira escrita.
     cartao, fatura_do_arquivo = None, None
     if extrato.tipo == TipoExtrato.fatura:
@@ -118,7 +122,7 @@ def importar(
         fatura_do_arquivo = _fatura_do_arquivo(sessao, cartao, extrato)
 
     importacao = Importacao(
-        fonte=FonteImportacao.ofx,
+        fonte=extrato.fonte,
         conta_id=conta.id,
         nome_arquivo=nome_arquivo,
         hash_arquivo=hash_arquivo,
@@ -136,21 +140,24 @@ def importar(
     else:
         _gravar_saldo(sessao, importacao, extrato)
 
-    linhas = [linha for linha in extrato.linhas if _tipo(extrato.tipo, linha) is not None]
-    ja_importados = _ids_ja_importados(sessao, conta.id, [linha.id_externo for linha in linhas])
+    fonte = FonteTransacao(extrato.fonte)
+    linhas = [linha for linha in extrato.linhas if _tipo(extrato, linha) is not None]
+    ja_importados = _ids_ja_importados(
+        sessao, conta.id, fonte, [linha.id_externo for linha in linhas]
+    )
     novas = [linha for linha in linhas if linha.id_externo not in ja_importados]
-    duplicatas = _duplicatas(sessao, conta.id, novas)
+    duplicatas = _duplicatas(sessao, conta.id, fonte, novas)
 
     for indice, linha in enumerate(novas):
         transacao = Transacao(
             conta_id=conta.id,
-            tipo=_tipo(extrato.tipo, linha),
+            tipo=_tipo(extrato, linha),
             valor=abs(linha.valor),
             data=linha.data,
             descricao_original=linha.descricao or DESCRICAO_VAZIA,
             descricao=linha.descricao or DESCRICAO_VAZIA,
             status=StatusTransacao.rascunho,
-            fonte=FonteTransacao.ofx,
+            fonte=fonte,
             id_externo=linha.id_externo,
             importacao_id=importacao.id,
             fatura_id=None if fatura is None else fatura.id,
@@ -242,7 +249,15 @@ def _importacao(sessao: Session, importacao_id: uuid.UUID) -> Importacao:
     return importacao
 
 
-def _validar_conta(conta: Conta, tipo: TipoExtrato) -> None:
+def _validar_conta(conta: Conta, extrato: Extrato) -> None:
+    if extrato.fonte == FonteImportacao.csv_mercadopago:
+        if conta.tipo != TipoConta.corrente:
+            raise CampoInvalido(
+                "conta_id",
+                "Este CSV é de extrato do Mercado Pago. Escolha uma conta corrente.",
+            )
+        return
+    tipo = extrato.tipo
     if tipo == TipoExtrato.fatura and conta.tipo != TipoConta.cartao_credito:
         raise CampoInvalido("conta_id", "Este OFX é de fatura de cartão. Escolha um cartão.")
     if tipo == TipoExtrato.conta and conta.tipo != TipoConta.corrente:
@@ -251,10 +266,12 @@ def _validar_conta(conta: Conta, tipo: TipoExtrato) -> None:
         )
 
 
-def _tipo(tipo_extrato: TipoExtrato, linha: LinhaOfx) -> TipoTransacao | None:
+def _tipo(extrato: Extrato, linha: Linha) -> TipoTransacao | None:
     """O tipo da transação que a linha vira; `None` = não importar."""
     entrada = linha.valor > 0
-    if tipo_extrato == TipoExtrato.fatura:
+    if extrato.fonte == FonteImportacao.csv_mercadopago:
+        return _tipo_no_mercado_pago(linha, entrada)
+    if extrato.tipo == TipoExtrato.fatura:
         if not entrada:
             return TipoTransacao.despesa
         # O lado do cartão do pagamento da fatura: o pagamento já vem do
@@ -271,14 +288,28 @@ def _tipo(tipo_extrato: TipoExtrato, linha: LinhaOfx) -> TipoTransacao | None:
     return TipoTransacao.despesa
 
 
-def _ids_ja_importados(sessao: Session, conta_id: uuid.UUID, ids: list[str]) -> set[str]:
+def _tipo_no_mercado_pago(linha: Linha, entrada: bool) -> TipoTransacao:
+    if entrada:
+        if linha.descricao.startswith(_COFRINHO_RETIRADO):
+            return TipoTransacao.resgate
+        if linha.descricao.startswith(_ESTORNO):
+            return TipoTransacao.estorno
+        return TipoTransacao.receita
+    if linha.descricao.startswith(_COFRINHO_GUARDADO):
+        return TipoTransacao.aporte
+    return TipoTransacao.despesa
+
+
+def _ids_ja_importados(
+    sessao: Session, conta_id: uuid.UUID, fonte: FonteTransacao, ids: list[str]
+) -> set[str]:
     """Os `id_externo` que já estão na conta por esta fonte, em qualquer status
     (inclusive ignorada: ignorar não pode fazer a linha voltar)."""
     return set(
         sessao.scalars(
             select(Transacao.id_externo).where(
                 Transacao.conta_id == conta_id,
-                Transacao.fonte == FonteTransacao.ofx,
+                Transacao.fonte == fonte,
                 Transacao.id_externo.in_(ids),
             )
         )
@@ -286,7 +317,7 @@ def _ids_ja_importados(sessao: Session, conta_id: uuid.UUID, ids: list[str]) -> 
 
 
 def _duplicatas(
-    sessao: Session, conta_id: uuid.UUID, novas: list[LinhaOfx]
+    sessao: Session, conta_id: uuid.UUID, fonte: FonteTransacao, novas: list[Linha]
 ) -> dict[int, uuid.UUID]:
     """Índice da nova → id da transação existente de que ela parece duplicata."""
     if not novas:
@@ -300,7 +331,7 @@ def _duplicatas(
     existentes = sessao.scalars(
         select(Transacao).where(
             Transacao.conta_id == conta_id,
-            Transacao.fonte != FonteTransacao.ofx,
+            Transacao.fonte != fonte,
             Transacao.status != StatusTransacao.ignorada,
             Transacao.possivel_duplicata_de.is_(None),
             Transacao.id.not_in(ja_marcadas),
@@ -328,7 +359,7 @@ def _duplicatas(
 
 
 def _compra_da_parcela(
-    sessao: Session, conta_id: uuid.UUID, linha: LinhaOfx, parcela: Parcela
+    sessao: Session, conta_id: uuid.UUID, linha: Linha, parcela: Parcela
 ) -> CompraParcelada:
     """A compra parcelada da linha: a que já existe no cartão (mesma descrição
     e número de parcelas, data estimada perto e sem esta parcela) ou uma nova,
@@ -374,7 +405,7 @@ def _compra_da_parcela(
     return compra
 
 
-def _fatura_do_arquivo(sessao: Session, cartao: Cartao, extrato: ExtratoOfx) -> tuple[date, date]:
+def _fatura_do_arquivo(sessao: Session, cartao: Cartao, extrato: Extrato) -> tuple[date, date]:
     """Competência e fechamento (`DTEND`) da fatura do arquivo, já validados."""
     fechamento = extrato.periodo_fim
     if fechamento is None:
@@ -392,7 +423,7 @@ def _gravar_fatura(
     cartao: Cartao,
     competencia: date,
     fechamento: date,
-    extrato: ExtratoOfx,
+    extrato: Extrato,
 ) -> Fatura:
     """Grava na fatura do arquivo o fechamento (`DTEND`) e o valor do banco
     (−`BALAMT`), guardando os anteriores na importação para o desfazer."""
@@ -466,9 +497,10 @@ def _restaurar_fatura(sessao: Session, importacao: Importacao) -> None:
         cartoes_service.realocar_compras(sessao, cartao, min(antigo, novo), max(antigo, novo))
 
 
-def _gravar_saldo(sessao: Session, importacao: Importacao, extrato: ExtratoOfx) -> None:
-    """O `LEDGERBAL` do extrato vira o snapshot da conta naquela data; um que
-    já exista na data é substituído e passa a ser desta importação."""
+def _gravar_saldo(sessao: Session, importacao: Importacao, extrato: Extrato) -> None:
+    """O saldo do extrato (`LEDGERBAL` no OFX, o da última linha no CSV) vira
+    o snapshot da conta naquela data; um que já exista na data é substituído e
+    passa a ser desta importação."""
     if extrato.saldo is None:
         return
     snapshot = sessao.scalar(
@@ -481,7 +513,7 @@ def _gravar_saldo(sessao: Session, importacao: Importacao, extrato: ExtratoOfx) 
         snapshot = SnapshotSaldo(conta_id=importacao.conta_id, data=extrato.saldo.data)
         sessao.add(snapshot)
     snapshot.saldo = extrato.saldo.valor
-    snapshot.fonte = FonteSnapshot.ofx
+    snapshot.fonte = FonteSnapshot(extrato.fonte)
     snapshot.importacao_id = importacao.id
 
 
