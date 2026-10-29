@@ -183,6 +183,26 @@ void main() {
     );
   });
 
+  testWidgets(
+    'folha: trocar a entrada para estorno mostra a regra do estorno',
+    (tester) async {
+      await _abrir(
+        tester,
+        RevisaoRepositorioFalso(
+          revisao: revisaoCom(rascunhos: [rascunhoEntrada()]),
+        ),
+      );
+
+      await _tocar(tester, find.text('Loja Exemplo'));
+      await _tocar(tester, find.widgetWithText(FilterChip, 'Estorno'));
+
+      expect(
+        find.text('Sugerida pela regra de “loja exemplo”.'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('folha: ignorar tira o rascunho da lista', (tester) async {
     final repositorio = RevisaoRepositorioFalso();
     await _abrir(tester, repositorio);

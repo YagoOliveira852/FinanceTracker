@@ -67,13 +67,16 @@ class FolhaRascunhoCubit extends Cubit<FolhaRascunhoEstado> {
       state.tipo == TipoTransacao.transferenciaSaida ||
       state.tipo == TipoTransacao.transferenciaEntrada;
 
+  /// Sugestão e efeitos no tipo escolhido: a sugestão muda com o tipo,
+  /// porque cada tipo combina com outros grupos de categoria.
+  PrevisaoDoTipo? get previsao => rascunho.previsaoPara(state.tipo);
+
   /// O que confirmar faz com as regras, com a categoria escolhida. Nulo sem
-  /// categoria ou com o tipo trocado (a sugestão era para o tipo original).
+  /// categoria, na transferência ou num tipo que a API não previu.
   EfeitoRegra? get efeito {
     final categoriaId = state.categoriaId;
-    if (categoriaId == null || state.tipo != rascunho.item.tipo) return null;
-    if (eTransferencia) return null;
-    return rascunho.efeitoPara(categoriaId);
+    if (categoriaId == null || eTransferencia) return null;
+    return previsao?.efeitoPara(categoriaId);
   }
 
   bool get podeConfirmar =>
@@ -81,14 +84,12 @@ class FolhaRascunhoCubit extends Cubit<FolhaRascunhoEstado> {
       state.descricao.trim().isNotEmpty &&
       !state.enviando;
 
-  /// Trocar o tipo muda os grupos que combinam: a categoria volta à sugestão
-  /// (no tipo original) ou fica para escolher.
+  /// Trocar o tipo muda os grupos que combinam: a categoria passa à
+  /// sugestão do tipo novo ou fica para escolher.
   void escolherTipo(TipoTransacao tipo) => emit(
     state.copyWith(
       tipo: tipo,
-      categoriaId: tipo == rascunho.item.tipo
-          ? rascunho.sugestao?.categoria.id
-          : null,
+      categoriaId: rascunho.previsaoPara(tipo)?.sugestao?.categoria.id,
       erro: null,
     ),
   );

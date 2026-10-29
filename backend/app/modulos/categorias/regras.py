@@ -136,12 +136,14 @@ def regra_sugerida(sessao: Session, transacao: Transacao) -> RegraClassificacao 
 
 
 def sugestoes(
-    sessao: Session, transacoes: list[Transacao]
-) -> dict[uuid.UUID, RegraClassificacao | None]:
-    """{transacao_id: regra sugerida}, carregando as regras uma vez só (a
-    revisão calcula a sugestão de todos os rascunhos na leitura)."""
+    sessao: Session, pedidos: list[tuple[Transacao, TipoTransacao]]
+) -> dict[tuple[uuid.UUID, TipoTransacao], RegraClassificacao | None]:
+    """{(transacao_id, tipo): regra sugerida}, carregando as regras uma vez só.
+    A revisão calcula a sugestão de todos os rascunhos na leitura, também com
+    os tipos que a entrada pode ganhar ao confirmar (receita ou estorno): a
+    sugestão depende do tipo, porque cada tipo combina com outros grupos."""
     regras = _regras_ativas(sessao)
-    return {transacao.id: _sugerida(transacao, regras) for transacao in transacoes}
+    return {(t.id, tipo): _sugerida(t, regras, tipo) for t, tipo in pedidos}
 
 
 def rascunhos_casados(sessao: Session, regra: RegraClassificacao) -> RascunhosCasados:
@@ -235,8 +237,14 @@ def prever_efeito(
     return EfeitoAprendizado.especializada
 
 
-def _sugerida(transacao: Transacao, regras: list[RegraClassificacao]) -> RegraClassificacao | None:
-    grupos = grupos_do_tipo(TipoTransacao(transacao.tipo))
+def _sugerida(
+    transacao: Transacao,
+    regras: list[RegraClassificacao],
+    tipo: TipoTransacao | None = None,
+) -> RegraClassificacao | None:
+    """A regra que sugere a categoria; com `tipo`, como se a transação tivesse
+    esse tipo."""
+    grupos = grupos_do_tipo(tipo or TipoTransacao(transacao.tipo))
     compativeis = [r for r in regras if r.categoria.grupo in grupos]
     return escolher_regra(normalizar(transacao.descricao_original), transacao.conta_id, compativeis)
 

@@ -4707,6 +4707,38 @@
         ],
         "title": "ParcelaSaida"
       },
+      "PrevisaoDoTipoSaida": {
+        "properties": {
+          "tipo": {
+            "$ref": "#/components/schemas/TipoTransacao"
+          },
+          "sugestao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SugestaoSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A sugestão como se o rascunho tivesse este tipo."
+          },
+          "efeito_confirmando": {
+            "$ref": "#/components/schemas/EfeitoAprendizado"
+          },
+          "efeito_corrigindo": {
+            "$ref": "#/components/schemas/EfeitoAprendizado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "sugestao",
+          "efeito_confirmando",
+          "efeito_corrigindo"
+        ],
+        "title": "PrevisaoDoTipoSaida"
+      },
       "RascunhoSaida": {
         "properties": {
           "id": {
@@ -4805,6 +4837,14 @@
           "efeito_corrigindo": {
             "$ref": "#/components/schemas/EfeitoAprendizado",
             "description": "O que acontece com as regras se escolher outra categoria."
+          },
+          "outros_tipos": {
+            "items": {
+              "$ref": "#/components/schemas/PrevisaoDoTipoSaida"
+            },
+            "type": "array",
+            "title": "Outros Tipos",
+            "description": "Sugestão e efeitos se confirmar com outro tipo (entrada como receita ou estorno): a sugestão depende do tipo."
           }
         },
         "type": "object",
@@ -4824,7 +4864,8 @@
           "padrao",
           "sugestao",
           "efeito_confirmando",
-          "efeito_corrigindo"
+          "efeito_corrigindo",
+          "outros_tipos"
         ],
         "title": "RascunhoSaida"
       },

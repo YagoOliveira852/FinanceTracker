@@ -5,7 +5,9 @@
 // ignore_for_file: unused_element
 import 'package:api_client/src/model/status_transacao.dart';
 import 'package:api_client/src/model/sugestao_saida.dart';
+import 'package:built_collection/built_collection.dart';
 import 'package:api_client/src/model/conta_na_revisao.dart';
+import 'package:api_client/src/model/previsao_do_tipo_saida.dart';
 import 'package:api_client/src/model/efeito_aprendizado.dart';
 import 'package:api_client/src/model/tipo_transacao.dart';
 import 'package:api_client/src/model/categoria_resumo.dart';
@@ -35,6 +37,7 @@ part 'rascunho_saida.g.dart';
 /// * [sugestao] - Calculada agora pelas regras; não é gravada.
 /// * [efeitoConfirmando] - O que acontece com as regras se confirmar a sugestão (ou, sem sugestão, qualquer categoria).
 /// * [efeitoCorrigindo] - O que acontece com as regras se escolher outra categoria.
+/// * [outrosTipos] - Sugestão e efeitos se confirmar com outro tipo (entrada como receita ou estorno): a sugestão depende do tipo.
 @BuiltValue()
 abstract class RascunhoSaida implements Built<RascunhoSaida, RascunhoSaidaBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -97,6 +100,10 @@ abstract class RascunhoSaida implements Built<RascunhoSaida, RascunhoSaidaBuilde
   @BuiltValueField(wireName: r'efeito_corrigindo')
   EfeitoAprendizado get efeitoCorrigindo;
   // enum efeitoCorrigindoEnum {  criada,  reforcada,  corrigida,  especializada,  manual_mantida,  nenhuma,  };
+
+  /// Sugestão e efeitos se confirmar com outro tipo (entrada como receita ou estorno): a sugestão depende do tipo.
+  @BuiltValueField(wireName: r'outros_tipos')
+  BuiltList<PrevisaoDoTipoSaida> get outrosTipos;
 
   RascunhoSaida._();
 
@@ -200,6 +207,11 @@ class _$RascunhoSaidaSerializer implements PrimitiveSerializer<RascunhoSaida> {
     yield serializers.serialize(
       object.efeitoCorrigindo,
       specifiedType: const FullType(EfeitoAprendizado),
+    );
+    yield r'outros_tipos';
+    yield serializers.serialize(
+      object.outrosTipos,
+      specifiedType: const FullType(BuiltList, [FullType(PrevisaoDoTipoSaida)]),
     );
   }
 
@@ -339,6 +351,13 @@ class _$RascunhoSaidaSerializer implements PrimitiveSerializer<RascunhoSaida> {
             specifiedType: const FullType(EfeitoAprendizado),
           ) as EfeitoAprendizado;
           result.efeitoCorrigindo = valueDes;
+          break;
+        case r'outros_tipos':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(PrevisaoDoTipoSaida)]),
+          ) as BuiltList<PrevisaoDoTipoSaida>;
+          result.outrosTipos.replace(valueDes);
           break;
         default:
           unhandled.add(key);

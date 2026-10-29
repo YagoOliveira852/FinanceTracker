@@ -73,6 +73,17 @@ class JaRevisada(Exception):
 
 
 @dataclass(frozen=True)
+class PrevisaoDoTipo:
+    """Sugestão e efeitos nas regras se a entrada for confirmada com outro
+    tipo (receita como estorno, ou o contrário)."""
+
+    tipo: TipoTransacao
+    sugerida: RegraClassificacao | None
+    efeito_confirmando: EfeitoAprendizado
+    efeito_corrigindo: EfeitoAprendizado
+
+
+@dataclass(frozen=True)
 class Rascunho:
     """Rascunho comum, com a sugestão de categoria calculada agora."""
 
@@ -83,6 +94,7 @@ class Rascunho:
     # escolher qualquer categoria) e se escolher outra categoria.
     efeito_confirmando: EfeitoAprendizado
     efeito_corrigindo: EfeitoAprendizado
+    outros_tipos: tuple[PrevisaoDoTipo, ...]
 
 
 @dataclass(frozen=True)
@@ -213,23 +225,47 @@ def _pares(sessao: Session, rascunhos: list[Transacao]) -> list[ParSugerido]:
 
 
 def _com_sugestao(sessao: Session, transacoes: list[Transacao]) -> list[Rascunho]:
-    sugeridas = regras.sugestoes(sessao, transacoes)
-    return [_rascunho(t, sugeridas[t.id]) for t in transacoes]
+    outros = {t.id: _outros_tipos(t) for t in transacoes}
+    pedidos = [(t, TipoTransacao(t.tipo)) for t in transacoes] + [
+        (t, tipo) for t in transacoes for tipo in outros[t.id]
+    ]
+    sugeridas = regras.sugestoes(sessao, pedidos)
+
+    def previsao(transacao: Transacao, tipo: TipoTransacao, padrao: str) -> PrevisaoDoTipo:
+        sugerida = sugeridas[(transacao.id, tipo)]
+        if not grupos_do_tipo(tipo):
+            # Tipo sem categoria (ex.: transferência sem par): nada a aprender.
+            nenhum = EfeitoAprendizado.nenhuma
+            return PrevisaoDoTipo(tipo, None, nenhum, nenhum)
+        return PrevisaoDoTipo(
+            tipo=tipo,
+            sugerida=sugerida,
+            efeito_confirmando=prever_efeito(sugerida, padrao, mesma_categoria=True),
+            efeito_corrigindo=prever_efeito(sugerida, padrao, mesma_categoria=False),
+        )
+
+    rascunhos = []
+    for transacao in transacoes:
+        padrao = normalizar(transacao.descricao_original)
+        atual = previsao(transacao, TipoTransacao(transacao.tipo), padrao)
+        rascunhos.append(
+            Rascunho(
+                transacao=transacao,
+                padrao=padrao,
+                sugerida=atual.sugerida,
+                efeito_confirmando=atual.efeito_confirmando,
+                efeito_corrigindo=atual.efeito_corrigindo,
+                outros_tipos=tuple(previsao(transacao, t, padrao) for t in outros[transacao.id]),
+            )
+        )
+    return rascunhos
 
 
-def _rascunho(transacao: Transacao, sugerida: RegraClassificacao | None) -> Rascunho:
-    padrao = normalizar(transacao.descricao_original)
-    if not grupos_do_tipo(TipoTransacao(transacao.tipo)):
-        # Tipo sem categoria (ex.: transferência sem par): nada a aprender.
-        nenhum = EfeitoAprendizado.nenhuma
-        return Rascunho(transacao, padrao, None, nenhum, nenhum)
-    return Rascunho(
-        transacao=transacao,
-        padrao=padrao,
-        sugerida=sugerida,
-        efeito_confirmando=prever_efeito(sugerida, padrao, mesma_categoria=True),
-        efeito_corrigindo=prever_efeito(sugerida, padrao, mesma_categoria=False),
-    )
+def _outros_tipos(transacao: Transacao) -> list[TipoTransacao]:
+    """Os tipos com que o rascunho pode ser confirmado além do seu, na ordem
+    do enum (como em `confirmar`, a saída só como despesa)."""
+    confirmaveis = _CONFIRMAVEIS_SAIDA if transacao.tipo in TIPOS_SAIDA else _CONFIRMAVEIS_ENTRADA
+    return [tipo for tipo in TipoTransacao if tipo in confirmaveis and tipo != transacao.tipo]
 
 
 def confirmar(

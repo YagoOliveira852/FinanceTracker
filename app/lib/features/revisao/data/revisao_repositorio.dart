@@ -274,21 +274,32 @@ class RevisaoRepositorioApi implements RevisaoRepositorio {
       faturaCompetencia: r.faturaCompetencia?.toDateTime(),
     ),
     padrao: r.padrao,
-    sugestao: switch (r.sugestao) {
-      final s? => Sugestao(
-        regraId: s.regraId,
-        padrao: s.padrao,
-        origem: OrigemRegra.values.byName(s.origem.name),
-        categoria: CategoriaDaTransacao(
-          id: s.categoria.id,
-          nome: s.categoria.nome,
-        ),
-      ),
-      null => null,
-    },
+    sugestao: _sugestao(r.sugestao),
     efeitoConfirmando: _efeito(r.efeitoConfirmando),
     efeitoCorrigindo: _efeito(r.efeitoCorrigindo),
+    outrosTipos: [
+      for (final p in r.outrosTipos)
+        PrevisaoDoTipo(
+          tipo: TipoTransacao.values.byName(p.tipo.name),
+          sugestao: _sugestao(p.sugestao),
+          efeitoConfirmando: _efeito(p.efeitoConfirmando),
+          efeitoCorrigindo: _efeito(p.efeitoCorrigindo),
+        ),
+    ],
   );
+
+  static Sugestao? _sugestao(api.SugestaoSaida? s) => switch (s) {
+    final s? => Sugestao(
+      regraId: s.regraId,
+      padrao: s.padrao,
+      origem: OrigemRegra.values.byName(s.origem.name),
+      categoria: CategoriaDaTransacao(
+        id: s.categoria.id,
+        nome: s.categoria.nome,
+      ),
+    ),
+    null => null,
+  };
 
   static ItemRevisao _item(api.TransacaoRevisao t) => ItemRevisao(
     id: t.id,

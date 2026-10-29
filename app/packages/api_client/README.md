@@ -166,6 +166,7 @@ Class | Method | HTTP request | Description
  - [ParRecusaEntrada](doc/ParRecusaEntrada.md)
  - [ParSaida](doc/ParSaida.md)
  - [ParcelaSaida](doc/ParcelaSaida.md)
+ - [PrevisaoDoTipoSaida](doc/PrevisaoDoTipoSaida.md)
  - [RascunhoSaida](doc/RascunhoSaida.md)
  - [RascunhosCasadosSaida](doc/RascunhosCasadosSaida.md)
  - [RefreshEntrada](doc/RefreshEntrada.md)

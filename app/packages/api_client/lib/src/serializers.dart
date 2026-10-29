@@ -67,6 +67,7 @@ import 'package:api_client/src/model/par_entrada.dart';
 import 'package:api_client/src/model/par_recusa_entrada.dart';
 import 'package:api_client/src/model/par_saida.dart';
 import 'package:api_client/src/model/parcela_saida.dart';
+import 'package:api_client/src/model/previsao_do_tipo_saida.dart';
 import 'package:api_client/src/model/rascunho_saida.dart';
 import 'package:api_client/src/model/rascunhos_casados_saida.dart';
 import 'package:api_client/src/model/refresh_entrada.dart';
@@ -150,6 +151,7 @@ part 'serializers.g.dart';
   ParRecusaEntrada,
   ParSaida,
   ParcelaSaida,
+  PrevisaoDoTipoSaida,
   RascunhoSaida,
   RascunhosCasadosSaida,
   RefreshEntrada,
@@ -201,6 +203,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(RegraSaida)]),
         () => ListBuilder<RegraSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(PrevisaoDoTipoSaida)]),
+        () => ListBuilder<PrevisaoDoTipoSaida>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(TransacaoSaida)]),

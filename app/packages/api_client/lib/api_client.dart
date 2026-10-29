@@ -74,6 +74,7 @@ export 'package:api_client/src/model/par_entrada.dart';
 export 'package:api_client/src/model/par_recusa_entrada.dart';
 export 'package:api_client/src/model/par_saida.dart';
 export 'package:api_client/src/model/parcela_saida.dart';
+export 'package:api_client/src/model/previsao_do_tipo_saida.dart';
 export 'package:api_client/src/model/rascunho_saida.dart';
 export 'package:api_client/src/model/rascunhos_casados_saida.dart';
 export 'package:api_client/src/model/refresh_entrada.dart';
