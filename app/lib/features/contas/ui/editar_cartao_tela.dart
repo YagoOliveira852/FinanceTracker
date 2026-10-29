@@ -11,6 +11,7 @@ import '../../../core/formatacao/dinheiro.dart';
 import '../cubit/contas_cubit.dart';
 import '../cubit/editar_cartao_cubit.dart';
 import '../data/conta.dart';
+import 'opcao_conta.dart';
 
 /// Rota do Editar cartão; recebe a [Conta] do cartão em `extra` e devolve
 /// `true` quando salvou (edição, desativação ou reativação).
@@ -146,34 +147,16 @@ class _EditarCartaoTelaState extends State<EditarCartaoTela> {
                   ),
                 ),
                 const SizedBox(height: Espaco.x6),
-                DropdownButtonFormField<String>(
-                  // initialValue só é lido na criação: a chave recria o campo
-                  // quando as contas terminam de carregar.
-                  key: ValueKey(correntes.length),
-                  initialValue: correntes.any((c) => c.id == _contaPagamento)
-                      ? _contaPagamento
-                      : null,
-                  isExpanded: true,
-                  hint: const Text('Escolha a conta corrente'),
-                  decoration: InputDecoration(
-                    labelText: 'Conta de pagamento',
-                    helperText:
-                        'Conta corrente de onde sai o pagamento da fatura.',
-                    errorText: estado.erros['conta_pagamento_id'],
-                  ),
-                  items: [
-                    for (final conta in correntes)
-                      DropdownMenuItem(
-                        value: conta.id,
-                        child: Text(
-                          '${conta.nome} · ${conta.instituicao}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: livre
+                CampoSelecao<String>(
+                  rotulo: 'Conta de pagamento',
+                  valor: _contaPagamento,
+                  vazio: 'Escolha a conta corrente',
+                  ajuda: 'Conta corrente de onde sai o pagamento da fatura.',
+                  erro: estado.erros['conta_pagamento_id'],
+                  opcoes: [for (final conta in correntes) opcaoDeConta(conta)],
+                  aoMudar: livre
                       ? (id) {
-                          if (id != null) setState(() => _contaPagamento = id);
+                          setState(() => _contaPagamento = id);
                           cubit.limparErro('conta_pagamento_id');
                         }
                       : null,

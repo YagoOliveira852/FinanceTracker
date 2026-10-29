@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/tema.dart';
 import '../../../app/widgets/aviso.dart';
+import '../../../app/widgets/campos.dart';
 import '../../../app/widgets/chip_opcao.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../../core/formatacao/dinheiro.dart';
@@ -10,6 +11,7 @@ import '../../categorias/cubit/categorias_cubit.dart';
 import '../../categorias/data/categoria.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
+import '../../contas/ui/opcao_conta.dart';
 import '../cubit/folha_rascunho_cubit.dart';
 import '../cubit/revisao_cubit.dart';
 import '../data/revisao.dart';
@@ -248,22 +250,11 @@ class _OutraConta extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButtonFormField<String>(
-          initialValue: estado.outraContaId,
-          isExpanded: true,
-          decoration: InputDecoration(labelText: saida ? 'Para' : 'De'),
-          items: [
-            for (final conta in contas)
-              DropdownMenuItem(
-                value: conta.id,
-                child: Text(conta.nome, overflow: TextOverflow.ellipsis),
-              ),
-          ],
-          onChanged: estado.enviando
-              ? null
-              : (id) {
-                  if (id != null) cubit.escolherOutraConta(id);
-                },
+        CampoSelecao<String>(
+          rotulo: saida ? 'Para' : 'De',
+          valor: estado.outraContaId,
+          opcoes: [for (final conta in contas) opcaoDeConta(conta)],
+          aoMudar: estado.enviando ? null : cubit.escolherOutraConta,
         ),
         const SizedBox(height: Espaco.x2),
         Text(

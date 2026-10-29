@@ -11,6 +11,7 @@ import '../../faturas/data/fatura.dart';
 import '../cubit/contas_cubit.dart';
 import '../cubit/nova_conta_cubit.dart';
 import '../data/conta.dart';
+import 'opcao_conta.dart';
 
 /// Cadastro de conta corrente, carteira ou cartão de crédito. Fecha
 /// devolvendo `true` quando a conta foi criada.
@@ -243,29 +244,14 @@ class _NovaContaTelaState extends State<NovaContaTela> {
     final contaPagamento = _contaPagamento(correntes);
     return [
       const SizedBox(height: Espaco.x6),
-      DropdownButtonFormField<String>(
-        // initialValue só é lido na criação: a chave recria o campo quando
-        // as contas terminam de carregar.
-        key: ValueKey(correntes.length),
-        initialValue: contaPagamento,
-        isExpanded: true,
-        hint: const Text('Nenhuma conta corrente'),
-        decoration: InputDecoration(
-          labelText: 'Conta de pagamento',
-          helperText: 'Conta corrente de onde sai o pagamento da fatura.',
-          errorText: estado.erros['conta_pagamento_id'],
-        ),
-        items: [
-          for (final conta in correntes)
-            DropdownMenuItem(
-              value: conta.id,
-              child: Text(
-                '${conta.nome} · ${conta.instituicao}',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-        ],
-        onChanged: livre && correntes.isNotEmpty
+      CampoSelecao<String>(
+        rotulo: 'Conta de pagamento',
+        valor: contaPagamento,
+        vazio: 'Nenhuma conta corrente',
+        ajuda: 'Conta corrente de onde sai o pagamento da fatura.',
+        erro: estado.erros['conta_pagamento_id'],
+        opcoes: [for (final conta in correntes) opcaoDeConta(conta)],
+        aoMudar: livre && correntes.isNotEmpty
             ? (id) {
                 setState(() => _contaPagamentoEscolhida = id);
                 cubit.limparErro('conta_pagamento_id');

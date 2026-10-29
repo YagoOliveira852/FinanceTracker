@@ -8,6 +8,7 @@ import 'package:financas/features/revisao/data/revisao_repositorio.dart';
 import 'package:financas/features/revisao/ui/revisao_tela.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:financas/app/widgets/campos.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../apoio/categorias_falso.dart';
@@ -211,10 +212,7 @@ void main() {
     final confirmar = find.widgetWithText(FilledButton, 'Confirmar');
     expect(tester.widget<FilledButton>(confirmar).onPressed, isNull);
 
-    await _tocar(
-      tester,
-      find.widgetWithText(DropdownButtonFormField<String>, 'Para'),
-    );
+    await _tocar(tester, find.widgetWithText(CampoSelecao<String>, 'Para'));
     await _tocar(tester, find.text('Carteira').last);
     expect(
       find.textContaining('o app cria a entrada de R\$ 18,50'),

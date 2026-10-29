@@ -135,25 +135,16 @@ class _EditarRegraTelaState extends State<EditarRegraTela> {
                   ),
                 ),
                 const SizedBox(height: Espaco.x6),
-                DropdownButtonFormField<String>(
-                  key: ValueKey(('categoria', categorias.length)),
-                  initialValue: categorias.any((c) => c.id == _categoriaId)
-                      ? _categoriaId
-                      : null,
-                  isExpanded: true,
-                  hint: const Text('Escolha a categoria'),
-                  decoration: InputDecoration(
-                    labelText: 'Categoria',
-                    errorText: estado.erros['categoria_id'],
-                  ),
-                  items: [
+                CampoSelecao<String>(
+                  rotulo: 'Categoria',
+                  valor: _categoriaId,
+                  vazio: 'Escolha a categoria',
+                  erro: estado.erros['categoria_id'],
+                  opcoes: [
                     for (final c in categorias)
-                      DropdownMenuItem(
-                        value: c.id,
-                        child: Text(c.nome, overflow: TextOverflow.ellipsis),
-                      ),
+                      OpcaoSelecao(valor: c.id, rotulo: c.nome),
                   ],
-                  onChanged: livre
+                  aoMudar: livre
                       ? (id) {
                           setState(() => _categoriaId = id);
                           cubit.limparErro('categoria_id');
@@ -161,29 +152,20 @@ class _EditarRegraTelaState extends State<EditarRegraTela> {
                       : null,
                 ),
                 const SizedBox(height: Espaco.x6),
-                DropdownButtonFormField<String?>(
-                  key: ValueKey(('conta', contas.length)),
-                  initialValue: contas.any((c) => c.id == _contaId)
-                      ? _contaId
-                      : null,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: 'Conta',
-                    helperText:
-                        'Restrinja quando a mesma descrição quer dizer coisas '
-                        'diferentes em cada conta.',
-                    helperMaxLines: 3,
-                    errorText: estado.erros['conta_id'],
-                  ),
-                  items: [
-                    const DropdownMenuItem(child: Text('Todas as contas')),
+                CampoSelecao<String?>(
+                  rotulo: 'Conta',
+                  // Conta que saiu da lista (desativada) vale como todas.
+                  valor: contas.any((c) => c.id == _contaId) ? _contaId : null,
+                  ajuda:
+                      'Restrinja quando a mesma descrição quer dizer coisas '
+                      'diferentes em cada conta.',
+                  erro: estado.erros['conta_id'],
+                  opcoes: [
+                    const OpcaoSelecao(valor: null, rotulo: 'Todas as contas'),
                     for (final c in contas)
-                      DropdownMenuItem(
-                        value: c.id,
-                        child: Text(c.nome, overflow: TextOverflow.ellipsis),
-                      ),
+                      OpcaoSelecao(valor: c.id, rotulo: c.nome),
                   ],
-                  onChanged: livre
+                  aoMudar: livre
                       ? (id) {
                           setState(() => _contaId = id);
                           cubit.limparErro('conta_id');

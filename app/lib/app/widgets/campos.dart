@@ -117,6 +117,162 @@ class CampoData extends StatelessWidget {
   }
 }
 
+/// Uma opção de [CampoSelecao]. Na folha, [rotulo] e, embaixo, o [detalhe]
+/// (instituição da conta, grupo da categoria); no campo, o [resumo] ou, sem
+/// ele, o [rotulo].
+class OpcaoSelecao<T> {
+  const OpcaoSelecao({
+    required this.valor,
+    required this.rotulo,
+    this.detalhe,
+    this.resumo,
+  });
+
+  final T valor;
+  final String rotulo;
+  final String? detalhe;
+  final String? resumo;
+}
+
+/// Campo de escolha: tocar abre uma folha de baixo com as [opcoes] e um
+/// check na escolhida. Controlado: mostra a opção de [valor], e escolher
+/// chama [aoMudar] (nulo desabilita o campo).
+class CampoSelecao<T> extends StatelessWidget {
+  const CampoSelecao({
+    super.key,
+    required this.rotulo,
+    required this.opcoes,
+    required this.valor,
+    required this.aoMudar,
+    this.vazio,
+    this.ajuda,
+    this.erro,
+  });
+
+  final String rotulo;
+  final List<OpcaoSelecao<T>> opcoes;
+  final T? valor;
+  final ValueChanged<T>? aoMudar;
+
+  /// Texto do campo quando nenhuma opção está escolhida.
+  final String? vazio;
+  final String? ajuda;
+  final String? erro;
+
+  OpcaoSelecao<T>? get _escolhida =>
+      opcoes.where((opcao) => opcao.valor == valor).firstOrNull;
+
+  Future<void> _escolher(BuildContext context) async {
+    final escolhida = await showModalBottomSheet<OpcaoSelecao<T>>(
+      context: context,
+      // No navegador raiz, a folha cobre a barra de abas, como as outras.
+      useRootNavigator: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) =>
+          _FolhaSelecao(titulo: rotulo, opcoes: opcoes, escolhida: _escolhida),
+    );
+    if (escolhida != null) aoMudar?.call(escolhida.valor);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final habilitado = aoMudar != null;
+    final escolhida = _escolhida;
+    final textos = context.textos;
+    return InkWell(
+      onTap: habilitado ? () => _escolher(context) : null,
+      borderRadius: BorderRadius.circular(Raio.md),
+      child: InputDecorator(
+        isEmpty: false,
+        decoration: InputDecoration(
+          labelText: rotulo,
+          helperText: ajuda,
+          helperMaxLines: 3,
+          errorText: erro,
+          errorMaxLines: 3,
+          enabled: habilitado,
+          suffixIcon: const Icon(Icons.arrow_drop_down_rounded),
+        ),
+        child: Text(
+          escolhida?.resumo ?? escolhida?.rotulo ?? vazio ?? '',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: escolhida == null
+              ? textos.bodyLarge?.copyWith(
+                  color: context.esquema.onSurfaceVariant,
+                )
+              : textos.bodyLarge,
+        ),
+      ),
+    );
+  }
+}
+
+class _FolhaSelecao<T> extends StatelessWidget {
+  const _FolhaSelecao({
+    required this.titulo,
+    required this.opcoes,
+    required this.escolhida,
+  });
+
+  final String titulo;
+  final List<OpcaoSelecao<T>> opcoes;
+  final OpcaoSelecao<T>? escolhida;
+
+  @override
+  Widget build(BuildContext context) {
+    final esquema = context.esquema;
+    return ConstrainedBox(
+      // Lista longa (categorias, parcelas) rola dentro da folha.
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Espaco.x6,
+                0,
+                Espaco.x6,
+                Espaco.x2,
+              ),
+              child: Text(titulo, style: context.textos.titleLarge),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(bottom: Espaco.x4),
+                children: [
+                  for (final opcao in opcoes)
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: Espaco.x6,
+                      ),
+                      selected: identical(opcao, escolhida),
+                      selectedColor: esquema.primary,
+                      title: Text(opcao.rotulo),
+                      subtitle: opcao.detalhe == null
+                          ? null
+                          : Text(opcao.detalhe!),
+                      trailing: identical(opcao, escolhida)
+                          ? const Icon(Icons.check_rounded)
+                          : null,
+                      onTap: () => Navigator.of(context).pop(opcao),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Barra inferior dos formulários com o botão principal.
 class RodapeFormulario extends StatelessWidget {
   const RodapeFormulario({super.key, required this.botao});

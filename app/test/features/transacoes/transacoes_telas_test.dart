@@ -345,15 +345,15 @@ void main() {
 
     await tester.tap(find.text('Selecione uma conta'));
     await tester.pumpAndSettle();
-    expect(find.text('Cartão Exemplo · Banco Exemplo'), findsWidgets);
-    await tester.tap(find.text('Conta principal · Banco Exemplo').last);
+    expect(find.text('Cartão Exemplo'), findsOneWidget);
+    await tester.tap(find.text('Conta principal').last);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Receita'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Conta principal · Banco Exemplo'));
     await tester.pumpAndSettle();
-    expect(find.text('Cartão Exemplo · Banco Exemplo'), findsNothing);
+    expect(find.text('Cartão Exemplo'), findsNothing);
   });
 
   testWidgets('Lançamento: categoria pelo tipo, e a escolha vai no envio', (
@@ -600,7 +600,7 @@ void main() {
     await escolherParcelas(tester, '3x');
     await tester.tap(find.text('Cartão Exemplo · Banco Exemplo'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Conta principal · Banco Exemplo').last);
+    await tester.tap(find.text('Conta principal').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Parcelas'), findsNothing);
@@ -721,12 +721,12 @@ void main() {
         ),
         findsOneWidget,
       );
-      await escolher(tester, 'De', 'Conta principal · Banco Exemplo');
+      await escolher(tester, 'De', 'Conta principal');
       await tester.tap(find.widgetWithText(InputDecorator, 'Para'));
       await tester.pumpAndSettle();
       // Para não oferece a conta de origem nem o cartão.
-      expect(find.text('Conta principal · Banco Exemplo'), findsOneWidget);
-      expect(find.text('Cartão Exemplo · Banco Exemplo'), findsNothing);
+      expect(find.text('Conta principal'), findsNothing);
+      expect(find.text('Cartão Exemplo'), findsNothing);
       await tester.tap(find.text('Carteira').last);
       await tester.pumpAndSettle();
 
@@ -752,7 +752,7 @@ void main() {
           campos: {'conta_destino_id': 'Esta conta está desativada.'},
         );
       await abrirTransferencia(tester, transacoes);
-      await escolher(tester, 'De', 'Conta principal · Banco Exemplo');
+      await escolher(tester, 'De', 'Conta principal');
       await escolher(tester, 'Para', 'Carteira');
       await tester.enterText(find.widgetWithText(TextField, 'Valor'), '50');
 

@@ -9,6 +9,7 @@ import '../../../app/widgets/lista.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../contas/cubit/contas_cubit.dart';
 import '../../contas/data/conta.dart';
+import '../../contas/ui/opcao_conta.dart';
 import '../../revisao/cubit/revisao_cubit.dart';
 import '../cubit/importar_cubit.dart';
 import '../data/importacao.dart';
@@ -262,37 +263,16 @@ class _CampoConta extends StatelessWidget {
       ),
     };
 
-    return DropdownButtonFormField<String>(
-      // initialValue só é lido na criação: a chave recria o campo quando as
-      // contas carregam ou o app sugere outra conta.
-      key: ValueKey((estadoContas.runtimeType, selecionada)),
-      initialValue: selecionada,
-      isExpanded: true,
-      hint: const Text('Selecione uma conta'),
-      decoration: InputDecoration(
-        labelText: 'Conta de destino',
-        errorText: estado.erros['conta_id'],
-        helperText: ajuda,
-        helperMaxLines: 2,
-        errorMaxLines: 2,
-      ),
-      items: [
-        for (final conta in contas)
-          DropdownMenuItem(
-            value: conta.id,
-            child: Text(
-              conta.instituicao == null
-                  ? conta.nome
-                  : '${conta.nome} · ${conta.instituicao}',
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-      ],
-      onChanged: estado.enviando
+    return CampoSelecao<String>(
+      rotulo: 'Conta de destino',
+      valor: selecionada,
+      vazio: 'Selecione uma conta',
+      erro: estado.erros['conta_id'],
+      ajuda: ajuda,
+      opcoes: [for (final conta in contas) opcaoDeConta(conta)],
+      aoMudar: estado.enviando
           ? null
-          : (id) {
-              if (id != null) context.read<ImportarCubit>().escolherConta(id);
-            },
+          : (id) => context.read<ImportarCubit>().escolherConta(id),
     );
   }
 }
