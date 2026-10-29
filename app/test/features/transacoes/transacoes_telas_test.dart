@@ -93,10 +93,7 @@ void main() {
     expect(find.text('− R\$ 187,40'), findsOneWidget);
     expect(find.text('+ R\$ 850,00'), findsOneWidget);
     expect(find.text('R\$ 1.032,15'), findsOneWidget);
-    expect(
-      find.text('Conta principal → Cartão Exemplo, fatura de outubro'),
-      findsOneWidget,
-    );
+    expect(find.text('Fatura de outubro · Cartão Exemplo'), findsOneWidget);
     expect(find.text('Rascunho'), findsOneWidget);
     // Chips de filtro: Todas + contas.
     expect(find.widgetWithText(FilterChip, 'Carteira'), findsOneWidget);

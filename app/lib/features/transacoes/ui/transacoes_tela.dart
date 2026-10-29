@@ -23,10 +23,12 @@ class TransacoesTela extends StatelessWidget {
   /// mesmo nos dois lados, com qualquer filtro).
   static String _subtitulo(TransacoesEstado estado, Transacao t) {
     String nome(String id) => estado.nomeDaConta(id) ?? '';
+    // A fatura vem antes do cartão: se o nome for longo, o corte da linha
+    // leva o nome e o mês continua à vista.
     if (t.tipo == TipoTransacao.pagamentoFatura) {
       if (t.fatura case final fatura?) {
-        return '${nome(t.contaId)} → ${nome(fatura.cartaoId)}, fatura de '
-            '${nomeDoMes(fatura.competencia)}';
+        final mes = nomeDoMes(fatura.competencia);
+        return 'Fatura de $mes · ${nome(fatura.cartaoId)}';
       }
     }
     return switch (t.transferencia) {
