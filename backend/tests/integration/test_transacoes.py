@@ -350,10 +350,13 @@ def test_compra_no_cartao_entra_na_fatura_da_data(api, sessao, cartao):
     assert _competencia(sessao, antes["fatura_id"]) == date(2026, 10, 1)
     assert _competencia(sessao, no_fechamento["fatura_id"]) == date(2026, 11, 1)
     assert depois["fatura_id"] == no_fechamento["fatura_id"]
+    assert no_fechamento["fatura"] == {"cartao_id": cartao["id"], "competencia": "2026-11-01"}
 
 
 def test_transacao_de_conta_comum_nao_tem_fatura(api, conta):
-    assert _lancar(api, conta["id"])["fatura_id"] is None
+    transacao = _lancar(api, conta["id"])
+    assert transacao["fatura_id"] is None
+    assert transacao["fatura"] is None
 
 
 def test_lancamento_comum_nao_e_parcela(api, cartao):

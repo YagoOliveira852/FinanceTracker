@@ -41,6 +41,7 @@ void main() {
       contas: [
         contaExemplo(),
         contaExemplo(id: 'c2', nome: 'Carteira', tipo: TipoConta.carteira),
+        cartaoExemplo(),
       ],
     );
     final transacoes = TransacoesRepositorioFalso(
@@ -66,6 +67,10 @@ void main() {
           descricao: 'Pagamento de fatura',
           valor: '1032.15',
           data: DateTime(2026, 10, 19),
+          fatura: FaturaDaTransacao(
+            cartaoId: 'k1',
+            competencia: DateTime(2026, 10),
+          ),
         ),
       ],
     );
@@ -88,6 +93,10 @@ void main() {
     expect(find.text('− R\$ 187,40'), findsOneWidget);
     expect(find.text('+ R\$ 850,00'), findsOneWidget);
     expect(find.text('R\$ 1.032,15'), findsOneWidget);
+    expect(
+      find.text('Conta principal → Cartão Exemplo, fatura de outubro'),
+      findsOneWidget,
+    );
     expect(find.text('Rascunho'), findsOneWidget);
     // Chips de filtro: Todas + contas.
     expect(find.widgetWithText(FilterChip, 'Carteira'), findsOneWidget);

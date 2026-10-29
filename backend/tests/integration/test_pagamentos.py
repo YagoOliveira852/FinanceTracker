@@ -299,3 +299,14 @@ def test_pagamento_exige_token(client):
     resposta = client.post(f"/cartoes/{uuid.uuid4()}/faturas/2026-10/pagamentos", json={})
 
     assert resposta.status_code == 401
+
+
+def test_pagamento_na_lista_diz_qual_fatura_pagou(api, cartao, corrente):
+    _comprar(api, cartao, "2026-10-01")
+    _pago(api, cartao, "2026-10", corrente)
+
+    resposta = api.get("/transacoes", params={"conta_id": corrente["id"]})
+
+    assert resposta.status_code == 200
+    [pagamento] = [t for t in resposta.json() if t["tipo"] == "pagamento_fatura"]
+    assert pagamento["fatura"] == {"cartao_id": cartao["id"], "competencia": "2026-10-01"}

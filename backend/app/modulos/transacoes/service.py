@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.erros import CampoInvalido
 from app.modulos.cartoes import service as cartoes_service
@@ -188,8 +188,11 @@ def listar(
     ate: date | None = None,
 ) -> list[Transacao]:
     """Transações de todos os status, da mais recente para a mais antiga."""
-    consulta = select(Transacao).order_by(
-        Transacao.data.desc(), Transacao.criado_em.desc(), Transacao.id
+    consulta = (
+        select(Transacao)
+        # A saída mostra cartão e competência da fatura: uma consulta só para todas.
+        .options(selectinload(Transacao.fatura))
+        .order_by(Transacao.data.desc(), Transacao.criado_em.desc(), Transacao.id)
     )
     if conta_id is not None:
         consulta = consulta.where(Transacao.conta_id == conta_id)

@@ -130,6 +130,13 @@ Transacao transacaoDaApi(api.TransacaoSaida t) => Transacao(
     null => null,
   },
   faturaId: t.faturaId,
+  fatura: switch (t.fatura) {
+    final f? => FaturaDaTransacao(
+      cartaoId: f.cartaoId,
+      competencia: f.competencia.toDateTime(),
+    ),
+    null => null,
+  },
   parcela: switch (t.parcela) {
     final p? => Parcela(numero: p.numero, total: p.total),
     null => null,

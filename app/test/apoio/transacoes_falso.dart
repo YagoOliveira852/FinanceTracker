@@ -12,6 +12,7 @@ Transacao transacaoExemplo({
   String descricao = 'Mercado do bairro',
   StatusTransacao status = StatusTransacao.confirmada,
   CategoriaDaTransacao? categoria,
+  FaturaDaTransacao? fatura,
   Parcela? parcela,
   ParTransferencia? transferencia,
 }) => Transacao(
@@ -23,6 +24,7 @@ Transacao transacaoExemplo({
   descricao: descricao,
   status: status,
   categoria: categoria,
+  fatura: fatura,
   parcela: parcela,
   transferencia: transferencia,
 );

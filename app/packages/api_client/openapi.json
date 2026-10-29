@@ -3953,6 +3953,27 @@
         ],
         "title": "FaturaDaImportacao"
       },
+      "FaturaDaTransacaoSaida": {
+        "properties": {
+          "cartao_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cartao Id"
+          },
+          "competencia": {
+            "type": "string",
+            "format": "date",
+            "title": "Competencia",
+            "description": "Primeiro dia do mês do vencimento."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cartao_id",
+          "competencia"
+        ],
+        "title": "FaturaDaTransacaoSaida"
+      },
       "FaturaDetalheSaida": {
         "properties": {
           "competencia": {
@@ -5447,7 +5468,18 @@
               }
             ],
             "title": "Fatura Id",
-            "description": "Fatura da transação, se a conta é cartão."
+            "description": "Fatura da compra, no cartão, ou a fatura paga, no pagamento de fatura."
+          },
+          "fatura": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FaturaDaTransacaoSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cartão e competência da fatura de `fatura_id`, para a lista dizer qual é."
           },
           "parcela": {
             "anyOf": [
@@ -5485,6 +5517,7 @@
           "status",
           "fonte",
           "fatura_id",
+          "fatura",
           "parcela",
           "transferencia"
         ],

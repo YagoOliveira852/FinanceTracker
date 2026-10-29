@@ -50,6 +50,7 @@ lib/src/model/erro_importacao.dart
 lib/src/model/exemplo_rascunho.dart
 lib/src/model/fatura_candidata_saida.dart
 lib/src/model/fatura_da_importacao.dart
+lib/src/model/fatura_da_transacao_saida.dart
 lib/src/model/fatura_detalhe_saida.dart
 lib/src/model/fatura_edicao.dart
 lib/src/model/fatura_resumo.dart
