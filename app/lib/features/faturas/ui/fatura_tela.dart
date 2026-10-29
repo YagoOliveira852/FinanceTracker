@@ -77,8 +77,8 @@ class _FaturaTelaState extends State<FaturaTela> {
       rotaPagarFatura(widget.contaId, _competencia),
     );
     if (pagou != true || !mounted) return;
-    // O pagamento muda o saldo da conta que pagou e o status da fatura.
-    await context.read<FaturaCubit>().carregar(_competencia);
+    // O pagamento muda o saldo da conta que pagou e o status da fatura: a
+    // recarga das contas recarrega a fatura também (listener no build).
     await contas.carregar();
   }
 
@@ -97,69 +97,78 @@ class _FaturaTelaState extends State<FaturaTela> {
         : null;
     final proxima = indice > 0 ? widget.ordem[indice - 1] : null;
 
-    return Scaffold(
-      floatingActionButton: switch (estado) {
-        FaturaCarregada(:final detalhe)
-            when detalhe.resumo.status == StatusFatura.fechada =>
-          FloatingActionButton.extended(
-            onPressed: _pagar,
-            icon: const Icon(Icons.payments_rounded),
-            label: const Text('Registrar pagamento'),
-          ),
-        _ => null,
-      },
-      appBar: AppBar(
-        titleSpacing: Espaco.x1,
-        title: Text(nome ?? 'Cartão'),
-        actions: [
-          if (estado case FaturaCarregada(:final detalhe))
-            IconButton(
-              tooltip: 'Editar fatura',
-              icon: const Icon(Icons.edit_rounded),
-              onPressed: () => _editar(detalhe),
+    // Ações em outras telas (a Revisão confirma ou ignora compras desta
+    // fatura, um pagamento muda o status) terminam recarregando as contas: a
+    // fatura, que fica aberta na aba Mais, recarrega junto.
+    return BlocListener<ContasCubit, ContasEstado>(
+      listenWhen: (antes, depois) =>
+          depois is ContasCarregado && antes != depois,
+      listener: (context, _) =>
+          context.read<FaturaCubit>().carregar(_competencia),
+      child: Scaffold(
+        floatingActionButton: switch (estado) {
+          FaturaCarregada(:final detalhe)
+              when detalhe.resumo.status == StatusFatura.fechada =>
+            FloatingActionButton.extended(
+              onPressed: _pagar,
+              icon: const Icon(Icons.payments_rounded),
+              label: const Text('Registrar pagamento'),
             ),
-        ],
-      ),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 48,
-            child: Row(
-              children: [
-                _Seta(
-                  tooltip: 'Fatura anterior',
-                  icone: Icons.chevron_left_rounded,
-                  destino: anterior,
-                  aoIr: _ir,
-                ),
-                Expanded(
-                  child: Text(
-                    tituloDaFatura(_competencia),
-                    textAlign: TextAlign.center,
-                    style: context.textos.titleMedium,
-                  ),
-                ),
-                _Seta(
-                  tooltip: 'Próxima fatura',
-                  icone: Icons.chevron_right_rounded,
-                  destino: proxima,
-                  aoIr: _ir,
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: switch (estado) {
-              FaturaCarregando() => const Carregando(),
-              FaturaErro(:final mensagem) => ErroComTentar(
-                mensagem: mensagem,
-                aoTentar: () =>
-                    context.read<FaturaCubit>().carregar(_competencia),
+          _ => null,
+        },
+        appBar: AppBar(
+          titleSpacing: Espaco.x1,
+          title: Text(nome ?? 'Cartão'),
+          actions: [
+            if (estado case FaturaCarregada(:final detalhe))
+              IconButton(
+                tooltip: 'Editar fatura',
+                icon: const Icon(Icons.edit_rounded),
+                onPressed: () => _editar(detalhe),
               ),
-              FaturaCarregada(:final detalhe) => _Detalhe(detalhe),
-            },
-          ),
-        ],
+          ],
+        ),
+        body: Column(
+          children: [
+            SizedBox(
+              height: 48,
+              child: Row(
+                children: [
+                  _Seta(
+                    tooltip: 'Fatura anterior',
+                    icone: Icons.chevron_left_rounded,
+                    destino: anterior,
+                    aoIr: _ir,
+                  ),
+                  Expanded(
+                    child: Text(
+                      tituloDaFatura(_competencia),
+                      textAlign: TextAlign.center,
+                      style: context.textos.titleMedium,
+                    ),
+                  ),
+                  _Seta(
+                    tooltip: 'Próxima fatura',
+                    icone: Icons.chevron_right_rounded,
+                    destino: proxima,
+                    aoIr: _ir,
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: switch (estado) {
+                FaturaCarregando() => const Carregando(),
+                FaturaErro(:final mensagem) => ErroComTentar(
+                  mensagem: mensagem,
+                  aoTentar: () =>
+                      context.read<FaturaCubit>().carregar(_competencia),
+                ),
+                FaturaCarregada(:final detalhe) => _Detalhe(detalhe),
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

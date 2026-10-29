@@ -281,6 +281,59 @@ void main() {
     expect(find.text('Paga'), findsOneWidget);
   });
 
+  // A fatura fica aberta na aba Mais enquanto a Revisão (outra aba) confirma
+  // ou ignora compras dela; cada ação recarrega as contas.
+  testWidgets('Fatura aberta recarrega quando as contas recarregam', (
+    tester,
+  ) async {
+    _telaAlta(tester);
+    final faturas = com();
+    await tester.pumpWidget(detalhe(DateTime(2026, 10), faturas: faturas));
+    await tester.pumpAndSettle();
+    expect(find.text('Fechada · a pagar'), findsOneWidget);
+    final cargas = faturas.obtidas.length;
+
+    faturas.lista = com(
+      outubro: outubroExemplo.copyWith(
+        status: StatusFatura.paga,
+        valorPago: Decimal.parse('1032.15'),
+      ),
+    ).lista;
+    tester.element(find.byType(FaturaTela)).read<ContasCubit>().carregar();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Paga'), findsOneWidget);
+    expect(faturas.obtidas.skip(cargas), [DateTime(2026, 10)]);
+  });
+
+  testWidgets('Lista de faturas recarrega quando as contas recarregam', (
+    tester,
+  ) async {
+    _telaAlta(tester);
+    final faturas = com();
+    await tester.pumpWidget(
+      _app(
+        BlocProvider(
+          create: (_) => FaturasCubit(faturas, 'k1')..carregar(),
+          child: const FaturasTela(contaId: 'k1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Paga'), findsNothing);
+
+    faturas.lista = com(
+      outubro: outubroExemplo.copyWith(
+        status: StatusFatura.paga,
+        valorPago: Decimal.parse('1032.15'),
+      ),
+    ).lista;
+    tester.element(find.byType(FaturasTela)).read<ContasCubit>().carregar();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Paga'), findsOneWidget);
+  });
+
   testWidgets('Registrar pagamento abre o formulário com cartão e fatura', (
     tester,
   ) async {
