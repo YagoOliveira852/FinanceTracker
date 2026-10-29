@@ -45,6 +45,8 @@ Future<void> _abrirImportar(
   await tester.pumpAndSettle();
   await tester.tap(find.text('Mais'));
   await tester.pumpAndSettle();
+  // O item cita os dois formatos: OFX do Nubank e CSV do Mercado Pago.
+  expect(find.text('Arquivo OFX ou CSV'), findsOneWidget);
   await tester.tap(find.text('Importar extrato'));
   await tester.pumpAndSettle();
 }

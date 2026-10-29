@@ -63,7 +63,7 @@ class MaisTela extends StatelessWidget {
               ItemLista(
                 icone: Icons.upload_file_rounded,
                 titulo: 'Importar extrato',
-                subtitulo: const Text('OFX da conta ou da fatura do cartão'),
+                subtitulo: const Text('Arquivo OFX ou CSV'),
                 direita: seta,
                 aoTocar: () => context.push(rotaImportar),
               ),
