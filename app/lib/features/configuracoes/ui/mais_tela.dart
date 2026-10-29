@@ -7,6 +7,8 @@ import '../../../app/widgets/chip_opcao.dart';
 import '../../../app/widgets/lista.dart';
 import '../../importacao/ui/importar_tela.dart';
 import '../../login/cubit/sessao_cubit.dart';
+import '../cubit/tema_cubit.dart';
+import 'aparencia_folha.dart';
 
 /// Rota da tela Contas, dentro da aba Mais.
 const rotaContas = '/mais/contas';
@@ -14,8 +16,8 @@ const rotaContas = '/mais/contas';
 /// Rota de Categorias e regras, dentro da aba Mais.
 const rotaCategorias = '/mais/categorias';
 
-/// Aba Mais: Contas, Importar extrato, Categorias e regras e os itens que
-/// ainda não têm tela ("em breve").
+/// Aba Mais: Contas, Importar extrato, Categorias e regras, Aparência e os
+/// itens que ainda não têm tela ("em breve").
 class MaisTela extends StatelessWidget {
   const MaisTela({super.key});
 
@@ -87,6 +89,15 @@ class MaisTela extends StatelessWidget {
                 subtitulo: const Text('Como os rascunhos são classificados'),
                 direita: seta,
                 aoTocar: () => context.go(rotaCategorias),
+              ),
+              ItemLista(
+                icone: Icons.contrast_rounded,
+                titulo: 'Aparência',
+                subtitulo: Text(
+                  'Tema: ${nomeDoTema(context.watch<TemaCubit>().state)}',
+                ),
+                direita: seta,
+                aoTocar: () => abrirAparencia(context),
               ),
               const _EmBreve(
                 icone: Icons.fingerprint_rounded,

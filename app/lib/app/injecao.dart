@@ -2,6 +2,8 @@ import '../core/api/cliente_api.dart';
 import '../core/api/interceptor_auth.dart';
 import '../core/auth/armazenamento_tokens.dart';
 import '../features/categorias/data/categorias_repositorio.dart';
+import '../features/configuracoes/cubit/tema_cubit.dart';
+import '../features/configuracoes/data/preferencia_tema.dart';
 import '../features/contas/data/contas_repositorio.dart';
 import '../features/faturas/data/faturas_repositorio.dart';
 import '../features/importacao/data/arquivos.dart';
@@ -27,7 +29,9 @@ class Dependencias {
     required this.importacoes,
     required this.seletorArquivo,
     required this.compartilhamento,
-  }) : sessao = SessaoCubit(auth);
+    required PreferenciaTema preferenciaTema,
+  }) : sessao = SessaoCubit(auth),
+       tema = TemaCubit(preferenciaTema);
 
   /// Dependências reais, falando com a API em [baseUrl].
   factory Dependencias.api({String baseUrl = urlApi}) {
@@ -54,6 +58,7 @@ class Dependencias {
       importacoes: ImportacoesRepositorioApi(cliente),
       seletorArquivo: SeletorArquivoSistema(),
       compartilhamento: FonteCompartilhamentoSistema(),
+      preferenciaTema: PreferenciaTemaLocal(),
     );
   }
 
@@ -69,4 +74,5 @@ class Dependencias {
   /// Extratos recebidos pelo Compartilhar de outro app.
   final FonteCompartilhamento compartilhamento;
   final SessaoCubit sessao;
+  final TemaCubit tema;
 }
