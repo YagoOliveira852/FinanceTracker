@@ -61,6 +61,17 @@ sobra = saldo disponível − faturas até o próximo salário − gastos previs
 
 O alerta aparece na **tela inicial** e é visto também pelo **lembrete local** dos dias de salário, que abre o app. Não há notificação push.
 
+### Decisões do design do planejamento (2026-10-29)
+
+Telas aprovadas na página "Planejamento" do canvas (Mais → Planejamento, e o "Cadastrar salário" do Início). Valem para o card do `calculo.py` e o da tela inicial:
+
+- **Sem valores iniciais:** a linha de `configuracao` só existe depois do primeiro "Salvar" em "Aporte e reserva". Enquanto não houver renda prevista ativa **e** configuração, o Início fica no estado "sem salário cadastrado" (só o saldo disponível) e o aporte não é calculado. Colchão e gasto semanal zerados por padrão inflariam o aporte.
+- **Renda prevista não é excluída, só desativada** (`ativa = false`), como cartões e conexões. Inativa, ela sai do aporte, do alerta e do lembrete, e continua listada para ser reativada.
+- **Dia 29 a 31 em mês mais curto** vira o último dia do mês; depois vale o ajuste para o dia útil seguinte. A tela mostra a próxima data já ajustada, e o motivo quando muda ("dia 15 é domingo e feriado").
+- **Gasto semanal estimado é um piso:** o texto da tela diz que, com 4 semanas de histórico, vale o maior entre ele e a média real das últimas 8 semanas (regra de "Gastos previstos" acima), e mostra a média real atual.
+- **Gasto mensal de referência:** "Automático" (`gasto_mensal_referencia` nulo) usa a média dos **3 últimos meses fechados**, sem o mês corrente, e a tela mostra o valor calculado; "Valor fixo" grava o valor.
+- **Validação da renda:** descrição obrigatória, valor maior que zero, dia de 1 a 31 e conta obrigatória (corrente ou carteira ativa). A ajuda do campo de conta lembra que é a conta onde o crédito aparece primeiro.
+
 ### Exemplo (valores fictícios)
 
 Saldo disponível R$ 2.000,00; fatura que vence antes do próximo salário R$ 700,00; 10 dias até o próximo salário com taxa de R$ 20,00/dia (R$ 200,00); colchão R$ 250,00 → aporte = 2.000 − 700 − 200 − 250 = **R$ 850,00**; sobra = 1.100 ≥ 250 → 🟢.
