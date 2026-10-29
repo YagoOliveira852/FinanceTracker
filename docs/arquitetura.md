@@ -21,7 +21,7 @@ O app precisa funcionar sem depender de disciplina de registro: a maior parte do
 | Fonte | Como funciona | Observações |
 |---|---|---|
 | **Lançamento manual** | Formulário rápido | Dinheiro em espécie e ajustes. |
-| **Importação OFX/CSV** | Nubank: extrato da conta e fatura do cartão, importados por **OFX** (o app também oferece PDF e CSV). Mercado Pago: extrato por **CSV** (exporta PDF/XLSX/CSV, até 31 dias; sem OFX). | Reserva para quando a Pluggy falhar e para histórico. FITID do OFX para deduplicar. Formatos detalhados na spec `2026-10-19-revisao-classificacao`. |
+| **Importação OFX/CSV** | Nubank: extrato da conta e fatura do cartão, importados por **OFX** (o app também oferece PDF e CSV). Mercado Pago: extrato por **CSV**, que só sai pelo site (o app exporta só PDF; sem OFX). | Reserva para quando a Pluggy falhar e para histórico. FITID do OFX e `REFERENCE_ID` do CSV para deduplicar. Formatos detalhados nas specs `2026-10-19-revisao-classificacao` (Nubank) e `2026-10-28-importacao` (adendo de 2026-10-29, Mercado Pago). |
 | **Open Finance via Meu Pluggy** | O usuário conecta os bancos em meu.pluggy.ai; o backend lê pela API usando o conector MeuPluggy. | Gratuito para os próprios dados. Até 5 conexões do mesmo titular. **Atraso de ~24h aceito.** |
 | **API SGS do Banco Central** | CDI diário (série 12) | Pública e gratuita. Rendimento estimado e benchmark. |
 
@@ -265,7 +265,7 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 
 **Lançamento manual** entra com `fonte = manual`, `status = confirmada`, `descricao_original = descricao` e `id_externo` nulo.
 
-**Regras de `id_externo`:** OFX → FITID, com sufixo `:iof` na linha de IOF (no Nubank, a compra e o IOF dela compartilham o FITID); se ainda sobrar FITID repetido no arquivo, a importação falha com erro explícito. Pluggy → id da transação. CSV (Mercado Pago) → identificador próprio, se o layout tiver; senão hash de (conta, data, valor, descrição original, ordem da linha no mesmo dia). Formatos observados: spec `2026-10-19-revisao-classificacao`.
+**Regras de `id_externo`:** OFX → FITID, com sufixo `:iof` na linha de IOF (no Nubank, a compra e o IOF dela compartilham o FITID); se ainda sobrar FITID repetido no arquivo, a importação falha com erro explícito. Pluggy → id da transação. CSV (Mercado Pago) → `REFERENCE_ID`, único por linha na amostra (o hash previsto para um CSV sem identificador não foi necessário); repetido no arquivo = o mesmo erro do FITID. Formatos observados: specs `2026-10-19-revisao-classificacao` e `2026-10-28-importacao` (adendo).
 
 **Dados de fatura vindos do OFX do cartão:** a fatura é a de fechamento mais perto de `DTEND`; `valor_informado` = −`BALAMT` (0 se credor); `data_fechamento` = `DTEND`. O arquivo não traz vencimento: ele continua calculado pela regra do cartão. Todas as linhas do arquivo vão para essa fatura, e compras das fontes nunca são realocadas por mudança de fechamento (só as manuais). "Pagamento recebido" do lado do cartão não é importado.
 
@@ -346,7 +346,7 @@ Definições completas (data esperada do salário, gastos previstos, meses de re
 | pluggy_investment_id | text null unique | CDBs/caixinhas de `/investments` |
 | pluggy_saldo_reservado_id | text null unique | cofrinho que vem como `bankData.reservedBalances` da conta corrente (`identification`) |
 
-Aportes e resgates são `transacao` com `investimento_id` (saem/entram na conta corrente). Para o cofrinho, vêm das transações `TRANSFERENCIA_SALDO_RESERVADO` da Pluggy; o percentual do CDI é informado à mão, porque o saldo reservado não traz taxa.
+Aportes e resgates são `transacao` com `investimento_id` (saem/entram na conta corrente). Para o cofrinho, vêm das transações `TRANSFERENCIA_SALDO_RESERVADO` da Pluggy e das linhas "Dinheiro reservado"/"Dinheiro retirado" do CSV do Mercado Pago; o percentual do CDI é informado à mão, porque o saldo reservado não traz taxa. Até os investimentos existirem, a revisão confirma aporte e resgate com categoria de investimento e sem `investimento_id`.
 
 **snapshot_saldo** (saldo real em uma data)
 | coluna | tipo | nota |
@@ -356,7 +356,7 @@ Aportes e resgates são `transacao` com `investimento_id` (saem/entram na conta 
 | investimento_id | uuid FK null | **ainda não existe:** entra com os investimentos; aí `conta_id` vira nulo, com `CHECK` de um dos dois |
 | data | date | |
 | saldo | numeric(14,2) | |
-| fonte | text | `manual` \| `ofx` (`LEDGERBAL` do extrato) \| `pluggy` |
+| fonte | text | `manual` \| `ofx` (`LEDGERBAL` do extrato) \| `csv_mercadopago` (saldo da última linha) \| `pluggy` |
 | importacao_id | uuid FK null | importação que o gravou; o desfazer o apaga |
 | unique | (conta_id, data) | com os investimentos, `(conta_id, investimento_id, data)` com `NULLS NOT DISTINCT` |
 
@@ -504,7 +504,7 @@ FinanceTracker/
 
 ## 9. Questões técnicas em aberto
 
-1. Formato de exportação do extrato (CSV) e da **fatura** do Mercado Pago — a conta ainda não tem dados; coletar antes da importação.
+1. Formato da **fatura** do cartão do Mercado Pago — verificar quando a primeira fechar. O CSV do extrato da conta foi coletado em 2026-10-29 (spec `2026-10-28-importacao`, adendo).
 
 Respondidas em 2026-10-19 (spec `2026-10-19-pluggy-spike`): caixinhas de banco digital aparecem como CDB em `/investments`; o cofrinho do Mercado Pago aparece como saldo reservado da conta; a Pluggy traz parcela, data real da compra e fatura (`/bills`). O Nubank exporta a fatura em OFX (spec `2026-10-19-revisao-classificacao`).
 
