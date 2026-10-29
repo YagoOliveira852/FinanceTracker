@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Linha de gráfico que oscila e sobe, terminando numa seta, na grade de
+     108 dp do adaptive icon. Fica dentro da zona segura de 66 dp (círculo no
+     centro), então nenhuma máscara corta a linha. A cor é primary-container. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="1"
+        android:translateY="-2">
+        <path
+            android:pathData="M30,68l15,-15 12,10 19,-21M62,42h14v14"
+            android:fillColor="#00000000"
+            android:strokeColor="#CDE8E8"
+            android:strokeWidth="9"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>
