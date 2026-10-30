@@ -98,7 +98,7 @@ void main() {
 
   test('gastoPorDia arredonda ao centavo', () {
     expect(gastoPorDia(Decimal.parse('280')), Decimal.parse('40'));
-    expect(gastoPorDia(Decimal.parse('150')), Decimal.parse('21.43'));
+    expect(gastoPorDia(Decimal.parse('160')), Decimal.parse('22.86'));
   });
 
   test('lerMeses aceita vírgula e uma casa', () {

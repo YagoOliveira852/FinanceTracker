@@ -49,7 +49,7 @@ def test_primeiro_salvamento_cria_a_linha_e_os_seguintes_a_atualizam(api, sessao
     primeira = api.put("/planejamento/configuracao", json=_dados())
     segunda = api.put(
         "/planejamento/configuracao",
-        json=_dados(colchao="300.00", meta_reserva_meses="4.5", gasto_mensal_referencia="3000"),
+        json=_dados(colchao="350.00", meta_reserva_meses="4.5", gasto_mensal_referencia="3000"),
     )
 
     assert primeira.status_code == 200, primeira.json()
@@ -61,7 +61,7 @@ def test_primeiro_salvamento_cria_a_linha_e_os_seguintes_a_atualizam(api, sessao
     }
     assert segunda.status_code == 200, segunda.json()
     assert segunda.json()["configuracao"] == {
-        "colchao": "300.00",
+        "colchao": "350.00",
         "meta_reserva_meses": "4.5",
         "gasto_semanal_estimado": "280.00",
         "gasto_mensal_referencia": "3000.00",
