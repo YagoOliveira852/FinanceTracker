@@ -27,7 +27,7 @@ aporte = saldo disponível
 ```
 
 - **Saldo disponível:** soma das contas `corrente` **e** `carteira` ativas. Dinheiro físico entra porque é dinheiro guardado para depositar, não já gasto. Investimentos ficam de fora: são a reserva.
-- **Faturas até o próximo salário:** toda fatura não paga com `data_vencimento` **até a data do próximo salário, inclusive**. Como o salário pode cair depois do vencimento, a fatura sai do salário atual. Valor usado: o **maior** entre `valor_informado` e o total calculado das transações da fatura. Assim um lançamento faltando ou um rascunho não revisado nunca deixa a fatura subestimada.
+- **Faturas até o próximo salário:** toda fatura não paga com `data_vencimento` **até a data do próximo salário, inclusive**. Como o salário pode cair depois do vencimento, a fatura sai do salário atual. Valor usado: o **maior** entre `valor_informado` e o total calculado das transações da fatura, menos o que já foi pago (decisões do código, abaixo). Assim um lançamento faltando ou um rascunho não revisado nunca deixa a fatura subestimada.
 - **Gastos previstos até o próximo salário:** taxa diária × dias até o próximo salário, onde:
   - com menos de 4 semanas de histórico de gasto, taxa = `gasto_semanal_estimado / 7`;
   - a partir de 4 semanas, taxa = o **maior** entre `gasto_semanal_estimado / 7` e a média diária real das últimas 8 semanas.
@@ -71,6 +71,21 @@ Telas aprovadas na página "Planejamento" do canvas (Mais → Planejamento, e o 
 - **Gasto semanal estimado é um piso:** o texto da tela diz que, com 4 semanas de histórico, vale o maior entre ele e a média real das últimas 8 semanas (regra de "Gastos previstos" acima), e mostra a média real atual.
 - **Gasto mensal de referência:** "Automático" (`gasto_mensal_referencia` nulo) usa a média dos **3 últimos meses fechados**, sem o mês corrente, e a tela mostra o valor calculado; "Valor fixo" grava o valor.
 - **Validação da renda:** descrição obrigatória, valor maior que zero, dia de 1 a 31 e conta obrigatória (corrente ou carteira ativa). A ajuda do campo de conta lembra que é a conta onde o crédito aparece primeiro.
+
+### Decisões do código do cálculo (2026-10-30)
+
+Aprovadas ao implementar `planejamento/calculo.py` (card "S6 · calculo.py"). As tabelas `configuracao` e `renda_prevista` ainda não existem: o módulo recebe dataclasses próprias e o service do card seguinte as monta.
+
+- **O que o cálculo recebe pronto e o que ele decide.** O service passa o saldo de cada conta já com confirmadas e rascunhos, sem as possíveis duplicatas: a consulta agregada do saldo continua num lugar só. Também passa as faturas com os valores da tela da fatura (informado, calculado e pago) e as transações de todas as contas desde o 1º dia do terceiro mês antes da referência, com status e marca de duplicata. O filtro de status (confirmada e rascunho entram; ignorada e possível duplicata, não) e a definição de gasto ficam no cálculo. O service também conta os rascunhos do aviso "considera N rascunhos", pela mesma regra.
+- **Gasto = despesa − estorno**, de qualquer conta, cartão incluído. Ajustes ficam fora: são correções pontuais de conferência, e um ajuste grande distorceria a média de 8 semanas. O ajuste da fatura continua pesando pelo valor da fatura.
+- **Salário detectado:** uma `receita` na conta da renda, com valor entre 80% e 120% do previsto, de 3 dias antes a 5 dias depois da data esperada. Os 5 dias cobrem o atraso da Pluggy e um fim de semana. Um crédito vale para uma renda só: as datas esperadas pegam os créditos em ordem, da mais cedo para a mais tarde.
+- **Próximo salário:** a data esperada mais próxima, entre as rendas ativas, que ainda não tem crédito e cuja janela não acabou. O salário adiantado já leva ao seguinte, então o aporte do dia 8 olha até o salário do mês que vem e não até o dia 10. O salário atrasado continua sendo o próximo até o fim da janela, com 0 dia de gasto previsto; depois disso, o cálculo passa para o seguinte e o alerta mostra o saldo sem ele.
+- **Aporte = sobra − colchão**, nunca negativo, e só existe enquanto a janela do salário detectado está aberta. A sobra e o alerta são a mesma conta. Se o aporte foi registrado ou o usuário dispensou a sugestão, quem trata é a tela inicial.
+- **Fatura:** reserva o que falta pagar, ou seja, `maior(informado, calculado) − pago`, sem ficar negativo. O pagamento parcial ou adiantado já saiu do saldo disponível. A fatura vencida e não paga também entra.
+- **Histórico:** `inicio_historico` é o primeiro dia com dados de gasto (o service usa o gasto mais antigo). As "4 semanas" contam como 28 dias desde esse início. A média usa os 56 dias antes de hoje, sem contar hoje, que ainda não terminou. Com histórico menor que isso, divide pelos dias que existem.
+- **Gastos previstos** = o maior entre o piso e a média, vezes os dias até o salário (hoje entra, o dia do salário não). O total é arredondado para cima ao centavo. A média semanal real mostrada no Planejamento é arredondada ao centavo.
+- **Gasto mensal automático:** a média dos 3 meses fechados que estão **inteiros** dentro do histórico (um mês pela metade puxaria a média para baixo). Com menos meses, usa os que houver. Sem nenhum, não há gasto mensal nem meses de reserva. O automático é calculado mesmo sem configuração, para a tela que ainda não foi salva.
+- **Meses de reserva:** uma casa decimal, arredondada para baixo. Quando há aporte, o cálculo também devolve os meses depois dele. Sem investimentos (antes da S8), a reserva é 0.
 
 ### Exemplo (valores fictícios)
 
