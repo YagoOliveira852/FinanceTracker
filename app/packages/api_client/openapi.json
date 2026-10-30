@@ -2932,6 +2932,332 @@
         }
       }
     },
+    "/planejamento/rendas": {
+      "get": {
+        "tags": [
+          "planejamento"
+        ],
+        "summary": "Listar Rendas",
+        "description": "Todas as rendas previstas, com a próxima data: ativas primeiro, depois as\ninativas (renda nunca é excluída).",
+        "operationId": "planejamento_listar_rendas",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RendaSaida"
+                  },
+                  "type": "array",
+                  "title": "Response Planejamento Listar Rendas"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "planejamento"
+        ],
+        "summary": "Criar Renda",
+        "operationId": "planejamento_criar_renda",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RendaEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RendaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/planejamento/rendas/{renda_id}": {
+      "put": {
+        "tags": [
+          "planejamento"
+        ],
+        "summary": "Editar Renda",
+        "description": "Edita a renda ou a desativa/reativa (renda nunca é excluída).",
+        "operationId": "planejamento_editar_renda",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "renda_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Renda Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RendaEdicao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RendaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/planejamento/rendas/previa": {
+      "get": {
+        "tags": [
+          "planejamento"
+        ],
+        "summary": "Previa Renda",
+        "description": "Próxima data para um dia ainda não salvo (formulário da renda).",
+        "operationId": "planejamento_previa_renda",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dia_previsto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 31,
+              "minimum": 1,
+              "title": "Dia Previsto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProximaDataSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/planejamento/configuracao": {
+      "get": {
+        "tags": [
+          "planejamento"
+        ],
+        "summary": "Obter Configuracao",
+        "description": "A configuração do cálculo (nula até o primeiro salvamento), o gasto mensal\nautomático e a média semanal real do histórico.",
+        "operationId": "planejamento_obter_configuracao",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "planejamento"
+        ],
+        "summary": "Salvar Configuracao",
+        "description": "Cria a configuração no primeiro salvamento; depois, atualiza.",
+        "operationId": "planejamento_salvar_configuracao",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfiguracaoEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -3425,6 +3751,151 @@
           "parcelas"
         ],
         "title": "CompraParceladaSaida"
+      },
+      "ConfiguracaoEntrada": {
+        "properties": {
+          "colchao": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Colchao",
+            "description": "Fica na conta depois do aporte; não negativo."
+          },
+          "meta_reserva_meses": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Meta Reserva Meses",
+            "description": "Meta da reserva em meses de gasto; > 0."
+          },
+          "gasto_semanal_estimado": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Gasto Semanal Estimado",
+            "description": "Piso dos gastos previstos; não negativo."
+          },
+          "gasto_mensal_referencia": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gasto Mensal Referencia",
+            "description": "Valor fixo (> 0) que divide a reserva; nulo = média automática."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "colchao",
+          "meta_reserva_meses",
+          "gasto_semanal_estimado",
+          "gasto_mensal_referencia"
+        ],
+        "title": "ConfiguracaoEntrada",
+        "description": "Os quatro campos vão sempre (o formulário manda tudo):\n`gasto_mensal_referencia` nulo = automático."
+      },
+      "ConfiguracaoSaida": {
+        "properties": {
+          "configuracao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfiguracaoValores"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nula até o primeiro salvamento: sem ela, o aporte não é calculado."
+          },
+          "gasto_mensal_automatico": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GastoMensalAutomaticoSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Média dos 3 últimos meses fechados inteiros no histórico, mesmo com valor fixo salvo; nula sem nenhum."
+          },
+          "media_semanal_real": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Semanal Real",
+            "description": "Gasto médio por semana nas últimas 8 semanas; nula com menos de 4."
+          },
+          "meses_de_reserva": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meses De Reserva",
+            "description": "Quantos meses a reserva cobre hoje, pelo gasto mensal que vale (o fixo ou o automático); nulo sem ele."
+          }
+        },
+        "type": "object",
+        "required": [
+          "configuracao",
+          "gasto_mensal_automatico",
+          "media_semanal_real",
+          "meses_de_reserva"
+        ],
+        "title": "ConfiguracaoSaida"
+      },
+      "ConfiguracaoValores": {
+        "properties": {
+          "colchao": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Colchao"
+          },
+          "meta_reserva_meses": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Meta Reserva Meses"
+          },
+          "gasto_semanal_estimado": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Gasto Semanal Estimado"
+          },
+          "gasto_mensal_referencia": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gasto Mensal Referencia",
+            "description": "Nulo = automático."
+          }
+        },
+        "type": "object",
+        "required": [
+          "colchao",
+          "meta_reserva_meses",
+          "gasto_semanal_estimado",
+          "gasto_mensal_referencia"
+        ],
+        "title": "ConfiguracaoValores"
       },
       "ConfirmacaoEntrada": {
         "properties": {
@@ -4238,6 +4709,31 @@
         ],
         "title": "FonteTransacao"
       },
+      "GastoMensalAutomaticoSaida": {
+        "properties": {
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor",
+            "description": "Média do gasto (despesa − estorno) dos meses."
+          },
+          "meses": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Meses",
+            "description": "Meses fechados da média (1º dia), do mais antigo ao mais recente; até 3."
+          }
+        },
+        "type": "object",
+        "required": [
+          "valor",
+          "meses"
+        ],
+        "title": "GastoMensalAutomaticoSaida"
+      },
       "GrupoCategoria": {
         "type": "string",
         "enum": [
@@ -4740,6 +5236,38 @@
         ],
         "title": "PrevisaoDoTipoSaida"
       },
+      "ProximaDataSaida": {
+        "properties": {
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data",
+            "description": "A data efetiva, já em dia útil."
+          },
+          "data_prevista": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Prevista",
+            "description": "O dia da renda no mês; 29 a 31 em mês mais curto vira o último dia."
+          },
+          "feriados": {
+            "items": {
+              "$ref": "#/components/schemas/FeriadoSaida"
+            },
+            "type": "array",
+            "title": "Feriados",
+            "description": "Feriados da data prevista até a efetiva (exclusive); vazia se só o fim de semana pesou ou se a data não mudou."
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "data_prevista",
+          "feriados"
+        ],
+        "title": "ProximaDataSaida",
+        "description": "Próxima data esperada de uma renda, a partir de hoje (inclusive)."
+      },
       "RascunhoSaida": {
         "properties": {
           "id": {
@@ -5055,6 +5583,128 @@
           "criado_em"
         ],
         "title": "RegraSaida"
+      },
+      "RendaEdicao": {
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Descricao"
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor",
+            "description": "O líquido que cai na conta; maior que zero."
+          },
+          "dia_previsto": {
+            "type": "integer",
+            "title": "Dia Previsto",
+            "description": "Dia do mês, de 1 a 31."
+          },
+          "conta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Id",
+            "description": "Corrente ou carteira ativa onde o crédito aparece."
+          },
+          "ativa": {
+            "type": "boolean",
+            "title": "Ativa"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "descricao",
+          "valor",
+          "dia_previsto",
+          "conta_id",
+          "ativa"
+        ],
+        "title": "RendaEdicao",
+        "description": "Os campos do cadastro, mais `ativa` (desativar ou reativar)."
+      },
+      "RendaEntrada": {
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Descricao"
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor",
+            "description": "O líquido que cai na conta; maior que zero."
+          },
+          "dia_previsto": {
+            "type": "integer",
+            "title": "Dia Previsto",
+            "description": "Dia do mês, de 1 a 31."
+          },
+          "conta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Id",
+            "description": "Corrente ou carteira ativa onde o crédito aparece."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "descricao",
+          "valor",
+          "dia_previsto",
+          "conta_id"
+        ],
+        "title": "RendaEntrada",
+        "description": "As regras (descrição preenchida, valor > 0, dia de 1 a 31, conta\ncorrente ou carteira ativa) ficam no service, com as mensagens da tela."
+      },
+      "RendaSaida": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor"
+          },
+          "dia_previsto": {
+            "type": "integer",
+            "title": "Dia Previsto"
+          },
+          "conta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Id"
+          },
+          "ativa": {
+            "type": "boolean",
+            "title": "Ativa"
+          },
+          "proxima": {
+            "$ref": "#/components/schemas/ProximaDataSaida"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "descricao",
+          "valor",
+          "dia_previsto",
+          "conta_id",
+          "ativa",
+          "proxima"
+        ],
+        "title": "RendaSaida"
       },
       "RespostaErro": {
         "properties": {

@@ -86,6 +86,12 @@ Class | Method | HTTP request | Description
 [*ImportacoesApi*](doc/ImportacoesApi.md) | [**importar**](doc/ImportacoesApi.md#importar) | **POST** /importacoes | Importar
 [*ImportacoesApi*](doc/ImportacoesApi.md) | [**listar**](doc/ImportacoesApi.md#listar) | **GET** /importacoes | Listar
 [*ImportacoesApi*](doc/ImportacoesApi.md) | [**obter**](doc/ImportacoesApi.md#obter) | **GET** /importacoes/{importacao_id} | Obter
+[*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**criarRenda**](doc/PlanejamentoApi.md#criarrenda) | **POST** /planejamento/rendas | Criar Renda
+[*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**editarRenda**](doc/PlanejamentoApi.md#editarrenda) | **PUT** /planejamento/rendas/{renda_id} | Editar Renda
+[*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**listarRendas**](doc/PlanejamentoApi.md#listarrendas) | **GET** /planejamento/rendas | Listar Rendas
+[*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**obterConfiguracao**](doc/PlanejamentoApi.md#obterconfiguracao) | **GET** /planejamento/configuracao | Obter Configuracao
+[*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**previaRenda**](doc/PlanejamentoApi.md#previarenda) | **GET** /planejamento/rendas/previa | Previa Renda
+[*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**salvarConfiguracao**](doc/PlanejamentoApi.md#salvarconfiguracao) | **PUT** /planejamento/configuracao | Salvar Configuracao
 [*RegrasApi*](doc/RegrasApi.md) | [**criar**](doc/RegrasApi.md#criar) | **POST** /regras | Criar
 [*RegrasApi*](doc/RegrasApi.md) | [**editar**](doc/RegrasApi.md#editar) | **PUT** /regras/{regra_id} | Editar
 [*RegrasApi*](doc/RegrasApi.md) | [**excluir**](doc/RegrasApi.md#excluir) | **DELETE** /regras/{regra_id} | Excluir
@@ -124,6 +130,9 @@ Class | Method | HTTP request | Description
  - [CategoriaSaida](doc/CategoriaSaida.md)
  - [CompraParceladaEntrada](doc/CompraParceladaEntrada.md)
  - [CompraParceladaSaida](doc/CompraParceladaSaida.md)
+ - [ConfiguracaoEntrada](doc/ConfiguracaoEntrada.md)
+ - [ConfiguracaoSaida](doc/ConfiguracaoSaida.md)
+ - [ConfiguracaoValores](doc/ConfiguracaoValores.md)
  - [ConfirmacaoEntrada](doc/ConfirmacaoEntrada.md)
  - [ConfirmacaoSaida](doc/ConfirmacaoSaida.md)
  - [ContaDaImportacao](doc/ContaDaImportacao.md)
@@ -148,6 +157,7 @@ Class | Method | HTTP request | Description
  - [FeriadoSaida](doc/FeriadoSaida.md)
  - [FonteImportacao](doc/FonteImportacao.md)
  - [FonteTransacao](doc/FonteTransacao.md)
+ - [GastoMensalAutomaticoSaida](doc/GastoMensalAutomaticoSaida.md)
  - [GrupoCategoria](doc/GrupoCategoria.md)
  - [HTTPValidationError](doc/HTTPValidationError.md)
  - [ImportacaoSaida](doc/ImportacaoSaida.md)
@@ -167,12 +177,16 @@ Class | Method | HTTP request | Description
  - [ParSaida](doc/ParSaida.md)
  - [ParcelaSaida](doc/ParcelaSaida.md)
  - [PrevisaoDoTipoSaida](doc/PrevisaoDoTipoSaida.md)
+ - [ProximaDataSaida](doc/ProximaDataSaida.md)
  - [RascunhoSaida](doc/RascunhoSaida.md)
  - [RascunhosCasadosSaida](doc/RascunhosCasadosSaida.md)
  - [RefreshEntrada](doc/RefreshEntrada.md)
  - [RegraDetalheSaida](doc/RegraDetalheSaida.md)
  - [RegraEntrada](doc/RegraEntrada.md)
  - [RegraSaida](doc/RegraSaida.md)
+ - [RendaEdicao](doc/RendaEdicao.md)
+ - [RendaEntrada](doc/RendaEntrada.md)
+ - [RendaSaida](doc/RendaSaida.md)
  - [RespostaErro](doc/RespostaErro.md)
  - [ResultadoImportacaoSaida](doc/ResultadoImportacaoSaida.md)
  - [RevisaoSaida](doc/RevisaoSaida.md)

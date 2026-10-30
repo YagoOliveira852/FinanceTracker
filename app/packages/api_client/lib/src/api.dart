@@ -15,6 +15,7 @@ import 'package:api_client/src/api/categorias_api.dart';
 import 'package:api_client/src/api/contas_api.dart';
 import 'package:api_client/src/api/faturas_api.dart';
 import 'package:api_client/src/api/importacoes_api.dart';
+import 'package:api_client/src/api/planejamento_api.dart';
 import 'package:api_client/src/api/regras_api.dart';
 import 'package:api_client/src/api/revisao_api.dart';
 import 'package:api_client/src/api/saude_api.dart';
@@ -148,6 +149,12 @@ class ApiClient {
   /// by doing that all interceptors will not be executed
   ImportacoesApi getImportacoesApi() {
     return ImportacoesApi(dio, serializers);
+  }
+
+  /// Get PlanejamentoApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  PlanejamentoApi getPlanejamentoApi() {
+    return PlanejamentoApi(dio, serializers);
   }
 
   /// Get RegrasApi instance, base route and serializer can be overridden by a given but be careful,

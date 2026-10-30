@@ -10,6 +10,7 @@ lib/src/api/categorias_api.dart
 lib/src/api/contas_api.dart
 lib/src/api/faturas_api.dart
 lib/src/api/importacoes_api.dart
+lib/src/api/planejamento_api.dart
 lib/src/api/regras_api.dart
 lib/src/api/revisao_api.dart
 lib/src/api/saude_api.dart
@@ -32,6 +33,9 @@ lib/src/model/categoria_resumo.dart
 lib/src/model/categoria_saida.dart
 lib/src/model/compra_parcelada_entrada.dart
 lib/src/model/compra_parcelada_saida.dart
+lib/src/model/configuracao_entrada.dart
+lib/src/model/configuracao_saida.dart
+lib/src/model/configuracao_valores.dart
 lib/src/model/confirmacao_entrada.dart
 lib/src/model/confirmacao_saida.dart
 lib/src/model/conta_da_importacao.dart
@@ -57,6 +61,7 @@ lib/src/model/fatura_resumo.dart
 lib/src/model/feriado_saida.dart
 lib/src/model/fonte_importacao.dart
 lib/src/model/fonte_transacao.dart
+lib/src/model/gasto_mensal_automatico_saida.dart
 lib/src/model/grupo_categoria.dart
 lib/src/model/http_validation_error.dart
 lib/src/model/importacao_saida.dart
@@ -76,12 +81,16 @@ lib/src/model/par_recusa_entrada.dart
 lib/src/model/par_saida.dart
 lib/src/model/parcela_saida.dart
 lib/src/model/previsao_do_tipo_saida.dart
+lib/src/model/proxima_data_saida.dart
 lib/src/model/rascunho_saida.dart
 lib/src/model/rascunhos_casados_saida.dart
 lib/src/model/refresh_entrada.dart
 lib/src/model/regra_detalhe_saida.dart
 lib/src/model/regra_entrada.dart
 lib/src/model/regra_saida.dart
+lib/src/model/renda_edicao.dart
+lib/src/model/renda_entrada.dart
+lib/src/model/renda_saida.dart
 lib/src/model/resposta_erro.dart
 lib/src/model/resultado_importacao_saida.dart
 lib/src/model/revisao_saida.dart
