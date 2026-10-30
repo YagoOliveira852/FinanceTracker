@@ -15,10 +15,12 @@ Future<void> main() async {
 
   final dependencias = Dependencias.api();
   // Lê os tokens e o tema guardados antes da primeira tela: assim o app abre
-  // direto no Início ou no login, já no tema escolhido, sem piscar.
+  // direto no Início ou no login, já no tema escolhido, sem piscar. O plugin
+  // de notificações também, antes de o app agendar os lembretes.
   await Future.wait([
     dependencias.sessao.iniciar(),
     dependencias.tema.iniciar(),
+    dependencias.notificador.iniciar(),
   ]);
 
   runApp(FinancasApp(dependencias));

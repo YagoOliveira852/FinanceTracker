@@ -8,6 +8,7 @@ import '../apoio/categorias_falso.dart';
 import '../apoio/contas_falso.dart';
 import '../apoio/faturas_falso.dart';
 import '../apoio/importacoes_falso.dart';
+import '../apoio/notificador_falso.dart';
 import '../apoio/planejamento_falso.dart';
 import '../apoio/preferencia_tema_falsa.dart';
 import '../apoio/revisao_falso.dart';
@@ -20,6 +21,8 @@ Future<Dependencias> _abrir(
   ImportacoesRepositorioFalso? importacoes,
   FonteCompartilhamentoFalsa? compartilhamento,
   PreferenciaTemaFalsa? preferenciaTema,
+  PlanejamentoRepositorioFalso? planejamento,
+  NotificadorFalso? notificador,
 }) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
@@ -32,11 +35,12 @@ Future<Dependencias> _abrir(
     faturas: FaturasRepositorioFalso(),
     categorias: CategoriasRepositorioFalso(),
     revisao: RevisaoRepositorioFalso(),
-    planejamento: PlanejamentoRepositorioFalso(),
+    planejamento: planejamento ?? PlanejamentoRepositorioFalso(),
     importacoes: importacoes ?? ImportacoesRepositorioFalso(),
     seletorArquivo: SeletorArquivoFalso(arquivoExemplo()),
     compartilhamento: compartilhamento ?? FonteCompartilhamentoFalsa(),
     preferenciaTema: preferenciaTema ?? PreferenciaTemaFalsa(),
+    notificador: notificador ?? NotificadorFalso(),
   );
   await Future.wait([
     dependencias.sessao.iniciar(),
@@ -65,8 +69,30 @@ void main() {
     expect(find.text('Aporte e alerta chegam em breve'), findsOneWidget);
   });
 
-  testWidgets('login leva ao Início', (tester) async {
-    await _abrir(tester, sessao: false);
+  testWidgets('com sessão, agenda os lembretes de salário ao abrir', (
+    tester,
+  ) async {
+    final notificador = NotificadorFalso();
+    await _abrir(
+      tester,
+      planejamento: PlanejamentoRepositorioFalso(rendas: [rendaExemplo()]),
+      notificador: notificador,
+    );
+
+    expect(notificador.agendados.map((l) => l.quando), [
+      DateTime(2026, 11, 10, 9),
+    ]);
+  });
+
+  testWidgets('login leva ao Início e agenda os lembretes', (tester) async {
+    final notificador = NotificadorFalso();
+    await _abrir(
+      tester,
+      sessao: false,
+      planejamento: PlanejamentoRepositorioFalso(rendas: [rendaExemplo()]),
+      notificador: notificador,
+    );
+    expect(notificador.agendados, isEmpty);
 
     await tester.enterText(
       find.widgetWithText(TextField, 'E-mail'),
@@ -81,6 +107,24 @@ void main() {
 
     expect(find.text('Saldo disponível'), findsOneWidget);
     expect(find.text('R\$ 2.350,00'), findsOneWidget);
+    expect(notificador.agendados, hasLength(1));
+  });
+
+  testWidgets('tocar no lembrete com o app aberto volta ao Início', (
+    tester,
+  ) async {
+    final notificador = NotificadorFalso();
+    await _abrir(tester, notificador: notificador);
+    await tester.tap(find.text('Mais'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Contas'));
+    await tester.pumpAndSettle();
+    expect(find.text('Saldo disponível'), findsNothing);
+
+    notificador.tocar();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Saldo disponível'), findsOneWidget);
   });
 
   testWidgets('aba Revisão mostra o contador e a lista', (tester) async {
@@ -215,10 +259,11 @@ void main() {
     expect(find.text('Mercado'), findsNothing);
   });
 
-  testWidgets('Mais → Planejamento: primeira renda e volta à lista', (
-    tester,
-  ) async {
-    await _abrir(tester);
+  testWidgets('Mais → Planejamento: primeira renda, volta à lista e agenda o '
+      'lembrete', (tester) async {
+    final notificador = NotificadorFalso();
+    await _abrir(tester, notificador: notificador);
+    expect(notificador.agendados, isEmpty);
 
     await tester.tap(find.text('Mais'));
     await tester.pumpAndSettle();
@@ -250,6 +295,9 @@ void main() {
     expect(find.text('Planejamento'), findsOneWidget);
     expect(find.text('Salário'), findsOneWidget);
     expect(find.text('Próxima: terça, 10 nov'), findsOneWidget);
+    expect(notificador.agendados.map((l) => l.corpo), [
+      'Salário: veja quanto aportar e o ritmo dos gastos.',
+    ]);
   });
 
   testWidgets('abre no tema guardado', (tester) async {
@@ -288,8 +336,13 @@ void main() {
     expect(find.byType(RadioListTile<ThemeMode>), findsNothing);
   });
 
-  testWidgets('Sair volta ao login', (tester) async {
-    await _abrir(tester);
+  testWidgets('Sair volta ao login e cancela os lembretes', (tester) async {
+    final notificador = NotificadorFalso();
+    await _abrir(
+      tester,
+      planejamento: PlanejamentoRepositorioFalso(rendas: [rendaExemplo()]),
+      notificador: notificador,
+    );
 
     await tester.tap(find.text('Mais'));
     await tester.pumpAndSettle();
@@ -299,16 +352,26 @@ void main() {
 
     expect(find.text('Acesse suas finanças'), findsOneWidget);
     expect(find.textContaining('Sessão expirada.'), findsNothing);
+    expect(notificador.cancelamentos, 1);
+    expect(notificador.agendados, isEmpty);
   });
 
-  testWidgets('sessão expirada leva ao login com o aviso', (tester) async {
-    final dependencias = await _abrir(tester);
+  testWidgets('sessão expirada leva ao login com o aviso e mantém os '
+      'lembretes', (tester) async {
+    final notificador = NotificadorFalso();
+    final dependencias = await _abrir(
+      tester,
+      planejamento: PlanejamentoRepositorioFalso(rendas: [rendaExemplo()]),
+      notificador: notificador,
+    );
 
     dependencias.sessao.expirou();
     await tester.pumpAndSettle();
 
     expect(find.text('Acesse suas finanças'), findsOneWidget);
     expect(find.textContaining('Sessão expirada.'), findsOneWidget);
+    expect(notificador.cancelamentos, 0);
+    expect(notificador.agendados, hasLength(1));
   });
 
   testWidgets('Compartilhar um OFX abre a importação já preenchida', (
