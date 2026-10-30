@@ -87,6 +87,19 @@ Aprovadas ao implementar `planejamento/calculo.py` (card "S6 · calculo.py"). As
 - **Gasto mensal automático:** a média dos 3 meses fechados que estão **inteiros** dentro do histórico (um mês pela metade puxaria a média para baixo). Com menos meses, usa os que houver. Sem nenhum, não há gasto mensal nem meses de reserva. O automático é calculado mesmo sem configuração, para a tela que ainda não foi salva.
 - **Meses de reserva:** uma casa decimal, arredondada para baixo. Quando há aporte, o cálculo também devolve os meses depois dele. Sem investimentos (antes da S8), a reserva é 0.
 
+### Decisões do código das rendas e da configuração (2026-10-30)
+
+Tomadas ao implementar o cadastro (card "S6 · Planejamento: rendas e configuração"), para aprovação no PR:
+
+- **API** em `/planejamento`, tag `planejamento`: `GET`/`POST /rendas`, `PUT /rendas/{id}`, `GET /rendas/previa?dia_previsto=` (a "Próxima data" ao vivo do formulário, como a prévia do cartão) e `GET`/`PUT /configuracao`. Desativar e reativar vão no `PUT` da renda, pelo campo `ativa`, como no cartão; não há `DELETE`.
+- **Configuração ainda não salva:** o `GET` devolve `200` com `configuracao: null`, não `404`. O gasto mensal automático e a média semanal real vêm mesmo assim, e o automático vem também com valor fixo salvo, para a tela mostrar os dois ao trocar de modo. Os meses de reserva usam o gasto mensal que vale (o fixo ou o automático).
+- **Reuso do cálculo:** a leitura chama `calculo.calcular` sem rendas e sem saldos, com as transações desde o 1º dia do terceiro mês antes de hoje. O início do histórico é o gasto (despesa ou estorno) mais antigo, confirmado ou rascunho, sem marca de duplicata. O service expõe essas consultas para o endpoint de resumo do card seguinte.
+- **Próxima data da renda:** a primeira data efetiva a partir de hoje (inclusive), entre a do mês anterior (que pode ter sido empurrada para este), a deste mês e a do seguinte. Ela não olha se o crédito já chegou: isso é do cálculo e do Início. A API devolve a data efetiva, a prevista e os feriados entre elas; o app monta o motivo ("dia 15 é domingo e feriado", "novembro tem 30 dias").
+- **Ordem da lista:** ativas pela próxima data, depois as inativas.
+- **Conta desativada** só impede a renda ativa: a renda pode ser desativada mesmo depois que a conta saiu de uso, e só volta a ser ativa com uma corrente ou carteira ativa.
+- **Validação da configuração:** colchão e gasto semanal a partir de zero (gasto semanal zero deixa só a média real), meta maior que zero com uma casa (até 999,9 meses, string no JSON como o dinheiro) e valor fixo maior que zero.
+- **Primeira vez:** os dois passos aparecem enquanto faltar renda ou configuração. O passo feito ganha um ✓ e perde o botão, e a seção "Aporte e reserva" só aparece depois do primeiro salvamento.
+
 ### Exemplo (valores fictícios)
 
 Saldo disponível R$ 2.000,00; fatura que vence antes do próximo salário R$ 700,00; 10 dias até o próximo salário com taxa de R$ 20,00/dia (R$ 200,00); colchão R$ 250,00 → aporte = 2.000 − 700 − 200 − 250 = **R$ 850,00**; sobra = 1.100 ≥ 250 → 🟢.

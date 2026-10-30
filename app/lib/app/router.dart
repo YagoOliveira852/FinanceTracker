@@ -41,6 +41,14 @@ import '../features/login/cubit/login_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/login/data/auth_repositorio.dart';
 import '../features/login/ui/login_tela.dart';
+import '../features/planejamento/cubit/ajustes_calculo_cubit.dart';
+import '../features/planejamento/cubit/editar_renda_cubit.dart';
+import '../features/planejamento/cubit/planejamento_cubit.dart';
+import '../features/planejamento/data/planejamento.dart';
+import '../features/planejamento/data/planejamento_repositorio.dart';
+import '../features/planejamento/ui/ajustes_calculo_tela.dart';
+import '../features/planejamento/ui/editar_renda_tela.dart';
+import '../features/planejamento/ui/planejamento_tela.dart';
 import '../features/revisao/cubit/revisao_cubit.dart';
 import '../features/revisao/ui/revisao_tela.dart';
 import '../features/transacoes/cubit/lancamento_cubit.dart';
@@ -317,6 +325,55 @@ GoRouter criarRouter(SessaoCubit sessao) {
                             ],
                           ),
                         ],
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'planejamento',
+                    builder: (context, _) => BlocProvider(
+                      create: (context) => PlanejamentoCubit(
+                        context.read<PlanejamentoRepositorio>(),
+                      )..carregar(),
+                      child: const PlanejamentoTela(),
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'rendas/nova',
+                        parentNavigatorKey: chaveRaiz,
+                        builder: (context, _) => BlocProvider(
+                          create: (context) => EditarRendaCubit(
+                            context.read<PlanejamentoRepositorio>(),
+                          ),
+                          child: const EditarRendaTela(),
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'rendas/:id/editar',
+                        parentNavigatorKey: chaveRaiz,
+                        builder: (context, state) {
+                          final renda = state.extra! as Renda;
+                          return BlocProvider(
+                            create: (context) => EditarRendaCubit(
+                              context.read<PlanejamentoRepositorio>(),
+                              existente: renda,
+                            ),
+                            child: EditarRendaTela(existente: renda),
+                          );
+                        },
+                      ),
+                      GoRoute(
+                        path: 'ajustes',
+                        parentNavigatorKey: chaveRaiz,
+                        builder: (context, state) {
+                          final leitura = state.extra! as LeituraConfiguracao;
+                          return BlocProvider(
+                            create: (context) => AjustesCalculoCubit(
+                              context.read<PlanejamentoRepositorio>(),
+                              leitura,
+                            ),
+                            child: AjustesCalculoTela(leitura: leitura),
+                          );
+                        },
                       ),
                     ],
                   ),

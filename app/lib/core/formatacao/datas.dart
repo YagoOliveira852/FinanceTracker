@@ -52,6 +52,13 @@ String formatarDiaCurto(DateTime data) =>
     '${_diasDaSemana[data.weekday - 1].substring(0, 3).toLowerCase()}, '
     '${data.day} ${_meses[data.month - 1].substring(0, 3)}';
 
+/// `terça, 10 nov`: próxima data de uma renda.
+String formatarDiaDaSemana(DateTime data) =>
+    '${_diasDaSemana[data.weekday - 1].toLowerCase()}, ${formatarDiaMes(data)}';
+
+/// `jul`: meses numa frase curta ("média de jul a set").
+String nomeDoMesCurto(DateTime data) => _meses[data.month - 1].substring(0, 3);
+
 /// `Terça, 20 de outubro`.
 String formatarDataLonga(DateTime data) =>
     '${_diasDaSemana[data.weekday - 1]}, ${data.day} de ${_meses[data.month - 1]}';

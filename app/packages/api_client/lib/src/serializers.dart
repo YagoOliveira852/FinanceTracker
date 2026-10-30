@@ -25,6 +25,9 @@ import 'package:api_client/src/model/categoria_resumo.dart';
 import 'package:api_client/src/model/categoria_saida.dart';
 import 'package:api_client/src/model/compra_parcelada_entrada.dart';
 import 'package:api_client/src/model/compra_parcelada_saida.dart';
+import 'package:api_client/src/model/configuracao_entrada.dart';
+import 'package:api_client/src/model/configuracao_saida.dart';
+import 'package:api_client/src/model/configuracao_valores.dart';
 import 'package:api_client/src/model/confirmacao_entrada.dart';
 import 'package:api_client/src/model/confirmacao_saida.dart';
 import 'package:api_client/src/model/conta_da_importacao.dart';
@@ -49,6 +52,7 @@ import 'package:api_client/src/model/fatura_resumo.dart';
 import 'package:api_client/src/model/feriado_saida.dart';
 import 'package:api_client/src/model/fonte_importacao.dart';
 import 'package:api_client/src/model/fonte_transacao.dart';
+import 'package:api_client/src/model/gasto_mensal_automatico_saida.dart';
 import 'package:api_client/src/model/grupo_categoria.dart';
 import 'package:api_client/src/model/http_validation_error.dart';
 import 'package:api_client/src/model/importacao_saida.dart';
@@ -68,12 +72,16 @@ import 'package:api_client/src/model/par_recusa_entrada.dart';
 import 'package:api_client/src/model/par_saida.dart';
 import 'package:api_client/src/model/parcela_saida.dart';
 import 'package:api_client/src/model/previsao_do_tipo_saida.dart';
+import 'package:api_client/src/model/proxima_data_saida.dart';
 import 'package:api_client/src/model/rascunho_saida.dart';
 import 'package:api_client/src/model/rascunhos_casados_saida.dart';
 import 'package:api_client/src/model/refresh_entrada.dart';
 import 'package:api_client/src/model/regra_detalhe_saida.dart';
 import 'package:api_client/src/model/regra_entrada.dart';
 import 'package:api_client/src/model/regra_saida.dart';
+import 'package:api_client/src/model/renda_edicao.dart';
+import 'package:api_client/src/model/renda_entrada.dart';
+import 'package:api_client/src/model/renda_saida.dart';
 import 'package:api_client/src/model/resposta_erro.dart';
 import 'package:api_client/src/model/resultado_importacao_saida.dart';
 import 'package:api_client/src/model/revisao_saida.dart';
@@ -109,6 +117,9 @@ part 'serializers.g.dart';
   CategoriaSaida,
   CompraParceladaEntrada,
   CompraParceladaSaida,
+  ConfiguracaoEntrada,
+  ConfiguracaoSaida,
+  ConfiguracaoValores,
   ConfirmacaoEntrada,
   ConfirmacaoSaida,
   ContaDaImportacao,
@@ -133,6 +144,7 @@ part 'serializers.g.dart';
   FeriadoSaida,
   FonteImportacao,
   FonteTransacao,
+  GastoMensalAutomaticoSaida,
   GrupoCategoria,
   HTTPValidationError,
   ImportacaoSaida,
@@ -152,12 +164,16 @@ part 'serializers.g.dart';
   ParSaida,
   ParcelaSaida,
   PrevisaoDoTipoSaida,
+  ProximaDataSaida,
   RascunhoSaida,
   RascunhosCasadosSaida,
   RefreshEntrada,
   RegraDetalheSaida,
   RegraEntrada,
   RegraSaida,
+  RendaEdicao,
+  RendaEntrada,
+  RendaSaida,
   RespostaErro,
   ResultadoImportacaoSaida,
   RevisaoSaida,
@@ -191,6 +207,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ImportacaoSaida)]),
         () => ListBuilder<ImportacaoSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RendaSaida)]),
+        () => ListBuilder<RendaSaida>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(TransacaoRevisao)]),
@@ -239,6 +259,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ValidationError)]),
         () => ListBuilder<ValidationError>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(Date)]),
+        () => ListBuilder<Date>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(String)]),

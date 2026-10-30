@@ -10,6 +10,7 @@ import '../features/importacao/data/arquivos.dart';
 import '../features/importacao/data/importacoes_repositorio.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/login/data/auth_repositorio.dart';
+import '../features/planejamento/data/planejamento_repositorio.dart';
 import '../features/revisao/data/revisao_repositorio.dart';
 import '../features/transacoes/data/transacoes_repositorio.dart';
 
@@ -26,6 +27,7 @@ class Dependencias {
     required this.faturas,
     required this.categorias,
     required this.revisao,
+    required this.planejamento,
     required this.importacoes,
     required this.seletorArquivo,
     required this.compartilhamento,
@@ -55,6 +57,7 @@ class Dependencias {
       faturas: FaturasRepositorioApi(cliente),
       categorias: CategoriasRepositorioApi(cliente),
       revisao: RevisaoRepositorioApi(cliente),
+      planejamento: PlanejamentoRepositorioApi(cliente),
       importacoes: ImportacoesRepositorioApi(cliente),
       seletorArquivo: SeletorArquivoSistema(),
       compartilhamento: FonteCompartilhamentoSistema(),
@@ -68,6 +71,7 @@ class Dependencias {
   final FaturasRepositorio faturas;
   final CategoriasRepositorio categorias;
   final RevisaoRepositorio revisao;
+  final PlanejamentoRepositorio planejamento;
   final ImportacoesRepositorio importacoes;
   final SeletorArquivo seletorArquivo;
 

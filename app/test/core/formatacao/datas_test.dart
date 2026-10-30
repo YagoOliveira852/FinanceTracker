@@ -55,4 +55,13 @@ void main() {
   test('formatarDiaMes', () {
     expect(formatarDiaMes(DateTime(2026, 11, 3)), '3 nov');
   });
+
+  test('formatarDiaDaSemana: dia da semana por extenso, minúsculo', () {
+    expect(formatarDiaDaSemana(DateTime(2026, 11, 10)), 'terça, 10 nov');
+    expect(formatarDiaDaSemana(DateTime(2026, 10, 31)), 'sábado, 31 out');
+  });
+
+  test('nomeDoMesCurto', () {
+    expect(nomeDoMesCurto(DateTime(2026, 7)), 'jul');
+  });
 }
