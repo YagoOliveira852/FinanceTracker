@@ -44,6 +44,7 @@ import '../features/login/ui/login_tela.dart';
 import '../features/planejamento/cubit/ajustes_calculo_cubit.dart';
 import '../features/planejamento/cubit/editar_renda_cubit.dart';
 import '../features/planejamento/cubit/planejamento_cubit.dart';
+import '../features/planejamento/data/lembretes_salario.dart';
 import '../features/planejamento/data/planejamento.dart';
 import '../features/planejamento/data/planejamento_repositorio.dart';
 import '../features/planejamento/ui/ajustes_calculo_tela.dart';
@@ -334,7 +335,21 @@ GoRouter criarRouter(SessaoCubit sessao) {
                       create: (context) => PlanejamentoCubit(
                         context.read<PlanejamentoRepositorio>(),
                       )..carregar(),
-                      child: const PlanejamentoTela(),
+                      // A tela recarrega depois de criar, editar, desativar ou
+                      // reativar uma renda: os lembretes acompanham.
+                      child:
+                          BlocListener<PlanejamentoCubit, PlanejamentoEstado>(
+                            listener: (context, estado) {
+                              if (estado case PlanejamentoCarregado(
+                                :final rendas,
+                              )) {
+                                context.read<LembretesSalario>().agendar(
+                                  rendas,
+                                );
+                              }
+                            },
+                            child: const PlanejamentoTela(),
+                          ),
                     ),
                     routes: [
                       GoRoute(

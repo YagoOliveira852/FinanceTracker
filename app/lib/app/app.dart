@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -26,6 +28,10 @@ import 'tema.dart';
 /// [CompartilhadoCubit] porque o extrato do Compartilhar pode chegar antes
 /// do login e só abre a importação com a sessão conectada. O [TemaCubit]
 /// porque o `MaterialApp` lê dele o tema escolhido em Mais.
+///
+/// Os lembretes de salário são reagendados a cada abertura com sessão e a
+/// cada login, e cancelados no "Sair"; o toque num lembrete com o app aberto
+/// volta ao Início.
 class FinancasApp extends StatefulWidget {
   const FinancasApp(this.dependencias, {super.key});
 
@@ -37,9 +43,23 @@ class FinancasApp extends StatefulWidget {
 
 class _FinancasAppState extends State<FinancasApp> {
   late final GoRouter _router = criarRouter(widget.dependencias.sessao);
+  late final StreamSubscription<void> _toques;
+
+  @override
+  void initState() {
+    super.initState();
+    final dependencias = widget.dependencias;
+    if (dependencias.sessao.state is SessaoConectada) {
+      dependencias.lembretes.reagendar();
+    }
+    _toques = dependencias.notificador.toques.listen(
+      (_) => _router.go(rotaInicio),
+    );
+  }
 
   @override
   void dispose() {
+    _toques.cancel();
     _router.dispose();
     super.dispose();
   }
@@ -58,6 +78,7 @@ class _FinancasAppState extends State<FinancasApp> {
         RepositoryProvider.value(value: dependencias.planejamento),
         RepositoryProvider.value(value: dependencias.importacoes),
         RepositoryProvider.value(value: dependencias.seletorArquivo),
+        RepositoryProvider.value(value: dependencias.lembretes),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -110,8 +131,18 @@ class _FinancasAppState extends State<FinancasApp> {
                 context.read<ContasCubit>().carregar();
                 context.read<CategoriasCubit>().carregar();
                 context.read<RevisaoCubit>().carregar();
+                dependencias.lembretes.reagendar();
                 _abrirCompartilhado(context);
               },
+            ),
+            BlocListener<SessaoCubit, SessaoEstado>(
+              // Só o "Sair": com a sessão expirada, os lembretes ficam (o
+              // toque leva ao login e, depois dele, ao Início).
+              listenWhen: (antes, depois) =>
+                  antes is SessaoConectada &&
+                  depois is SessaoDesconectada &&
+                  !depois.expirou,
+              listener: (_, _) => dependencias.lembretes.cancelar(),
             ),
             BlocListener<CompartilhadoCubit, ArquivoEscolhido?>(
               listenWhen: (_, depois) => depois != null,

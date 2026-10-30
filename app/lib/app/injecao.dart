@@ -1,6 +1,8 @@
 import '../core/api/cliente_api.dart';
 import '../core/api/interceptor_auth.dart';
 import '../core/auth/armazenamento_tokens.dart';
+import '../core/notificacoes/notificador.dart';
+import '../core/notificacoes/notificador_local.dart';
 import '../features/categorias/data/categorias_repositorio.dart';
 import '../features/configuracoes/cubit/tema_cubit.dart';
 import '../features/configuracoes/data/preferencia_tema.dart';
@@ -10,11 +12,13 @@ import '../features/importacao/data/arquivos.dart';
 import '../features/importacao/data/importacoes_repositorio.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/login/data/auth_repositorio.dart';
+import '../features/planejamento/data/lembretes_salario.dart';
 import '../features/planejamento/data/planejamento_repositorio.dart';
 import '../features/revisao/data/revisao_repositorio.dart';
 import '../features/transacoes/data/transacoes_repositorio.dart';
 
-/// Monta os objetos de longa duração do app: repositórios e a sessão.
+/// Monta os objetos de longa duração do app: repositórios, a sessão e os
+/// lembretes.
 ///
 /// É o equivalente ao `create_app()` de um projeto Flask: tudo é criado num
 /// lugar só e entregue às telas pelos providers em `app.dart`. Nos testes, o
@@ -32,8 +36,10 @@ class Dependencias {
     required this.seletorArquivo,
     required this.compartilhamento,
     required PreferenciaTema preferenciaTema,
+    required this.notificador,
   }) : sessao = SessaoCubit(auth),
-       tema = TemaCubit(preferenciaTema);
+       tema = TemaCubit(preferenciaTema),
+       lembretes = LembretesSalario(notificador, planejamento);
 
   /// Dependências reais, falando com a API em [baseUrl].
   factory Dependencias.api({String baseUrl = urlApi}) {
@@ -62,6 +68,7 @@ class Dependencias {
       seletorArquivo: SeletorArquivoSistema(),
       compartilhamento: FonteCompartilhamentoSistema(),
       preferenciaTema: PreferenciaTemaLocal(),
+      notificador: NotificadorLocal(),
     );
   }
 
@@ -77,6 +84,13 @@ class Dependencias {
 
   /// Extratos recebidos pelo Compartilhar de outro app.
   final FonteCompartilhamento compartilhamento;
+
+  /// Notificações locais; [iniciar](Notificador.iniciar) antes do app.
+  final Notificador notificador;
   final SessaoCubit sessao;
   final TemaCubit tema;
+
+  /// Lembretes nos dias de salário: reagendados a cada login e abertura com
+  /// sessão e a cada carga do Planejamento; cancelados ao sair.
+  final LembretesSalario lembretes;
 }

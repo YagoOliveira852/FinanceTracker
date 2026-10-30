@@ -15,6 +15,7 @@ import '../../apoio/categorias_falso.dart';
 import '../../apoio/contas_falso.dart';
 import '../../apoio/faturas_falso.dart';
 import '../../apoio/importacoes_falso.dart';
+import '../../apoio/notificador_falso.dart';
 import '../../apoio/planejamento_falso.dart';
 import '../../apoio/preferencia_tema_falsa.dart';
 import '../../apoio/revisao_falso.dart';
@@ -41,6 +42,7 @@ Future<void> _abrirImportar(
     seletorArquivo: seletor ?? SeletorArquivoFalso(arquivoExemplo()),
     compartilhamento: FonteCompartilhamentoFalsa(),
     preferenciaTema: PreferenciaTemaFalsa(),
+    notificador: NotificadorFalso(),
   );
   await dependencias.sessao.iniciar();
   await tester.pumpWidget(FinancasApp(dependencias));

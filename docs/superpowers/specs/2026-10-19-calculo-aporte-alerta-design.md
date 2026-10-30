@@ -100,6 +100,21 @@ Tomadas ao implementar o cadastro (card "S6 · Planejamento: rendas e configura�
 - **Validação da configuração:** colchão e gasto semanal a partir de zero (gasto semanal zero deixa só a média real), meta maior que zero com uma casa (até 999,9 meses, string no JSON como o dinheiro) e valor fixo maior que zero.
 - **Primeira vez:** os dois passos aparecem enquanto faltar renda ou configuração. O passo feito ganha um ✓ e perde o botão, e a seção "Aporte e reserva" só aparece depois do primeiro salvamento.
 
+### Decisões do lembrete nos dias de salário (2026-10-30)
+
+Aprovadas antes de implementar o card "S6 · Lembrete local nos dias de salário". Tudo fica no app (`flutter_local_notifications` + `timezone`), sem endpoint novo:
+
+- **Data:** a data efetiva que `GET /planejamento/rendas` já devolve (`proxima.data`), só das rendas **ativas**. Agenda-se só a próxima de cada renda: o app reagenda a cada abertura com sessão, a cada carga da tela Planejamento (que recarrega depois de criar, editar, desativar ou reativar uma renda) e quando o toque no lembrete abre o app. Sem abrir o app entre um salário e o seguinte, o seguinte não é agendado; aceito, porque o uso é diário e mudar a API para devolver N datas não compensa.
+- **Horário:** 09:00 em `America/Fortaleza` (o fuso de negócio, não o do aparelho), depois do sync da Pluggy das 07:00. Data cujo horário já passou não é agendada: no dia do salário depois das 09:00, o lembrete do mês seguinte entra na abertura do dia seguinte.
+- **Uma notificação por data:** rendas no mesmo dia viram um lembrete só. Título "Dia de salário"; corpo com as descrições das rendas e "veja quanto aportar e o ritmo dos gastos". Sem valores: a notificação aparece na tela bloqueada, e o aporte e o alerta são do Início.
+- **Salário adiantado:** o lembrete aparece mesmo assim. A API não sabe se o crédito chegou; o texto não afirma que o salário caiu, e o Início mostra o estado real.
+- **Toque:** abre o app no Início (com o app fechado, é a rota inicial; aberto em outra tela, vai para o Início).
+- **Alarme inexato** (`inexactAllowWhileIdle`): pode atrasar alguns minutos, mas dispensa `SCHEDULE_EXACT_ALARM`, que o usuário teria de conceder nas configurações.
+- **Reiniciar o aparelho:** o plugin guarda os agendamentos e os refaz no boot (`RECEIVE_BOOT_COMPLETED` e os receivers dele no `AndroidManifest.xml`).
+- **Permissão de notificação (Android 13+):** pedida só quando há pelo menos uma renda ativa, para não aparecer logo depois do login sem motivo. Recusada, os lembretes continuam agendados e simplesmente não aparecem; o Android para de perguntar depois de duas recusas.
+- **Sessão:** "Sair" cancela todos os lembretes. Sessão expirada os mantém: o toque leva ao login e, depois dele, ao Início.
+- **Onde fica:** `LembretesSalario` (serviço sem estado de tela, na feature `planejamento`) decide o que agendar; o plugin fica atrás da interface `Notificador` (`core/notificacoes/`), trocada por um falso nos testes.
+
 ### Exemplo (valores fictícios)
 
 Saldo disponível R$ 2.000,00; fatura que vence antes do próximo salário R$ 700,00; 10 dias até o próximo salário com taxa de R$ 20,00/dia (R$ 200,00); colchão R$ 250,00 → aporte = 2.000 − 700 − 200 − 250 = **R$ 850,00**; sobra = 1.100 ≥ 250 → 🟢.
