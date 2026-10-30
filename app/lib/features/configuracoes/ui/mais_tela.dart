@@ -16,7 +16,11 @@ const rotaContas = '/mais/contas';
 /// Rota de Categorias e regras, dentro da aba Mais.
 const rotaCategorias = '/mais/categorias';
 
-/// Aba Mais: Contas, Importar extrato, Categorias e regras, Aparência e os
+/// Rota do Planejamento (rendas e configuração), dentro da aba Mais.
+const rotaPlanejamento = '/mais/planejamento';
+
+/// Aba Mais: Contas, Importar extrato, Planejamento, Categorias e regras,
+/// Aparência e os
 /// itens que ainda não têm tela ("em breve").
 class MaisTela extends StatelessWidget {
   const MaisTela({super.key});
@@ -78,10 +82,12 @@ class MaisTela extends StatelessWidget {
           const TituloSecao('Ajustes', pequeno: true),
           GrupoLista(
             itens: [
-              const _EmBreve(
+              ItemLista(
                 icone: Icons.tune_rounded,
                 titulo: 'Planejamento',
-                subtitulo: 'Salário, colchão e meta da reserva',
+                subtitulo: const Text('Salário, colchão e meta da reserva'),
+                direita: seta,
+                aoTocar: () => context.go(rotaPlanejamento),
               ),
               ItemLista(
                 icone: Icons.category_rounded,

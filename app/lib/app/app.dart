@@ -55,6 +55,7 @@ class _FinancasAppState extends State<FinancasApp> {
         RepositoryProvider.value(value: dependencias.faturas),
         RepositoryProvider.value(value: dependencias.categorias),
         RepositoryProvider.value(value: dependencias.revisao),
+        RepositoryProvider.value(value: dependencias.planejamento),
         RepositoryProvider.value(value: dependencias.importacoes),
         RepositoryProvider.value(value: dependencias.seletorArquivo),
       ],

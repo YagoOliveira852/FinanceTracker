@@ -49,6 +49,7 @@ class CampoDinheiro extends StatelessWidget {
         hintText: '0,00',
         prefixText: 'R\$ ',
         helperText: ajuda,
+        helperMaxLines: 4,
         errorText: erro,
         suffixIcon: erro == null ? null : const Icon(Icons.error_rounded),
       ),
@@ -322,7 +323,7 @@ class RotuloEnviando extends StatelessWidget {
   }
 }
 
-/// Dia do mês (1 a 31) do cartão: fechamento ou vencimento.
+/// Dia do mês (1 a 31): fechamento e vencimento do cartão, dia da renda.
 class CampoDiaDoMes extends StatelessWidget {
   const CampoDiaDoMes({
     super.key,
@@ -331,10 +332,12 @@ class CampoDiaDoMes extends StatelessWidget {
     required this.erro,
     required this.habilitado,
     required this.aoMudar,
+    this.ajuda,
   });
 
   final TextEditingController controller;
   final String rotulo;
+  final String? ajuda;
   final String? erro;
   final bool habilitado;
   final VoidCallback aoMudar;
@@ -353,6 +356,8 @@ class CampoDiaDoMes extends StatelessWidget {
       decoration: InputDecoration(
         labelText: rotulo,
         hintText: '1 a 31',
+        helperText: ajuda,
+        helperMaxLines: 3,
         errorText: erro,
         errorMaxLines: 2,
       ),

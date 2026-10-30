@@ -15,6 +15,7 @@ import '../../apoio/categorias_falso.dart';
 import '../../apoio/contas_falso.dart';
 import '../../apoio/faturas_falso.dart';
 import '../../apoio/importacoes_falso.dart';
+import '../../apoio/planejamento_falso.dart';
 import '../../apoio/preferencia_tema_falsa.dart';
 import '../../apoio/revisao_falso.dart';
 import '../../apoio/transacoes_falso.dart';
@@ -35,6 +36,7 @@ Future<void> _abrirImportar(
     faturas: FaturasRepositorioFalso(),
     categorias: CategoriasRepositorioFalso(),
     revisao: RevisaoRepositorioFalso(),
+    planejamento: PlanejamentoRepositorioFalso(),
     importacoes: importacoes,
     seletorArquivo: seletor ?? SeletorArquivoFalso(arquivoExemplo()),
     compartilhamento: FonteCompartilhamentoFalsa(),
