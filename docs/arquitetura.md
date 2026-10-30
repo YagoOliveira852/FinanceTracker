@@ -92,7 +92,7 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 **Backend — FastAPI**
 - FastAPI + Pydantic v2 + SQLAlchemy 2.0 + Alembic + PostgreSQL 16.
 - **Síncrono:** rotas `def`, `Session` do SQLAlchemy, `httpx.Client` para Pluggy e BCB (ver spec `2026-10-19-backend-sincrono-usuario-unico`).
-- uv (dependências), ruff (lint), pytest + `TestClient`, testcontainers (Postgres real — `NUMERIC` e `CHECK` precisam se comportar como em produção).
+- uv (dependências), ruff (lint), pytest + `TestClient` (pytest-cov para a cobertura do `calculo.py`), testcontainers (Postgres real — `NUMERIC` e `CHECK` precisam se comportar como em produção).
 - Auth: Bearer com access + refresh token (sem cookie/CSRF). Usuário único criado por comando (`python -m app.criar_usuario`), sem endpoint de cadastro.
 - Jobs: container `jobs` com cron no Compose da VPS rodando scripts (sync Pluggy 07:00 com nova tentativa às 13:00; CDI do BCB). Sem Celery.
 - Por que existe um backend: segredos fora do APK; tarefas agendadas; cálculos testáveis em Python.
@@ -312,21 +312,22 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 | conta_id | uuid FK | onde cai |
 | ativa | bool | renda é desativada, nunca excluída |
 
-O cálculo de aporte e o alerta de reserva **não são tabelas**: são funções puras no backend (`planejamento/calculo.py`) que recebem saldos, faturas, rendas previstas e configuração, e devolvem o resultado. Isso as torna fáceis de testar e de explicar.
+O cálculo de aporte e o alerta de reserva **não são tabelas**: são funções puras no backend (`planejamento/calculo.py`) que recebem saldos, faturas, transações recentes, rendas previstas e configuração (dataclasses do próprio módulo, com a data de referência como parâmetro) e devolvem o resultado. Isso as torna fáceis de testar e de explicar.
 
 Fórmula do aporte (sugerida quando a receita do salário é detectada):
 
 ```
 aporte = saldo disponível (contas corrente + carteira)
        − faturas que vencem até o próximo salário, inclusive
-         (pelo maior entre valor_informado e o total calculado)
+         (pelo maior entre valor_informado e o total calculado,
+          menos o que já foi pago)
        − gastos previstos até o próximo salário
        − colchao
 ```
 
-O dinheiro das faturas fica na conta, fora dos investimentos (evita IR/IOF de resgate curto). Aporte e alerta consideram transações confirmadas **e rascunhos** (menos os marcados como possível duplicata), avisando quantos rascunhos estão pendentes; o saldo oficial usa só confirmadas. O **alerta de ritmo** tem três níveis — 🟢 sobra ≥ colchão, 🟡 entre 0 e o colchão, 🔴 negativo (exigiria resgatar a reserva) — e aparece na tela inicial.
+O dinheiro das faturas fica na conta, fora dos investimentos (evita IR/IOF de resgate curto). Aporte e alerta consideram transações confirmadas **e rascunhos** (menos os marcados como possível duplicata), avisando quantos rascunhos estão pendentes; o saldo oficial usa só confirmadas. O **alerta de ritmo** tem três níveis — 🟢 sobra ≥ colchão, 🟡 entre 0 e o colchão, 🔴 negativo (exigiria resgatar a reserva) — e aparece na tela inicial. O aporte é sugerido quando chega o salário: uma receita na conta da renda, de 80% a 120% do previsto, de 3 dias antes a 5 dias depois da data esperada; a partir daí, o próximo salário é o seguinte.
 
-Definições completas (data esperada do salário, gastos previstos, meses de reserva, exemplos) na spec `docs/superpowers/specs/2026-10-19-calculo-aporte-alerta-design.md`.
+Definições completas (data esperada do salário, detecção, gastos previstos, meses de reserva, exemplos) na spec `docs/superpowers/specs/2026-10-19-calculo-aporte-alerta-design.md`.
 
 ### 7.5 Investimentos
 
