@@ -101,7 +101,7 @@ Hospedado pela Pluggy, sem autenticação; dá acesso à documentação, referê
 - go_router; Bloc/Cubit.
 - dio + freezed nos modelos e estados do app; cliente Dart gerado do OpenAPI (openapi-generator via Docker, alvo `dart-dio`, `built_value`, `decimal=String` para dinheiro chegar como `String`) confinado em `packages/api_client/`. O repositório de cada feature converte um no outro (ver spec `2026-10-19-dinheiro-contrato-api`).
 - drift (SQLite) como cache de leitura offline; servidor é a fonte da verdade.
-- fl_chart; local_auth (biometria); flutter_secure_storage (tokens); flutter_local_notifications (lembrete local nos dias de salário — não lê notificações de outros apps).
+- fl_chart; local_auth (biometria); flutter_secure_storage (tokens); flutter_local_notifications + timezone (lembrete local às 9h de `America/Fortaleza` na próxima data efetiva de cada renda ativa, alarme inexato, refeito depois de reiniciar o aparelho; não lê notificações de outros apps). Regras na spec `2026-10-19-calculo-aporte-alerta`, "Decisões do lembrete nos dias de salário".
 - file_picker (seletor do extrato, sem permissão de armazenamento) e receive_sharing_intent (extrato recebido pelo Compartilhar do Android).
 
 **Infra/portfólio**
@@ -481,7 +481,8 @@ FinanceTracker/
         │   ├── api/              # configura dio, token, refresh automático
         │   ├── auth/             # flutter_secure_storage, local_auth
         │   ├── cache/            # drift (leitura offline)
-        │   └── formatacao/       # dinheiro (decimal → "R$ 1.234,56"), datas
+        │   ├── formatacao/       # dinheiro (decimal → "R$ 1.234,56"), datas
+        │   └── notificacoes/     # Notificador (interface) e o plugin de notificações locais
         └── features/             # espelha os módulos do backend
             ├── login/
             ├── inicio/           # tela principal: aporte, reserva, alerta
@@ -491,7 +492,7 @@ FinanceTracker/
             ├── faturas/
             ├── categorias/       # categorias e regras (Mais)
             ├── importacao/
-            ├── planejamento/     # rendas previstas, aporte e reserva (Mais)
+            ├── planejamento/     # rendas previstas, aporte e reserva (Mais), lembretes de salário
             ├── investimentos/
             └── configuracoes/
             # cada feature: data/ (repositório), cubit/ (estado), ui/ (telas e widgets)
