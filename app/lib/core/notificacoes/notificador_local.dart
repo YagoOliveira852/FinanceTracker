@@ -55,8 +55,16 @@ class NotificadorLocal implements Notificador {
   @override
   Stream<void> get toques => _toques.stream;
 
+  /// O pedido em andamento: o Android recusa um segundo ao mesmo tempo (a
+  /// abertura e o Planejamento podem reagendar juntos), então os dois
+  /// esperam o mesmo.
+  Future<bool>? _pedido;
+
   @override
-  Future<bool> pedirPermissao() async =>
+  Future<bool> pedirPermissao() =>
+      _pedido ??= _pedirPermissao().whenComplete(() => _pedido = null);
+
+  Future<bool> _pedirPermissao() async =>
       await _android?.requestNotificationsPermission() ?? false;
 
   @override
