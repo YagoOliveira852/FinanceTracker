@@ -296,21 +296,23 @@ Seed genérico na migration (essencial: Mercado, Moradia, Saúde, Transporte; va
 **configuracao** (linha única, criada no primeiro salvamento; sem ela o aporte não é calculado)
 | coluna | tipo | nota |
 |---|---|---|
-| id | smallint PK = 1 | |
-| colchao | numeric(14,2) | valor mantido na conta após o aporte |
-| meta_reserva_meses | numeric(4,1) | meta da reserva em meses de gasto |
-| gasto_semanal_estimado | numeric(14,2) | piso dos gastos previstos (sozinho até 4 semanas de histórico) |
-| gasto_mensal_referencia | numeric(14,2) null | para "meses de reserva"; null = média dos 3 últimos meses fechados |
+| id | smallint PK = 1 | `CHECK (id = 1)` |
+| colchao | numeric(14,2) | valor mantido na conta após o aporte; ≥ 0 |
+| meta_reserva_meses | numeric(4,1) | meta da reserva em meses de gasto; > 0 |
+| gasto_semanal_estimado | numeric(14,2) | piso dos gastos previstos (sozinho até 4 semanas de histórico); ≥ 0 |
+| gasto_mensal_referencia | numeric(14,2) null | para "meses de reserva"; null = média dos 3 últimos meses fechados; > 0 |
 
 **renda_prevista**
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
 | descricao | text | ex.: "Salário 1ª quinzena" |
-| valor | numeric(14,2) | |
+| valor | numeric(14,2) | líquido que cai na conta; > 0 |
 | dia_previsto | smallint | dia do mês, 1 a 31 (em mês curto, o último dia; depois, o dia útil seguinte) |
-| conta_id | uuid FK | onde cai |
+| conta_id | uuid FK | onde cai (corrente ou carteira, ativa enquanto a renda estiver ativa) |
 | ativa | bool | renda é desativada, nunca excluída |
+
+O cadastro fica em Mais → Planejamento (`/planejamento` na API): a lista de rendas traz a próxima data já ajustada e os feriados que a moveram, e a leitura da configuração traz o gasto mensal automático, a média semanal real e os meses de reserva calculados pelo `calculo.py`.
 
 O cálculo de aporte e o alerta de reserva **não são tabelas**: são funções puras no backend (`planejamento/calculo.py`) que recebem saldos, faturas, transações recentes, rendas previstas e configuração (dataclasses do próprio módulo, com a data de referência como parâmetro) e devolvem o resultado. Isso as torna fáceis de testar e de explicar.
 
@@ -449,7 +451,7 @@ FinanceTracker/
 │   │   │   ├── revisao/          # lista da revisão, pares sugeridos, decisões
 │   │   │   ├── importacao/       # service (tudo ou nada, desfazer), duplicatas.py (puro)
 │   │   │   │   └── parsers/      # ofx.py (Nubank conta e cartão), csv_mercadopago.py
-│   │   │   ├── planejamento/
+│   │   │   ├── planejamento/     # rendas previstas e configuração (models, service, router)
 │   │   │   │   └── calculo.py    # funções puras: aporte, meses de reserva, alerta
 │   │   │   ├── investimentos/
 │   │   │   ├── indices/          # cliente SGS/BCB
@@ -489,6 +491,7 @@ FinanceTracker/
             ├── faturas/
             ├── categorias/       # categorias e regras (Mais)
             ├── importacao/
+            ├── planejamento/     # rendas previstas, aporte e reserva (Mais)
             ├── investimentos/
             └── configuracoes/
             # cada feature: data/ (repositório), cubit/ (estado), ui/ (telas e widgets)
