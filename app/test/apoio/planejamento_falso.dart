@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/planejamento/data/planejamento.dart';
 import 'package:financas/features/planejamento/data/planejamento_repositorio.dart';
+import 'package:financas/features/planejamento/data/resumo.dart';
 
 /// Salário de R$ 4.200,00 no dia 10 da Conta principal (`c1`); próxima em
 /// terça, 10 nov.
@@ -74,11 +75,17 @@ class PlanejamentoRepositorioFalso implements PlanejamentoRepositorio {
   PlanejamentoRepositorioFalso({
     List<Renda>? rendas,
     LeituraConfiguracao? leitura,
+    Resumo? resumo,
   }) : rendas = rendas ?? [],
-       leitura = leitura ?? const LeituraConfiguracao();
+       leitura = leitura ?? const LeituraConfiguracao(),
+       resumo = resumo ?? resumoSemSalario();
 
   final List<Renda> rendas;
   LeituraConfiguracao leitura;
+
+  /// O que [lerResumo] devolve; troque para simular outra carga.
+  Resumo resumo;
+  var resumosLidos = 0;
   final criadas = <DadosRenda>[];
   final editadas = <({String id, DadosRenda dados})>[];
   final previas = <int>[];
@@ -131,6 +138,13 @@ class PlanejamentoRepositorioFalso implements PlanejamentoRepositorio {
     return leitura = leitura.copyWith(configuracao: configuracao);
   }
 
+  @override
+  Future<Resumo> lerResumo() async {
+    resumosLidos++;
+    if (erro case final e?) throw e;
+    return resumo;
+  }
+
   static Renda _renda(String id, DadosRenda dados) => Renda(
     id: id,
     descricao: dados.descricao,
@@ -141,3 +155,90 @@ class PlanejamentoRepositorioFalso implements PlanejamentoRepositorio {
     proxima: previaRendaExemplo(dados.diaPrevisto.clamp(1, 30)),
   );
 }
+
+/// Sem renda nem configuração: só o saldo (R\$ 3.180,10) e 2 rascunhos.
+Resumo resumoSemSalario() =>
+    Resumo(saldoDisponivel: Decimal.parse('3180.10'), rascunhos: 2);
+
+/// Os estados do design "Início" (valores fictícios): saldo R\$ 3.180,10,
+/// fatura do Cartão Exemplo de R\$ 1.032,15 vencendo em 10 nov, 21 dias até o
+/// salário de terça, 10 nov, colchão R\$ 500,00, meta de 6 meses e gasto de
+/// R\$ 3.000,00 por mês. [nivel] escolhe a sobra: no ritmo R\$ 1.307,95,
+/// atenção R\$ 347,95 (pela média) ou risco − R\$ 252,05 (pela média).
+Resumo resumoComPrevisao({
+  NivelRitmo nivel = NivelRitmo.verde,
+  int rascunhos = 2,
+}) {
+  final (gastos, sobra, pelaMedia) = switch (nivel) {
+    NivelRitmo.verde => ('840.00', '1307.95', false),
+    NivelRitmo.amarelo => ('1800.00', '347.95', true),
+    NivelRitmo.vermelho => ('2400.00', '-252.05', true),
+  };
+  return Resumo(
+    saldoDisponivel: Decimal.parse('3180.10'),
+    rascunhos: rascunhos,
+    previsao: Previsao(
+      proximoSalario: DateTime(2026, 11, 10),
+      diasAteSalario: 21,
+      faturas: [
+        FaturaReservada(
+          cartaoId: 'k1',
+          cartao: 'Cartão Exemplo',
+          competencia: DateTime(2026, 11),
+          vencimento: DateTime(2026, 11, 10),
+          valor: Decimal.parse('1032.15'),
+        ),
+      ],
+      gastosPrevistos: Decimal.parse(gastos),
+      gastosPelaMedia: pelaMedia,
+      sobra: Decimal.parse(sobra),
+      nivel: nivel,
+      colchao: Decimal.parse('500.00'),
+    ),
+    gastoMensal: GastoMensalReferencia(
+      valor: Decimal.parse('3000.00'),
+      automatico: true,
+    ),
+    metaReservaMeses: Decimal.parse('6.0'),
+  );
+}
+
+/// Salário de R\$ 4.200,00 que caiu em 10 nov na Conta principal: aporte de
+/// R\$ 2.319,80, próximo salário em 10 dez.
+Resumo resumoSalarioRecebido({String aporte = '2319.80'}) => Resumo(
+  saldoDisponivel: Decimal.parse('5430.10'),
+  rascunhos: 2,
+  previsao: Previsao(
+    proximoSalario: DateTime(2026, 12, 10),
+    diasAteSalario: 30,
+    faturas: [
+      FaturaReservada(
+        cartaoId: 'k1',
+        cartao: 'Cartão Exemplo',
+        competencia: DateTime(2026, 12),
+        vencimento: DateTime(2026, 12, 10),
+        valor: Decimal.parse('1410.30'),
+      ),
+    ],
+    gastosPrevistos: Decimal.parse('1200.00'),
+    gastosPelaMedia: false,
+    sobra: Decimal.parse('2819.80'),
+    nivel: NivelRitmo.verde,
+    colchao: Decimal.parse('500.00'),
+    salarioRecebido: SalarioRecebido(
+      rendaId: 'r1',
+      descricao: 'Salário',
+      contaId: 'c1',
+      conta: 'Conta principal',
+      dataEsperada: DateTime(2026, 11, 10),
+      data: DateTime(2026, 11, 10),
+      valor: Decimal.parse('4200.00'),
+    ),
+    aporte: Decimal.parse(aporte),
+  ),
+  gastoMensal: GastoMensalReferencia(
+    valor: Decimal.parse('3000.00'),
+    automatico: true,
+  ),
+  metaReservaMeses: Decimal.parse('6.0'),
+);

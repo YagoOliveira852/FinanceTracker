@@ -3,6 +3,7 @@ import 'package:financas/core/api/cliente_api.dart';
 import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/planejamento/data/planejamento.dart';
 import 'package:financas/features/planejamento/data/planejamento_repositorio.dart';
+import 'package:financas/features/planejamento/data/resumo.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../apoio/adaptador_falso.dart';
@@ -220,6 +221,108 @@ void main() {
           'valor': 'O valor precisa ser maior que zero.',
         }),
       ),
+    );
+  });
+
+  test('lerResumo converte a previsão, o salário e os valores', () async {
+    responder((
+      status: 200,
+      corpo: {
+        'saldo_disponivel': '5430.10',
+        'rascunhos': 2,
+        'previsao': {
+          'proximo_salario': '2026-12-10',
+          'dias_ate_salario': 30,
+          'faturas': [
+            {
+              'cartao_id': _id,
+              'cartao': 'Cartão Exemplo',
+              'competencia': '2026-12-01',
+              'vencimento': '2026-12-10',
+              'valor': '1410.30',
+            },
+          ],
+          'gastos_previstos': '1200.00',
+          'gastos_pela_media': false,
+          'sobra': '2819.80',
+          'nivel': 'verde',
+          'colchao': '500.00',
+          'salario_recebido': {
+            'renda_id': _id,
+            'descricao': 'Salário',
+            'conta_id': _contaId,
+            'conta': 'Conta principal',
+            'data_esperada': '2026-11-10',
+            'data': '2026-11-09',
+            'valor': '4200.00',
+          },
+          'aporte': '2319.80',
+        },
+        'gasto_mensal': {'valor': '3000.00', 'automatico': true},
+        'meta_reserva_meses': '6.0',
+      },
+    ));
+
+    final resumo = await repositorio.lerResumo();
+
+    expect(adaptador.requisicoes.single.path, '/planejamento/resumo');
+    expect(
+      resumo,
+      Resumo(
+        saldoDisponivel: Decimal.parse('5430.10'),
+        rascunhos: 2,
+        previsao: Previsao(
+          proximoSalario: DateTime(2026, 12, 10),
+          diasAteSalario: 30,
+          faturas: [
+            FaturaReservada(
+              cartaoId: _id,
+              cartao: 'Cartão Exemplo',
+              competencia: DateTime(2026, 12),
+              vencimento: DateTime(2026, 12, 10),
+              valor: Decimal.parse('1410.30'),
+            ),
+          ],
+          gastosPrevistos: Decimal.parse('1200'),
+          gastosPelaMedia: false,
+          sobra: Decimal.parse('2819.80'),
+          nivel: NivelRitmo.verde,
+          colchao: Decimal.parse('500'),
+          salarioRecebido: SalarioRecebido(
+            rendaId: _id,
+            descricao: 'Salário',
+            contaId: _contaId,
+            conta: 'Conta principal',
+            dataEsperada: DateTime(2026, 11, 10),
+            data: DateTime(2026, 11, 9),
+            valor: Decimal.parse('4200'),
+          ),
+          aporte: Decimal.parse('2319.80'),
+        ),
+        gastoMensal: GastoMensalReferencia(
+          valor: Decimal.parse('3000'),
+          automatico: true,
+        ),
+        metaReservaMeses: Decimal.parse('6'),
+      ),
+    );
+  });
+
+  test('lerResumo sem previsão (sem salário cadastrado)', () async {
+    responder((
+      status: 200,
+      corpo: {
+        'saldo_disponivel': '-12.50',
+        'rascunhos': 0,
+        'previsao': null,
+        'gasto_mensal': null,
+        'meta_reserva_meses': null,
+      },
+    ));
+
+    expect(
+      await repositorio.lerResumo(),
+      Resumo(saldoDisponivel: Decimal.parse('-12.50'), rascunhos: 0),
     );
   });
 }

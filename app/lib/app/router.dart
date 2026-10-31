@@ -36,6 +36,7 @@ import '../features/importacao/data/importacao.dart';
 import '../features/importacao/data/importacoes_repositorio.dart';
 import '../features/importacao/ui/importar_tela.dart';
 import '../features/importacao/ui/resumo_importacao_tela.dart';
+import '../features/inicio/cubit/inicio_cubit.dart';
 import '../features/inicio/ui/inicio_tela.dart';
 import '../features/login/cubit/login_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
@@ -474,8 +475,10 @@ class _EstruturaAbas extends StatelessWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: abas.currentIndex,
         // Tocar na aba atual volta para a raiz dela. Entrar na Revisão
-        // recarrega: regras editadas em Mais mudam as sugestões.
+        // recarrega: regras editadas em Mais mudam as sugestões. Entrar no
+        // Início também: renda, configuração e lançamentos mudam o resumo.
         onDestinationSelected: (indice) {
+          if (indice == _abaInicio) context.read<InicioCubit>().carregar();
           if (indice == _abaRevisao) context.read<RevisaoCubit>().carregar();
           abas.goBranch(indice, initialLocation: indice == abas.currentIndex);
         },
@@ -521,7 +524,8 @@ class _OuvinteDeStream extends ChangeNotifier {
   }
 }
 
-/// Índice da aba Revisão na barra.
+/// Índices das abas Início e Revisão na barra.
+const _abaInicio = 0;
 const _abaRevisao = 1;
 
 /// Ícone da aba Revisão com o contador do que falta revisar.

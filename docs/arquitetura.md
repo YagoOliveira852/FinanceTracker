@@ -329,6 +329,8 @@ aporte = saldo disponível (contas corrente + carteira)
 
 O dinheiro das faturas fica na conta, fora dos investimentos (evita IR/IOF de resgate curto). Aporte e alerta consideram transações confirmadas **e rascunhos** (menos os marcados como possível duplicata), avisando quantos rascunhos estão pendentes; o saldo oficial usa só confirmadas. O **alerta de ritmo** tem três níveis — 🟢 sobra ≥ colchão, 🟡 entre 0 e o colchão, 🔴 negativo (exigiria resgatar a reserva) — e aparece na tela inicial. O aporte é sugerido quando chega o salário: uma receita na conta da renda, de 80% a 120% do previsto, de 3 dias antes a 5 dias depois da data esperada; a partir daí, o próximo salário é o seguinte.
 
+O Início lê tudo de `GET /planejamento/resumo`, que monta a entrada inteira do cálculo (saldos com rascunhos das contas ativas, faturas gravadas dos cartões ativos, rendas ativas, configuração, histórico e feriados). Até os investimentos (S8), "Registrar aporte" e a reserva em meses ficam "em breve"; o "Agora não" fica no aparelho, pela renda e pela data esperada do salário.
+
 Definições completas (data esperada do salário, detecção, gastos previstos, meses de reserva, exemplos) na spec `docs/superpowers/specs/2026-10-19-calculo-aporte-alerta-design.md`.
 
 ### 7.5 Investimentos

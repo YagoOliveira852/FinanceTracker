@@ -10,6 +10,7 @@ import '../features/contas/data/contas_repositorio.dart';
 import '../features/faturas/data/faturas_repositorio.dart';
 import '../features/importacao/data/arquivos.dart';
 import '../features/importacao/data/importacoes_repositorio.dart';
+import '../features/inicio/data/aporte_dispensado.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/login/data/auth_repositorio.dart';
 import '../features/planejamento/data/lembretes_salario.dart';
@@ -36,6 +37,7 @@ class Dependencias {
     required this.seletorArquivo,
     required this.compartilhamento,
     required PreferenciaTema preferenciaTema,
+    required this.aporteDispensado,
     required this.notificador,
   }) : sessao = SessaoCubit(auth),
        tema = TemaCubit(preferenciaTema),
@@ -68,6 +70,7 @@ class Dependencias {
       seletorArquivo: SeletorArquivoSistema(),
       compartilhamento: FonteCompartilhamentoSistema(),
       preferenciaTema: PreferenciaTemaLocal(),
+      aporteDispensado: AporteDispensadoLocal(),
       notificador: NotificadorLocal(),
     );
   }
@@ -84,6 +87,9 @@ class Dependencias {
 
   /// Extratos recebidos pelo Compartilhar de outro app.
   final FonteCompartilhamento compartilhamento;
+
+  /// O último salário cujo aporte sugerido foi dispensado ("Agora não").
+  final AporteDispensado aporteDispensado;
 
   /// Notificações locais; [iniciar](Notificador.iniciar) antes do app.
   final Notificador notificador;
