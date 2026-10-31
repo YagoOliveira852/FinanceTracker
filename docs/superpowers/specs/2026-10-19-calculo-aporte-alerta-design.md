@@ -115,6 +115,21 @@ Aprovadas antes de implementar o card "S6 · Lembrete local nos dias de salário
 - **Sessão:** "Sair" cancela todos os lembretes. Sessão expirada os mantém: o toque leva ao login e, depois dele, ao Início.
 - **Onde fica:** `LembretesSalario` (serviço sem estado de tela, na feature `planejamento`) decide o que agendar; o plugin fica atrás da interface `Notificador` (`core/notificacoes/`), trocada por um falso nos testes.
 
+### Decisões do código da tela inicial (2026-10-31)
+
+Tomadas ao implementar o card "S6 · Tela inicial" sobre a página "Início" do canvas (no ritmo, atenção, risco, salário chegou e sem salário cadastrado, claro e escuro):
+
+- **Uma rota só:** `GET /planejamento/resumo` monta a entrada inteira do `calculo.calcular` e devolve o que o Início mostra: o saldo disponível, quantos rascunhos o cálculo considera, a previsão (nula sem renda ativa ou sem configuração), o gasto mensal de referência e a meta da reserva. As linhas de fatura já trazem o nome do cartão, e o salário recebido traz a descrição da renda e o nome da conta, para o app não cruzar com outras listas.
+- **Saldo das contas para o cálculo:** a mesma consulta do saldo da tela de contas, com rascunhos e sem as possíveis duplicatas, só das contas ativas. A tela de contas continua com o saldo oficial (só confirmadas).
+- **Faturas:** as gravadas de cartões ativos; a fatura só calculada vale zero e não pesa. O cálculo escolhe as que vencem até o próximo salário.
+- **"Considera N rascunhos":** os rascunhos sem marca de duplicata, de qualquer conta, a mesma regra do cálculo. É outro número que o contador da aba Revisão (que conta um par como 1 e inclui as duplicatas a decidir); o atalho "Revisar" leva à aba.
+- **Card principal:** com aporte maior que zero (salário detectado e sobra acima do colchão), "Salário recebido: você pode aportar", com o colchão como linha da conta. Sem salário detectado, ou com aporte zero, "Sobra prevista até o salário" com o chip do nível (no ritmo, atenção, risco): quando não sobra, o alerta assume. Gastos previstos dizem "pela média recente" quando a média passou do gasto semanal estimado.
+- **"Registrar aporte" fica "em breve"** até os investimentos (S8): hoje não há aporte manual, e o aporte das fontes chega pela revisão.
+- **"Agora não" fica no aparelho** (`shared_preferences`), pela renda e pela data esperada do salário dispensado: o card volta à sobra e ao alerta até o salário seguinte. Usuário único, um aparelho: não compensa tabela nem endpoint.
+- **Reserva "em breve"** até a S8: sem investimentos, a reserva seria sempre 0 meses. O card mostra a meta e o gasto mensal de referência e avisa que o saldo da reserva entra com os investimentos; a API ainda não devolve reserva nem meses depois do aporte.
+- **Sem salário cadastrado** (sem renda ativa ou sem configuração): "Cadastre seu salário", que abre Mais → Planejamento, e o saldo disponível.
+- **Recarga:** o Início carrega o resumo ao abrir, ao puxar para atualizar e a cada volta para a aba; o cubit fica no topo do app, como o das contas, e recarrega também no login.
+
 ### Exemplo (valores fictícios)
 
 Saldo disponível R$ 2.000,00; fatura que vence antes do próximo salário R$ 700,00; 10 dias até o próximo salário com taxa de R$ 20,00/dia (R$ 200,00); colchão R$ 250,00 → aporte = 2.000 − 700 − 200 − 250 = **R$ 850,00**; sobra = 1.100 ≥ 250 → 🟢.
