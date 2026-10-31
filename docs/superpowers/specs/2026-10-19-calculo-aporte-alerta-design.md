@@ -130,6 +130,20 @@ Tomadas ao implementar o card "S6 · Tela inicial" sobre a página "Início" do 
 - **Sem salário cadastrado** (sem renda ativa ou sem configuração): "Cadastre seu salário", que abre Mais → Planejamento, e o saldo disponível **oficial** (só confirmadas, o mesmo da aba Contas): sem cálculo, não há por que contar os rascunhos nem mostrar o aviso deles.
 - **Recarga:** o Início carrega o resumo ao abrir, ao puxar para atualizar e a cada volta para a aba; o cubit fica no topo do app, como o das contas, e recarrega também no login.
 
+### Plano de aporte recorrente (proposta, 2026-10-31)
+
+Pedido do Yago no design de Investimentos: planejar um aporte fixo e periódico (ex.: R$ 20,00 toda semana), ver se ele cabe no que está guardado e no ritmo de gastos, e ser avisado quando o ritmo ameaçar o plano. Entra na S8, com os investimentos, porque o aporte do plano vai para um investimento. Em discussão até o design ser aprovado.
+
+- **Onde:** "Planejar aporte" na tela Investimentos. O plano tem valor (> 0), frequência (`semanal`, `quinzenal` ou `mensal`), o dia (da semana, ou do mês de 1 a 31, com a regra do mês curto da renda), a conta de onde sai (corrente ou carteira ativa), o investimento de destino e se está ativo. Como a renda, é desativado, nunca excluído. Tabela nova `plano_aporte`.
+- **Com o aporte do dia do salário:** ao salvar o primeiro plano, o app pergunta se mantém os dois ou só o plano (`configuracao.aporte_no_salario`, padrão verdadeiro; editável depois em "Aporte e reserva"). Só o plano: o Início deixa de sugerir o aporte do salário e passa a mostrar o plano.
+- **No cálculo:** as datas do plano de hoje até antes do próximo salário são reservadas como as faturas: `sobra = saldo disponível − faturas − gastos previstos − aportes do plano`. O nível do alerta usa essa sobra, e o aporte do dia do salário (quando mantido) vira `sobra − colchão`, já descontado o plano. Continua no `calculo.py`, puro.
+- **A análise antes de salvar** mostra duas contas, com o plano proposto:
+  - **até o próximo salário:** quantas datas caem no período, o total e a sobra que fica. Os níveis são os do alerta: cabe (sobra ≥ colchão), aperta o colchão (0 a colchão) ou não cabe (negativa). Sem caber, sugere o maior valor por período que mantém a sobra no colchão;
+  - **num mês típico:** o plano em valor mensal (semanal × 52 ÷ 12, quinzenal × 26 ÷ 12) contra a renda prevista ativa menos o gasto mensal de referência.
+  Sem renda ativa ou sem configuração, a análise pede o cadastro, como o Início.
+- **Aviso:** quando o plano é o que derruba o nível (o nível sem o plano seria melhor), o card da sobra no Início diz que o ritmo de gastos ameaça o plano, com o valor e a frequência. O plano entra também como linha da conta do card ("Plano de aporte · 4 sextas").
+- **Cumprido ou pendente:** o app não move dinheiro. O aporte do período conta como feito quando existe um `aporte` (confirmado ou rascunho) para o investimento do plano, dentro do período, somando ao menos o valor; a tela mostra "feito" ou "pendente" no período atual.
+
 ### Exemplo (valores fictícios)
 
 Saldo disponível R$ 2.000,00; fatura que vence antes do próximo salário R$ 700,00; 10 dias até o próximo salário com taxa de R$ 20,00/dia (R$ 200,00); colchão R$ 250,00 → aporte = 2.000 − 700 − 200 − 250 = **R$ 850,00**; sobra = 1.100 ≥ 250 → 🟢.
