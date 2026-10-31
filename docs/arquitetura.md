@@ -380,7 +380,7 @@ Uso: conferir saldos, rendimento real (`saldo atual − saldo anterior − aport
 | item_id | text unique | item proxy MeuPluggy, cadastrado pelo app; trocado na renovação |
 | instituicao_id | uuid FK | |
 | status | text | como a Pluggy informa |
-| ativa | bool | desativada = o sync não lê; sem exclusão pelo app |
+| ativa | bool | desativada = o sync não lê; reativável pelo app (revalida o item); sem exclusão |
 | consentimento_expira_em | timestamptz null | para o aviso |
 | ultimo_sync_em | timestamptz null | último sync bem-sucedido |
 | ultima_tentativa_em | timestamptz null | última execução, com ou sem sucesso; limita o "Buscar agora" (1×/hora) |
