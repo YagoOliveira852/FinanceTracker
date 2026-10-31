@@ -57,11 +57,13 @@ lib/src/model/fatura_da_importacao.dart
 lib/src/model/fatura_da_transacao_saida.dart
 lib/src/model/fatura_detalhe_saida.dart
 lib/src/model/fatura_edicao.dart
+lib/src/model/fatura_reservada_saida.dart
 lib/src/model/fatura_resumo.dart
 lib/src/model/feriado_saida.dart
 lib/src/model/fonte_importacao.dart
 lib/src/model/fonte_transacao.dart
 lib/src/model/gasto_mensal_automatico_saida.dart
+lib/src/model/gasto_mensal_saida.dart
 lib/src/model/grupo_categoria.dart
 lib/src/model/http_validation_error.dart
 lib/src/model/importacao_saida.dart
@@ -73,6 +75,7 @@ lib/src/model/login_entrada.dart
 lib/src/model/lote_entrada.dart
 lib/src/model/lote_saida.dart
 lib/src/model/manter_duplicata.dart
+lib/src/model/nivel_ritmo.dart
 lib/src/model/origem_regra.dart
 lib/src/model/pagamento_entrada.dart
 lib/src/model/pagamento_revisao_entrada.dart
@@ -81,6 +84,7 @@ lib/src/model/par_recusa_entrada.dart
 lib/src/model/par_saida.dart
 lib/src/model/parcela_saida.dart
 lib/src/model/previsao_do_tipo_saida.dart
+lib/src/model/previsao_saida.dart
 lib/src/model/proxima_data_saida.dart
 lib/src/model/rascunho_saida.dart
 lib/src/model/rascunhos_casados_saida.dart
@@ -93,7 +97,9 @@ lib/src/model/renda_entrada.dart
 lib/src/model/renda_saida.dart
 lib/src/model/resposta_erro.dart
 lib/src/model/resultado_importacao_saida.dart
+lib/src/model/resumo_saida.dart
 lib/src/model/revisao_saida.dart
+lib/src/model/salario_recebido_saida.dart
 lib/src/model/saldo_extrato_saida.dart
 lib/src/model/saude.dart
 lib/src/model/status_fatura.dart

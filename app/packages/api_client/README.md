@@ -91,6 +91,7 @@ Class | Method | HTTP request | Description
 [*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**listarRendas**](doc/PlanejamentoApi.md#listarrendas) | **GET** /planejamento/rendas | Listar Rendas
 [*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**obterConfiguracao**](doc/PlanejamentoApi.md#obterconfiguracao) | **GET** /planejamento/configuracao | Obter Configuracao
 [*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**previaRenda**](doc/PlanejamentoApi.md#previarenda) | **GET** /planejamento/rendas/previa | Previa Renda
+[*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**resumo**](doc/PlanejamentoApi.md#resumo) | **GET** /planejamento/resumo | Resumo
 [*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**salvarConfiguracao**](doc/PlanejamentoApi.md#salvarconfiguracao) | **PUT** /planejamento/configuracao | Salvar Configuracao
 [*RegrasApi*](doc/RegrasApi.md) | [**criar**](doc/RegrasApi.md#criar) | **POST** /regras | Criar
 [*RegrasApi*](doc/RegrasApi.md) | [**editar**](doc/RegrasApi.md#editar) | **PUT** /regras/{regra_id} | Editar
@@ -153,11 +154,13 @@ Class | Method | HTTP request | Description
  - [FaturaDaTransacaoSaida](doc/FaturaDaTransacaoSaida.md)
  - [FaturaDetalheSaida](doc/FaturaDetalheSaida.md)
  - [FaturaEdicao](doc/FaturaEdicao.md)
+ - [FaturaReservadaSaida](doc/FaturaReservadaSaida.md)
  - [FaturaResumo](doc/FaturaResumo.md)
  - [FeriadoSaida](doc/FeriadoSaida.md)
  - [FonteImportacao](doc/FonteImportacao.md)
  - [FonteTransacao](doc/FonteTransacao.md)
  - [GastoMensalAutomaticoSaida](doc/GastoMensalAutomaticoSaida.md)
+ - [GastoMensalSaida](doc/GastoMensalSaida.md)
  - [GrupoCategoria](doc/GrupoCategoria.md)
  - [HTTPValidationError](doc/HTTPValidationError.md)
  - [ImportacaoSaida](doc/ImportacaoSaida.md)
@@ -169,6 +172,7 @@ Class | Method | HTTP request | Description
  - [LoteEntrada](doc/LoteEntrada.md)
  - [LoteSaida](doc/LoteSaida.md)
  - [ManterDuplicata](doc/ManterDuplicata.md)
+ - [NivelRitmo](doc/NivelRitmo.md)
  - [OrigemRegra](doc/OrigemRegra.md)
  - [PagamentoEntrada](doc/PagamentoEntrada.md)
  - [PagamentoRevisaoEntrada](doc/PagamentoRevisaoEntrada.md)
@@ -177,6 +181,7 @@ Class | Method | HTTP request | Description
  - [ParSaida](doc/ParSaida.md)
  - [ParcelaSaida](doc/ParcelaSaida.md)
  - [PrevisaoDoTipoSaida](doc/PrevisaoDoTipoSaida.md)
+ - [PrevisaoSaida](doc/PrevisaoSaida.md)
  - [ProximaDataSaida](doc/ProximaDataSaida.md)
  - [RascunhoSaida](doc/RascunhoSaida.md)
  - [RascunhosCasadosSaida](doc/RascunhosCasadosSaida.md)
@@ -189,7 +194,9 @@ Class | Method | HTTP request | Description
  - [RendaSaida](doc/RendaSaida.md)
  - [RespostaErro](doc/RespostaErro.md)
  - [ResultadoImportacaoSaida](doc/ResultadoImportacaoSaida.md)
+ - [ResumoSaida](doc/ResumoSaida.md)
  - [RevisaoSaida](doc/RevisaoSaida.md)
+ - [SalarioRecebidoSaida](doc/SalarioRecebidoSaida.md)
  - [SaldoExtratoSaida](doc/SaldoExtratoSaida.md)
  - [Saude](doc/Saude.md)
  - [StatusFatura](doc/StatusFatura.md)

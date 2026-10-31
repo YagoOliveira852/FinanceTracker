@@ -1,8 +1,10 @@
 import 'package:financas/app/app.dart';
 import 'package:financas/app/injecao.dart';
+import 'package:financas/core/formatacao/datas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../apoio/aporte_dispensado_falso.dart';
 import '../apoio/auth_falso.dart';
 import '../apoio/categorias_falso.dart';
 import '../apoio/contas_falso.dart';
@@ -40,6 +42,7 @@ Future<Dependencias> _abrir(
     seletorArquivo: SeletorArquivoFalso(arquivoExemplo()),
     compartilhamento: compartilhamento ?? FonteCompartilhamentoFalsa(),
     preferenciaTema: preferenciaTema ?? PreferenciaTemaFalsa(),
+    aporteDispensado: AporteDispensadoFalso(),
     notificador: notificador ?? NotificadorFalso(),
   );
   await Future.wait([
@@ -66,7 +69,48 @@ void main() {
 
     expect(find.text('Saldo disponível'), findsOneWidget);
     expect(find.text('R\$ 2.350,00'), findsOneWidget);
-    expect(find.text('Aporte e alerta chegam em breve'), findsOneWidget);
+    expect(find.text('Cadastre seu salário'), findsOneWidget);
+  });
+
+  testWidgets('Cadastrar salário abre o Planejamento', (tester) async {
+    await _abrir(tester);
+
+    await tester.tap(find.text('Cadastrar salário'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Planejamento'), findsOneWidget);
+    expect(find.text('Cadastre sua renda'), findsOneWidget);
+  });
+
+  testWidgets('voltar para a aba Início recarrega o resumo', (tester) async {
+    final planejamento = PlanejamentoRepositorioFalso();
+    await _abrir(tester, planejamento: planejamento);
+    expect(planejamento.resumosLidos, 1);
+
+    planejamento.resumo = resumoComPrevisao();
+    await tester.tap(find.text('Mais'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Início'));
+    await tester.pumpAndSettle();
+
+    expect(planejamento.resumosLidos, 2);
+    expect(find.text('Sobra prevista até o salário'), findsOneWidget);
+  });
+
+  testWidgets('Revisar nos rascunhos leva à aba Revisão', (tester) async {
+    await _abrir(
+      tester,
+      planejamento: PlanejamentoRepositorioFalso(resumo: resumoComPrevisao()),
+    );
+
+    await tester.tap(find.text('Revisar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sobra prevista até o salário'), findsNothing);
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      1,
+    );
   });
 
   testWidgets('com sessão, agenda os lembretes de salário ao abrir', (
@@ -179,7 +223,7 @@ void main() {
   ) async {
     final dependencias = await _abrir(tester);
     (dependencias.transacoes as TransacoesRepositorioFalso).transacoes.add(
-      transacaoExemplo(data: DateTime.now()),
+      transacaoExemplo(data: somenteData(DateTime.now())),
     );
 
     await tester.tap(find.text('Transações'));
@@ -197,7 +241,7 @@ void main() {
       'formulário com ele', (tester) async {
     final dependencias = await _abrir(tester);
     (dependencias.transacoes as TransacoesRepositorioFalso).transacoes.add(
-      transacaoExemplo(data: DateTime.now()),
+      transacaoExemplo(data: somenteData(DateTime.now())),
     );
     await tester.tap(find.text('Transações'));
     await tester.pumpAndSettle();

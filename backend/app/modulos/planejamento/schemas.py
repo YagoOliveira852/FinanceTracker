@@ -1,4 +1,5 @@
-"""Entrada e saída HTTP do planejamento: rendas previstas e configuração."""
+"""Entrada e saída HTTP do planejamento: rendas previstas, configuração e o
+resumo do Início."""
 
 import re
 import uuid
@@ -18,7 +19,13 @@ from pydantic_core import PydanticCustomError
 
 from app.core.dinheiro import Dinheiro
 from app.modulos.cartoes.schemas import FeriadoSaida
-from app.modulos.planejamento.service import LeituraConfiguracao, ProximaData, RendaComProxima
+from app.modulos.planejamento.calculo import NivelRitmo
+from app.modulos.planejamento.service import (
+    LeituraConfiguracao,
+    ProximaData,
+    RendaComProxima,
+    Resumo,
+)
 
 _FORMATO_MESES = re.compile(r"-?\d{1,3}(\.\d)?")
 _DECIMO = Decimal("0.1")
@@ -179,4 +186,140 @@ def configuracao_saida(leitura: LeituraConfiguracao) -> ConfiguracaoSaida:
         ),
         media_semanal_real=leitura.media_semanal_real,
         meses_de_reserva=leitura.meses_de_reserva,
+    )
+
+
+class FaturaReservadaSaida(BaseModel):
+    cartao_id: uuid.UUID
+    cartao: str = Field(description="Nome do cartão.")
+    competencia: date
+    vencimento: date
+    valor: Dinheiro = Field(
+        description="O que falta pagar: o maior entre informado e calculado, menos o pago."
+    )
+
+
+class SalarioRecebidoSaida(BaseModel):
+    renda_id: uuid.UUID
+    descricao: str = Field(description="Descrição da renda.")
+    conta_id: uuid.UUID
+    conta: str = Field(description="Nome da conta onde o salário caiu.")
+    data_esperada: date = Field(
+        description="A data efetiva da renda neste ciclo; com a renda, identifica o salário."
+    )
+    data: date = Field(description="Data do crédito.")
+    valor: Dinheiro
+
+
+class PrevisaoSaida(BaseModel):
+    """Projeção até o próximo salário; a sobra e o alerta são a mesma conta."""
+
+    proximo_salario: date = Field(
+        description="Data efetiva do próximo salário ainda sem crédito (pode ser hoje ou já "
+        "ter passado, enquanto a janela do atraso não acaba)."
+    )
+    dias_ate_salario: int = Field(
+        description="Dias de gasto previsto: hoje entra, o do salário não."
+    )
+    faturas: list[FaturaReservadaSaida] = Field(
+        description="Faturas que vencem até o próximo salário, em ordem de vencimento."
+    )
+    gastos_previstos: Dinheiro
+    gastos_pela_media: bool = Field(
+        description="A média real das últimas semanas passou do gasto semanal estimado."
+    )
+    sobra: Dinheiro = Field(
+        description="Saldo disponível − faturas − gastos previstos; pode ser negativa."
+    )
+    nivel: NivelRitmo = Field(
+        description="verde: sobra ≥ colchão; amarelo: entre 0 e o colchão; vermelho: negativa."
+    )
+    colchao: Dinheiro
+    salario_recebido: SalarioRecebidoSaida | None = Field(
+        description="Salário detectado cuja janela ainda está aberta; nulo sem ele."
+    )
+    aporte: Dinheiro | None = Field(
+        description="Sobra − colchão, nunca negativo; só existe com o salário recebido."
+    )
+
+
+class GastoMensalSaida(BaseModel):
+    valor: Dinheiro
+    automatico: bool = Field(description="Média dos meses fechados (verdadeiro) ou valor fixo.")
+
+
+class ResumoSaida(BaseModel):
+    saldo_disponivel: Dinheiro = Field(
+        description="Correntes e carteiras ativas, com rascunhos e sem possíveis duplicatas."
+    )
+    rascunhos: int = Field(
+        description="Rascunhos que o cálculo considera (sem as possíveis duplicatas)."
+    )
+    previsao: PrevisaoSaida | None = Field(
+        description="Nula sem renda prevista ativa ou sem configuração salva."
+    )
+    gasto_mensal: GastoMensalSaida | None = Field(
+        description="Gasto mensal de referência; nulo sem valor fixo nem mês fechado no histórico."
+    )
+    meta_reserva_meses: Meses | None = Field(description="Nula sem configuração salva.")
+
+
+def resumo_saida(resumo: Resumo) -> ResumoSaida:
+    planejamento = resumo.planejamento
+    configuracao = resumo.configuracao
+    gasto = planejamento.gasto_mensal
+    return ResumoSaida(
+        saldo_disponivel=planejamento.saldo_disponivel,
+        rascunhos=resumo.rascunhos,
+        previsao=_previsao_saida(resumo),
+        gasto_mensal=(
+            None
+            if gasto is None
+            else GastoMensalSaida(
+                valor=gasto.valor,
+                automatico=configuracao is None or configuracao.gasto_mensal_referencia is None,
+            )
+        ),
+        meta_reserva_meses=None if configuracao is None else configuracao.meta_reserva_meses,
+    )
+
+
+def _previsao_saida(resumo: Resumo) -> PrevisaoSaida | None:
+    previsao = resumo.planejamento.previsao
+    if previsao is None or resumo.configuracao is None:
+        return None
+    recebido = previsao.salario_recebido
+    renda = resumo.renda_recebida
+    return PrevisaoSaida(
+        proximo_salario=previsao.proximo_salario.efetiva,
+        dias_ate_salario=previsao.dias_ate_salario,
+        faturas=[
+            FaturaReservadaSaida(
+                cartao_id=fatura.cartao_id,
+                cartao=resumo.cartoes[fatura.cartao_id],
+                competencia=fatura.competencia,
+                vencimento=fatura.vencimento,
+                valor=fatura.valor,
+            )
+            for fatura in previsao.faturas
+        ],
+        gastos_previstos=previsao.gastos_previstos,
+        gastos_pela_media=previsao.gastos_pela_media,
+        sobra=previsao.sobra,
+        nivel=previsao.nivel,
+        colchao=resumo.configuracao.colchao,
+        salario_recebido=(
+            None
+            if recebido is None or renda is None or resumo.conta_recebida is None
+            else SalarioRecebidoSaida(
+                renda_id=renda.id,
+                descricao=renda.descricao,
+                conta_id=renda.conta_id,
+                conta=resumo.conta_recebida,
+                data_esperada=recebido.data_esperada.efetiva,
+                data=recebido.data,
+                valor=recebido.valor,
+            )
+        ),
+        aporte=previsao.aporte,
     )

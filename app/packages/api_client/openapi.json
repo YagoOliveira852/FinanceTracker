@@ -3258,6 +3258,43 @@
         ]
       }
     },
+    "/planejamento/resumo": {
+      "get": {
+        "tags": [
+          "planejamento"
+        ],
+        "summary": "Resumo",
+        "description": "O que o Início mostra: a sobra até o próximo salário e o alerta de ritmo,\no aporte quando o salário chegou, os rascunhos considerados e a reserva.",
+        "operationId": "planejamento_resumo",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -4603,6 +4640,45 @@
         "title": "FaturaEdicao",
         "description": "Os três campos vão sempre (o formulário manda tudo): `valor_informado`\nnulo apaga o valor informado."
       },
+      "FaturaReservadaSaida": {
+        "properties": {
+          "cartao_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cartao Id"
+          },
+          "cartao": {
+            "type": "string",
+            "title": "Cartao",
+            "description": "Nome do cartão."
+          },
+          "competencia": {
+            "type": "string",
+            "format": "date",
+            "title": "Competencia"
+          },
+          "vencimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Vencimento"
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor",
+            "description": "O que falta pagar: o maior entre informado e calculado, menos o pago."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cartao_id",
+          "cartao",
+          "competencia",
+          "vencimento",
+          "valor"
+        ],
+        "title": "FaturaReservadaSaida"
+      },
       "FaturaResumo": {
         "properties": {
           "competencia": {
@@ -4733,6 +4809,26 @@
           "meses"
         ],
         "title": "GastoMensalAutomaticoSaida"
+      },
+      "GastoMensalSaida": {
+        "properties": {
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor"
+          },
+          "automatico": {
+            "type": "boolean",
+            "title": "Automatico",
+            "description": "Média dos meses fechados (verdadeiro) ou valor fixo."
+          }
+        },
+        "type": "object",
+        "required": [
+          "valor",
+          "automatico"
+        ],
+        "title": "GastoMensalSaida"
       },
       "GrupoCategoria": {
         "type": "string",
@@ -5044,6 +5140,15 @@
         "title": "ManterDuplicata",
         "description": "Qual fica numa possível duplicata."
       },
+      "NivelRitmo": {
+        "type": "string",
+        "enum": [
+          "verde",
+          "amarelo",
+          "vermelho"
+        ],
+        "title": "NivelRitmo"
+      },
       "OrigemRegra": {
         "type": "string",
         "enum": [
@@ -5235,6 +5340,93 @@
           "efeito_corrigindo"
         ],
         "title": "PrevisaoDoTipoSaida"
+      },
+      "PrevisaoSaida": {
+        "properties": {
+          "proximo_salario": {
+            "type": "string",
+            "format": "date",
+            "title": "Proximo Salario",
+            "description": "Data efetiva do próximo salário ainda sem crédito (pode ser hoje ou já ter passado, enquanto a janela do atraso não acaba)."
+          },
+          "dias_ate_salario": {
+            "type": "integer",
+            "title": "Dias Ate Salario",
+            "description": "Dias de gasto previsto: hoje entra, o do salário não."
+          },
+          "faturas": {
+            "items": {
+              "$ref": "#/components/schemas/FaturaReservadaSaida"
+            },
+            "type": "array",
+            "title": "Faturas",
+            "description": "Faturas que vencem até o próximo salário, em ordem de vencimento."
+          },
+          "gastos_previstos": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Gastos Previstos"
+          },
+          "gastos_pela_media": {
+            "type": "boolean",
+            "title": "Gastos Pela Media",
+            "description": "A média real das últimas semanas passou do gasto semanal estimado."
+          },
+          "sobra": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Sobra",
+            "description": "Saldo disponível − faturas − gastos previstos; pode ser negativa."
+          },
+          "nivel": {
+            "$ref": "#/components/schemas/NivelRitmo",
+            "description": "verde: sobra ≥ colchão; amarelo: entre 0 e o colchão; vermelho: negativa."
+          },
+          "colchao": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Colchao"
+          },
+          "salario_recebido": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalarioRecebidoSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Salário detectado cuja janela ainda está aberta; nulo sem ele."
+          },
+          "aporte": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aporte",
+            "description": "Sobra − colchão, nunca negativo; só existe com o salário recebido."
+          }
+        },
+        "type": "object",
+        "required": [
+          "proximo_salario",
+          "dias_ate_salario",
+          "faturas",
+          "gastos_previstos",
+          "gastos_pela_media",
+          "sobra",
+          "nivel",
+          "colchao",
+          "salario_recebido",
+          "aporte"
+        ],
+        "title": "PrevisaoSaida",
+        "description": "Projeção até o próximo salário; a sobra e o alerta são a mesma conta."
       },
       "ProximaDataSaida": {
         "properties": {
@@ -5751,6 +5943,65 @@
         ],
         "title": "ResultadoImportacaoSaida"
       },
+      "ResumoSaida": {
+        "properties": {
+          "saldo_disponivel": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Saldo Disponivel",
+            "description": "Correntes e carteiras ativas, com rascunhos e sem possíveis duplicatas."
+          },
+          "rascunhos": {
+            "type": "integer",
+            "title": "Rascunhos",
+            "description": "Rascunhos que o cálculo considera (sem as possíveis duplicatas)."
+          },
+          "previsao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrevisaoSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nula sem renda prevista ativa ou sem configuração salva."
+          },
+          "gasto_mensal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GastoMensalSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Gasto mensal de referência; nulo sem valor fixo nem mês fechado no histórico."
+          },
+          "meta_reserva_meses": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta Reserva Meses",
+            "description": "Nula sem configuração salva."
+          }
+        },
+        "type": "object",
+        "required": [
+          "saldo_disponivel",
+          "rascunhos",
+          "previsao",
+          "gasto_mensal",
+          "meta_reserva_meses"
+        ],
+        "title": "ResumoSaida"
+      },
       "RevisaoSaida": {
         "properties": {
           "total": {
@@ -5813,6 +6064,58 @@
           "rascunhos"
         ],
         "title": "RevisaoSaida"
+      },
+      "SalarioRecebidoSaida": {
+        "properties": {
+          "renda_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Renda Id"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao",
+            "description": "Descrição da renda."
+          },
+          "conta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conta Id"
+          },
+          "conta": {
+            "type": "string",
+            "title": "Conta",
+            "description": "Nome da conta onde o salário caiu."
+          },
+          "data_esperada": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Esperada",
+            "description": "A data efetiva da renda neste ciclo; com a renda, identifica o salário."
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data",
+            "description": "Data do crédito."
+          },
+          "valor": {
+            "type": "string",
+            "format": "decimal",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "renda_id",
+          "descricao",
+          "conta_id",
+          "conta",
+          "data_esperada",
+          "data",
+          "valor"
+        ],
+        "title": "SalarioRecebidoSaida"
       },
       "SaldoExtratoSaida": {
         "properties": {

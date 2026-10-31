@@ -15,9 +15,11 @@ from app.modulos.planejamento.schemas import (
     RendaEdicao,
     RendaEntrada,
     RendaSaida,
+    ResumoSaida,
     configuracao_saida,
     proxima_saida,
     renda_saida,
+    resumo_saida,
 )
 
 router = APIRouter(
@@ -98,3 +100,10 @@ def salvar_configuracao(
         hoje=hoje,
     )
     return configuracao_saida(leitura)
+
+
+@router.get("/resumo")
+def resumo(sessao: SessaoDep, hoje: HojeDep) -> ResumoSaida:
+    """O que o Início mostra: a sobra até o próximo salário e o alerta de ritmo,
+    o aporte quando o salário chegou, os rascunhos considerados e a reserva."""
+    return resumo_saida(service.resumo(sessao, hoje))

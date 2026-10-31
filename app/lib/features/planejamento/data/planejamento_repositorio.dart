@@ -4,9 +4,10 @@ import 'package:decimal/decimal.dart';
 import '../../../core/api/erro_api.dart';
 import '../../../core/formatacao/dinheiro.dart';
 import 'planejamento.dart';
+import 'resumo.dart';
 
-/// Rendas previstas e configuração do cálculo. Erros da API chegam como
-/// [ErroApi].
+/// Rendas previstas, configuração do cálculo e o resumo do Início. Erros da
+/// API chegam como [ErroApi].
 abstract interface class PlanejamentoRepositorio {
   /// Ativas primeiro, pela próxima data; depois as inativas.
   Future<List<Renda>> listarRendas();
@@ -21,6 +22,9 @@ abstract interface class PlanejamentoRepositorio {
 
   /// Cria a configuração no primeiro salvamento; depois, atualiza.
   Future<LeituraConfiguracao> salvarConfiguracao(Configuracao configuracao);
+
+  /// Sobra, alerta, aporte e reserva: o que o Início mostra.
+  Future<Resumo> lerResumo();
 }
 
 /// Usa o cliente gerado e converte os modelos `built_value` nos do app:
@@ -119,6 +123,69 @@ class PlanejamentoRepositorioApi implements PlanejamentoRepositorio {
     } catch (erro) {
       throw ErroApi.de(erro);
     }
+  }
+
+  @override
+  Future<Resumo> lerResumo() async {
+    try {
+      return _resumo((await _api.resumo()).data!);
+    } catch (erro) {
+      throw ErroApi.de(erro);
+    }
+  }
+
+  static Resumo _resumo(api.ResumoSaida resumo) {
+    final gasto = resumo.gastoMensal;
+    return Resumo(
+      saldoDisponivel: Decimal.parse(resumo.saldoDisponivel),
+      rascunhos: resumo.rascunhos,
+      previsao: switch (resumo.previsao) {
+        final previsao? => _previsao(previsao),
+        null => null,
+      },
+      gastoMensal: gasto == null
+          ? null
+          : GastoMensalReferencia(
+              valor: Decimal.parse(gasto.valor),
+              automatico: gasto.automatico,
+            ),
+      metaReservaMeses: _decimal(resumo.metaReservaMeses),
+    );
+  }
+
+  static Previsao _previsao(api.PrevisaoSaida previsao) {
+    final recebido = previsao.salarioRecebido;
+    return Previsao(
+      proximoSalario: previsao.proximoSalario.toDateTime(),
+      diasAteSalario: previsao.diasAteSalario,
+      faturas: [
+        for (final fatura in previsao.faturas)
+          FaturaReservada(
+            cartaoId: fatura.cartaoId,
+            cartao: fatura.cartao,
+            competencia: fatura.competencia.toDateTime(),
+            vencimento: fatura.vencimento.toDateTime(),
+            valor: Decimal.parse(fatura.valor),
+          ),
+      ],
+      gastosPrevistos: Decimal.parse(previsao.gastosPrevistos),
+      gastosPelaMedia: previsao.gastosPelaMedia,
+      sobra: Decimal.parse(previsao.sobra),
+      nivel: NivelRitmo.values.byName(previsao.nivel.name),
+      colchao: Decimal.parse(previsao.colchao),
+      salarioRecebido: recebido == null
+          ? null
+          : SalarioRecebido(
+              rendaId: recebido.rendaId,
+              descricao: recebido.descricao,
+              contaId: recebido.contaId,
+              conta: recebido.conta,
+              dataEsperada: recebido.dataEsperada.toDateTime(),
+              data: recebido.data.toDateTime(),
+              valor: Decimal.parse(recebido.valor),
+            ),
+      aporte: _decimal(previsao.aporte),
+    );
   }
 
   static Renda _renda(api.RendaSaida renda) => Renda(

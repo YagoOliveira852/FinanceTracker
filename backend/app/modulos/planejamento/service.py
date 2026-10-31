@@ -1,4 +1,5 @@
-"""Regras do planejamento: cadastro das rendas previstas e da configuração.
+"""Regras do planejamento: cadastro das rendas previstas e da configuração, e
+o resumo do Início.
 
 O cálculo (aporte, alerta, meses de reserva) é de `planejamento/calculo.py`;
 aqui só se monta a entrada dele a partir do banco.
@@ -15,8 +16,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.erros import CampoInvalido
+from app.modulos.cartoes import faturas as faturas_service
 from app.modulos.cartoes.datas import competencia_de, mes_anterior, mes_seguinte
 from app.modulos.cartoes.feriados import feriados_entre
+from app.modulos.cartoes.models import Cartao, Fatura
+from app.modulos.contas import service as contas_service
 from app.modulos.contas.models import Conta, TipoConta
 from app.modulos.planejamento import calculo
 from app.modulos.planejamento.calculo import data_do_salario
@@ -57,6 +61,22 @@ class LeituraConfiguracao:
     media_semanal_real: Decimal | None
     # Pelo gasto mensal que vale (o fixo ou o automático); nulo sem ele.
     meses_de_reserva: Decimal | None
+
+
+@dataclass(frozen=True)
+class Resumo:
+    """O que o Início mostra: o cálculo e os nomes que as linhas dele citam."""
+
+    planejamento: calculo.Planejamento
+    # Nula até o primeiro salvamento.
+    configuracao: Configuracao | None
+    # Rascunhos que o cálculo considera (sem as possíveis duplicatas).
+    rascunhos: int
+    # {conta_id: nome} dos cartões das faturas.
+    cartoes: dict[uuid.UUID, str]
+    # A renda do salário recebido e o nome da conta onde ele caiu.
+    renda_recebida: RendaPrevista | None
+    conta_recebida: str | None
 
 
 class RendaNaoEncontrada(Exception):
@@ -276,6 +296,92 @@ def inicio_do_historico(sessao: Session) -> date | None:
         select(func.min(Transacao.data)).where(
             Transacao.tipo.in_([TipoTransacao.despesa, TipoTransacao.estorno]),
             Transacao.status.in_([StatusTransacao.confirmada, StatusTransacao.rascunho]),
+            Transacao.possivel_duplicata_de.is_(None),
+        )
+    )
+
+
+def resumo(sessao: Session, hoje: date) -> Resumo:
+    """Monta a entrada inteira do cálculo: saldos com rascunhos, faturas dos
+    cartões ativos, rendas ativas, configuração, histórico e feriados."""
+    configuracao = sessao.get(Configuracao, ID_CONFIGURACAO)
+    contas = contas_service.saldos_com_rascunhos(sessao)
+    rendas = list(sessao.scalars(select(RendaPrevista).where(RendaPrevista.ativa)))
+    faturas, cartoes = _faturas_em_aberto(sessao)
+    planejamento = calculo.calcular(
+        calculo.EntradaPlanejamento(
+            referencia=hoje,
+            contas=[
+                calculo.SaldoConta(tipo=TipoConta(c.conta.tipo), saldo=c.saldo_atual)
+                for c in contas
+            ],
+            rendas=[
+                calculo.RendaPrevista(
+                    id=renda.id,
+                    valor=renda.valor,
+                    dia_previsto=renda.dia_previsto,
+                    conta_id=renda.conta_id,
+                    ativa=renda.ativa,
+                )
+                for renda in rendas
+            ],
+            configuracao=None if configuracao is None else configuracao_do_calculo(configuracao),
+            faturas=faturas,
+            movimentos=movimentos_recentes(sessao, hoje),
+            inicio_historico=inicio_do_historico(sessao),
+            feriados=_feriados_ao_redor(sessao, hoje).keys(),
+        )
+    )
+    previsao = planejamento.previsao
+    recebido = None if previsao is None else previsao.salario_recebido
+    renda_recebida = None
+    conta_recebida = None
+    if recebido is not None:
+        renda_recebida = next(r for r in rendas if r.id == recebido.renda_id)
+        conta_recebida = sessao.get_one(Conta, renda_recebida.conta_id).nome
+    return Resumo(
+        planejamento=planejamento,
+        configuracao=configuracao,
+        rascunhos=_rascunhos_no_calculo(sessao),
+        cartoes=cartoes,
+        renda_recebida=renda_recebida,
+        conta_recebida=conta_recebida,
+    )
+
+
+def _faturas_em_aberto(
+    sessao: Session,
+) -> tuple[list[calculo.FaturaEmAberto], dict[uuid.UUID, str]]:
+    """As faturas gravadas dos cartões ativos, com os valores da tela da
+    fatura. A só calculada vale zero e não pesa; o cálculo escolhe as que
+    vencem até o próximo salário e descarta as pagas."""
+    linhas = sessao.execute(
+        select(Fatura, Conta.nome)
+        .join(Cartao, Cartao.conta_id == Fatura.cartao_id)
+        .join(Conta, Conta.id == Cartao.conta_id)
+        .where(Conta.ativa)
+    ).all()
+    ids = [fatura.id for fatura, _ in linhas]
+    calculados = faturas_service.valores_calculados(sessao, ids)
+    pagos = faturas_service.valores_pagos(sessao, ids)
+    faturas = [
+        calculo.FaturaEmAberto(
+            cartao_id=fatura.cartao_id,
+            competencia=fatura.competencia,
+            vencimento=fatura.data_vencimento,
+            valor_informado=fatura.valor_informado,
+            valor_calculado=calculados.get(fatura.id, Decimal(0)),
+            valor_pago=pagos.get(fatura.id, Decimal(0)),
+        )
+        for fatura, _ in linhas
+    ]
+    return faturas, {fatura.cartao_id: nome for fatura, nome in linhas}
+
+
+def _rascunhos_no_calculo(sessao: Session) -> int:
+    return sessao.scalar(
+        select(func.count()).where(
+            Transacao.status == StatusTransacao.rascunho,
             Transacao.possivel_duplicata_de.is_(None),
         )
     )

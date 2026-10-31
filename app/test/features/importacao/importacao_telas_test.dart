@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:financas/app/widgets/campos.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../apoio/aporte_dispensado_falso.dart';
 import '../../apoio/auth_falso.dart';
 import '../../apoio/categorias_falso.dart';
 import '../../apoio/contas_falso.dart';
@@ -42,6 +43,7 @@ Future<void> _abrirImportar(
     seletorArquivo: seletor ?? SeletorArquivoFalso(arquivoExemplo()),
     compartilhamento: FonteCompartilhamentoFalsa(),
     preferenciaTema: PreferenciaTemaFalsa(),
+    aporteDispensado: AporteDispensadoFalso(),
     notificador: NotificadorFalso(),
   );
   await dependencias.sessao.iniciar();

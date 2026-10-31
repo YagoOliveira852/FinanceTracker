@@ -11,6 +11,7 @@ import '../features/contas/cubit/contas_cubit.dart';
 import '../features/importacao/cubit/compartilhado_cubit.dart';
 import '../features/importacao/data/importacao.dart';
 import '../features/importacao/ui/importar_tela.dart';
+import '../features/inicio/cubit/inicio_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/revisao/cubit/revisao_cubit.dart';
 import 'injecao.dart';
@@ -22,7 +23,9 @@ import 'tema.dart';
 ///
 /// O [ContasCubit] fica aqui em cima porque Início, Contas e Lançamento
 /// mostram as mesmas contas: criar uma conta ou lançar uma transação
-/// recarrega um cubit só, e todas as telas veem o saldo novo. O
+/// recarrega um cubit só, e todas as telas veem o saldo novo. O [InicioCubit]
+/// porque o Início recarrega no login, ao voltar para a aba e no toque do
+/// lembrete, e a aba guarda o resumo entre as idas e vindas. O
 /// [CategoriasCubit] pelo mesmo motivo: Categorias e Lançamento. O
 /// [RevisaoCubit] porque a barra de abas mostra o contador da Revisão. O
 /// [CompartilhadoCubit] porque o extrato do Compartilhar pode chegar antes
@@ -43,6 +46,10 @@ class FinancasApp extends StatefulWidget {
 
 class _FinancasAppState extends State<FinancasApp> {
   late final GoRouter _router = criarRouter(widget.dependencias.sessao);
+  late final InicioCubit _inicio = InicioCubit(
+    widget.dependencias.planejamento,
+    widget.dependencias.aporteDispensado,
+  );
   late final StreamSubscription<void> _toques;
 
   @override
@@ -51,15 +58,18 @@ class _FinancasAppState extends State<FinancasApp> {
     final dependencias = widget.dependencias;
     if (dependencias.sessao.state is SessaoConectada) {
       dependencias.lembretes.reagendar();
+      _inicio.carregar();
     }
-    _toques = dependencias.notificador.toques.listen(
-      (_) => _router.go(rotaInicio),
-    );
+    _toques = dependencias.notificador.toques.listen((_) {
+      _inicio.carregar();
+      _router.go(rotaInicio);
+    });
   }
 
   @override
   void dispose() {
     _toques.cancel();
+    _inicio.close();
     _router.dispose();
     super.dispose();
   }
@@ -84,6 +94,7 @@ class _FinancasAppState extends State<FinancasApp> {
         providers: [
           BlocProvider.value(value: dependencias.sessao),
           BlocProvider.value(value: dependencias.tema),
+          BlocProvider.value(value: _inicio),
           BlocProvider(
             // Criado já na abertura: o listener abaixo só recarrega nas
             // trocas para "conectada", sem uma segunda carga na criação.
@@ -124,10 +135,12 @@ class _FinancasAppState extends State<FinancasApp> {
         child: MultiBlocListener(
           listeners: [
             BlocListener<SessaoCubit, SessaoEstado>(
-              // Recarrega contas, categorias e a revisão a cada login.
+              // Recarrega o Início, contas, categorias e a revisão a cada
+              // login.
               listenWhen: (antes, depois) =>
                   antes is! SessaoConectada && depois is SessaoConectada,
               listener: (context, _) {
+                _inicio.carregar();
                 context.read<ContasCubit>().carregar();
                 context.read<CategoriasCubit>().carregar();
                 context.read<RevisaoCubit>().carregar();
