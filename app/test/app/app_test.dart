@@ -1,5 +1,6 @@
 import 'package:financas/app/app.dart';
 import 'package:financas/app/injecao.dart';
+import 'package:financas/core/formatacao/datas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -179,7 +180,7 @@ void main() {
   ) async {
     final dependencias = await _abrir(tester);
     (dependencias.transacoes as TransacoesRepositorioFalso).transacoes.add(
-      transacaoExemplo(data: DateTime.now()),
+      transacaoExemplo(data: somenteData(DateTime.now())),
     );
 
     await tester.tap(find.text('Transações'));
@@ -197,7 +198,7 @@ void main() {
       'formulário com ele', (tester) async {
     final dependencias = await _abrir(tester);
     (dependencias.transacoes as TransacoesRepositorioFalso).transacoes.add(
-      transacaoExemplo(data: DateTime.now()),
+      transacaoExemplo(data: somenteData(DateTime.now())),
     );
     await tester.tap(find.text('Transações'));
     await tester.pumpAndSettle();
