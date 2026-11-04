@@ -25,13 +25,18 @@ import 'package:api_client/src/model/categoria_resumo.dart';
 import 'package:api_client/src/model/categoria_saida.dart';
 import 'package:api_client/src/model/compra_parcelada_entrada.dart';
 import 'package:api_client/src/model/compra_parcelada_saida.dart';
+import 'package:api_client/src/model/conexao_edicao.dart';
+import 'package:api_client/src/model/conexao_entrada.dart';
+import 'package:api_client/src/model/conexao_saida.dart';
 import 'package:api_client/src/model/configuracao_entrada.dart';
 import 'package:api_client/src/model/configuracao_saida.dart';
 import 'package:api_client/src/model/configuracao_valores.dart';
 import 'package:api_client/src/model/confirmacao_entrada.dart';
 import 'package:api_client/src/model/confirmacao_saida.dart';
 import 'package:api_client/src/model/conta_da_importacao.dart';
+import 'package:api_client/src/model/conta_da_previa_saida.dart';
 import 'package:api_client/src/model/conta_da_regra.dart';
+import 'package:api_client/src/model/conta_do_app_saida.dart';
 import 'package:api_client/src/model/conta_entrada.dart';
 import 'package:api_client/src/model/conta_na_revisao.dart';
 import 'package:api_client/src/model/conta_saida.dart';
@@ -59,7 +64,9 @@ import 'package:api_client/src/model/grupo_categoria.dart';
 import 'package:api_client/src/model/http_validation_error.dart';
 import 'package:api_client/src/model/importacao_saida.dart';
 import 'package:api_client/src/model/instituicao_saida.dart';
+import 'package:api_client/src/model/item_entrada.dart';
 import 'package:api_client/src/model/linha_repetida_saida.dart';
+import 'package:api_client/src/model/lista_conexoes_saida.dart';
 import 'package:api_client/src/model/lista_faturas_saida.dart';
 import 'package:api_client/src/model/location_inner.dart';
 import 'package:api_client/src/model/login_entrada.dart';
@@ -74,8 +81,11 @@ import 'package:api_client/src/model/par_entrada.dart';
 import 'package:api_client/src/model/par_recusa_entrada.dart';
 import 'package:api_client/src/model/par_saida.dart';
 import 'package:api_client/src/model/parcela_saida.dart';
+import 'package:api_client/src/model/previa_saida.dart';
 import 'package:api_client/src/model/previsao_do_tipo_saida.dart';
 import 'package:api_client/src/model/previsao_saida.dart';
+import 'package:api_client/src/model/problema.dart';
+import 'package:api_client/src/model/problema_saida.dart';
 import 'package:api_client/src/model/proxima_data_saida.dart';
 import 'package:api_client/src/model/rascunho_saida.dart';
 import 'package:api_client/src/model/rascunhos_casados_saida.dart';
@@ -88,6 +98,7 @@ import 'package:api_client/src/model/renda_entrada.dart';
 import 'package:api_client/src/model/renda_saida.dart';
 import 'package:api_client/src/model/resposta_erro.dart';
 import 'package:api_client/src/model/resultado_importacao_saida.dart';
+import 'package:api_client/src/model/resultado_sync_saida.dart';
 import 'package:api_client/src/model/resumo_saida.dart';
 import 'package:api_client/src/model/revisao_saida.dart';
 import 'package:api_client/src/model/salario_recebido_saida.dart';
@@ -108,6 +119,7 @@ import 'package:api_client/src/model/transferencia_revisao_entrada.dart';
 import 'package:api_client/src/model/transferencia_saida.dart';
 import 'package:api_client/src/model/usuario_saida.dart';
 import 'package:api_client/src/model/validation_error.dart';
+import 'package:api_client/src/model/vinculo_entrada.dart';
 
 part 'serializers.g.dart';
 
@@ -123,13 +135,18 @@ part 'serializers.g.dart';
   CategoriaSaida,
   CompraParceladaEntrada,
   CompraParceladaSaida,
+  ConexaoEdicao,
+  ConexaoEntrada,
+  ConexaoSaida,
   ConfiguracaoEntrada,
   ConfiguracaoSaida,
   ConfiguracaoValores,
   ConfirmacaoEntrada,
   ConfirmacaoSaida,
   ContaDaImportacao,
+  ContaDaPreviaSaida,
   ContaDaRegra,
+  ContaDoAppSaida,
   ContaEntrada,
   ContaNaRevisao,
   ContaSaida,
@@ -157,7 +174,9 @@ part 'serializers.g.dart';
   HTTPValidationError,
   ImportacaoSaida,
   InstituicaoSaida,
+  ItemEntrada,
   LinhaRepetidaSaida,
+  ListaConexoesSaida,
   ListaFaturasSaida,
   LocationInner,
   LoginEntrada,
@@ -172,8 +191,11 @@ part 'serializers.g.dart';
   ParRecusaEntrada,
   ParSaida,
   ParcelaSaida,
+  PreviaSaida,
   PrevisaoDoTipoSaida,
   PrevisaoSaida,
+  Problema,
+  ProblemaSaida,
   ProximaDataSaida,
   RascunhoSaida,
   RascunhosCasadosSaida,
@@ -186,6 +208,7 @@ part 'serializers.g.dart';
   RendaSaida,
   RespostaErro,
   ResultadoImportacaoSaida,
+  ResultadoSyncSaida,
   ResumoSaida,
   RevisaoSaida,
   SalarioRecebidoSaida,
@@ -206,6 +229,7 @@ part 'serializers.g.dart';
   TransferenciaSaida,
   UsuarioSaida,
   ValidationError,
+  VinculoEntrada,
 ])
 Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
@@ -221,10 +245,6 @@ Serializers serializers = (_$serializers.toBuilder()
         () => ListBuilder<ImportacaoSaida>(),
       )
       ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(RendaSaida)]),
-        () => ListBuilder<RendaSaida>(),
-      )
-      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(TransacaoRevisao)]),
         () => ListBuilder<TransacaoRevisao>(),
       )
@@ -233,12 +253,52 @@ Serializers serializers = (_$serializers.toBuilder()
         () => ListBuilder<CategoriaSaida>(),
       )
       ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(RegraSaida)]),
-        () => ListBuilder<RegraSaida>(),
+        const FullType(BuiltList, [FullType(ConexaoSaida)]),
+        () => ListBuilder<ConexaoSaida>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(FaturaReservadaSaida)]),
         () => ListBuilder<FaturaReservadaSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(VinculoEntrada)]),
+        () => ListBuilder<VinculoEntrada>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(ContaDoAppSaida)]),
+        () => ListBuilder<ContaDoAppSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RascunhoSaida)]),
+        () => ListBuilder<RascunhoSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(LinhaRepetidaSaida)]),
+        () => ListBuilder<LinhaRepetidaSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(LocationInner)]),
+        () => ListBuilder<LocationInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(ContaSaida)]),
+        () => ListBuilder<ContaSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(FaturaCandidataSaida)]),
+        () => ListBuilder<FaturaCandidataSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RendaSaida)]),
+        () => ListBuilder<RendaSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(ContaDaPreviaSaida)]),
+        () => ListBuilder<ContaDaPreviaSaida>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RegraSaida)]),
+        () => ListBuilder<RegraSaida>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(PrevisaoDoTipoSaida)]),
@@ -253,24 +313,8 @@ Serializers serializers = (_$serializers.toBuilder()
         () => ListBuilder<ParSaida>(),
       )
       ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(RascunhoSaida)]),
-        () => ListBuilder<RascunhoSaida>(),
-      )
-      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(DuplicataSaida)]),
         () => ListBuilder<DuplicataSaida>(),
-      )
-      ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(LinhaRepetidaSaida)]),
-        () => ListBuilder<LinhaRepetidaSaida>(),
-      )
-      ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(LocationInner)]),
-        () => ListBuilder<LocationInner>(),
-      )
-      ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(ContaSaida)]),
-        () => ListBuilder<ContaSaida>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ValidationError)]),
@@ -287,10 +331,6 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ErroCampo)]),
         () => ListBuilder<ErroCampo>(),
-      )
-      ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(FaturaCandidataSaida)]),
-        () => ListBuilder<FaturaCandidataSaida>(),
       )
       ..add(const OneOfSerializer())
       ..add(const AnyOfSerializer())

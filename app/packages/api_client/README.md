@@ -93,6 +93,13 @@ Class | Method | HTTP request | Description
 [*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**previaRenda**](doc/PlanejamentoApi.md#previarenda) | **GET** /planejamento/rendas/previa | Previa Renda
 [*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**resumo**](doc/PlanejamentoApi.md#resumo) | **GET** /planejamento/resumo | Resumo
 [*PlanejamentoApi*](doc/PlanejamentoApi.md) | [**salvarConfiguracao**](doc/PlanejamentoApi.md#salvarconfiguracao) | **PUT** /planejamento/configuracao | Salvar Configuracao
+[*PluggyApi*](doc/PluggyApi.md) | [**buscarAgora**](doc/PluggyApi.md#buscaragora) | **POST** /pluggy/conexoes/{conexao_id}/sync | Buscar Agora
+[*PluggyApi*](doc/PluggyApi.md) | [**criar**](doc/PluggyApi.md#criar) | **POST** /pluggy/conexoes | Criar
+[*PluggyApi*](doc/PluggyApi.md) | [**editar**](doc/PluggyApi.md#editar) | **PUT** /pluggy/conexoes/{conexao_id} | Editar
+[*PluggyApi*](doc/PluggyApi.md) | [**listar**](doc/PluggyApi.md#listar) | **GET** /pluggy/conexoes | Listar
+[*PluggyApi*](doc/PluggyApi.md) | [**previa**](doc/PluggyApi.md#previa) | **POST** /pluggy/conexoes/previa | Previa
+[*PluggyApi*](doc/PluggyApi.md) | [**previaRenovacao**](doc/PluggyApi.md#previarenovacao) | **POST** /pluggy/conexoes/{conexao_id}/renovacao/previa | Previa Renovacao
+[*PluggyApi*](doc/PluggyApi.md) | [**renovar**](doc/PluggyApi.md#renovar) | **POST** /pluggy/conexoes/{conexao_id}/renovacao | Renovar
 [*RegrasApi*](doc/RegrasApi.md) | [**criar**](doc/RegrasApi.md#criar) | **POST** /regras | Criar
 [*RegrasApi*](doc/RegrasApi.md) | [**editar**](doc/RegrasApi.md#editar) | **PUT** /regras/{regra_id} | Editar
 [*RegrasApi*](doc/RegrasApi.md) | [**excluir**](doc/RegrasApi.md#excluir) | **DELETE** /regras/{regra_id} | Excluir
@@ -131,13 +138,18 @@ Class | Method | HTTP request | Description
  - [CategoriaSaida](doc/CategoriaSaida.md)
  - [CompraParceladaEntrada](doc/CompraParceladaEntrada.md)
  - [CompraParceladaSaida](doc/CompraParceladaSaida.md)
+ - [ConexaoEdicao](doc/ConexaoEdicao.md)
+ - [ConexaoEntrada](doc/ConexaoEntrada.md)
+ - [ConexaoSaida](doc/ConexaoSaida.md)
  - [ConfiguracaoEntrada](doc/ConfiguracaoEntrada.md)
  - [ConfiguracaoSaida](doc/ConfiguracaoSaida.md)
  - [ConfiguracaoValores](doc/ConfiguracaoValores.md)
  - [ConfirmacaoEntrada](doc/ConfirmacaoEntrada.md)
  - [ConfirmacaoSaida](doc/ConfirmacaoSaida.md)
  - [ContaDaImportacao](doc/ContaDaImportacao.md)
+ - [ContaDaPreviaSaida](doc/ContaDaPreviaSaida.md)
  - [ContaDaRegra](doc/ContaDaRegra.md)
+ - [ContaDoAppSaida](doc/ContaDoAppSaida.md)
  - [ContaEntrada](doc/ContaEntrada.md)
  - [ContaNaRevisao](doc/ContaNaRevisao.md)
  - [ContaSaida](doc/ContaSaida.md)
@@ -165,7 +177,9 @@ Class | Method | HTTP request | Description
  - [HTTPValidationError](doc/HTTPValidationError.md)
  - [ImportacaoSaida](doc/ImportacaoSaida.md)
  - [InstituicaoSaida](doc/InstituicaoSaida.md)
+ - [ItemEntrada](doc/ItemEntrada.md)
  - [LinhaRepetidaSaida](doc/LinhaRepetidaSaida.md)
+ - [ListaConexoesSaida](doc/ListaConexoesSaida.md)
  - [ListaFaturasSaida](doc/ListaFaturasSaida.md)
  - [LocationInner](doc/LocationInner.md)
  - [LoginEntrada](doc/LoginEntrada.md)
@@ -180,8 +194,11 @@ Class | Method | HTTP request | Description
  - [ParRecusaEntrada](doc/ParRecusaEntrada.md)
  - [ParSaida](doc/ParSaida.md)
  - [ParcelaSaida](doc/ParcelaSaida.md)
+ - [PreviaSaida](doc/PreviaSaida.md)
  - [PrevisaoDoTipoSaida](doc/PrevisaoDoTipoSaida.md)
  - [PrevisaoSaida](doc/PrevisaoSaida.md)
+ - [Problema](doc/Problema.md)
+ - [ProblemaSaida](doc/ProblemaSaida.md)
  - [ProximaDataSaida](doc/ProximaDataSaida.md)
  - [RascunhoSaida](doc/RascunhoSaida.md)
  - [RascunhosCasadosSaida](doc/RascunhosCasadosSaida.md)
@@ -194,6 +211,7 @@ Class | Method | HTTP request | Description
  - [RendaSaida](doc/RendaSaida.md)
  - [RespostaErro](doc/RespostaErro.md)
  - [ResultadoImportacaoSaida](doc/ResultadoImportacaoSaida.md)
+ - [ResultadoSyncSaida](doc/ResultadoSyncSaida.md)
  - [ResumoSaida](doc/ResumoSaida.md)
  - [RevisaoSaida](doc/RevisaoSaida.md)
  - [SalarioRecebidoSaida](doc/SalarioRecebidoSaida.md)
@@ -214,6 +232,7 @@ Class | Method | HTTP request | Description
  - [TransferenciaSaida](doc/TransferenciaSaida.md)
  - [UsuarioSaida](doc/UsuarioSaida.md)
  - [ValidationError](doc/ValidationError.md)
+ - [VinculoEntrada](doc/VinculoEntrada.md)
 
 
 ## Documentation For Authorization

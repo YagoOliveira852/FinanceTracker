@@ -11,6 +11,7 @@ lib/src/api/contas_api.dart
 lib/src/api/faturas_api.dart
 lib/src/api/importacoes_api.dart
 lib/src/api/planejamento_api.dart
+lib/src/api/pluggy_api.dart
 lib/src/api/regras_api.dart
 lib/src/api/revisao_api.dart
 lib/src/api/saude_api.dart
@@ -33,13 +34,18 @@ lib/src/model/categoria_resumo.dart
 lib/src/model/categoria_saida.dart
 lib/src/model/compra_parcelada_entrada.dart
 lib/src/model/compra_parcelada_saida.dart
+lib/src/model/conexao_edicao.dart
+lib/src/model/conexao_entrada.dart
+lib/src/model/conexao_saida.dart
 lib/src/model/configuracao_entrada.dart
 lib/src/model/configuracao_saida.dart
 lib/src/model/configuracao_valores.dart
 lib/src/model/confirmacao_entrada.dart
 lib/src/model/confirmacao_saida.dart
 lib/src/model/conta_da_importacao.dart
+lib/src/model/conta_da_previa_saida.dart
 lib/src/model/conta_da_regra.dart
+lib/src/model/conta_do_app_saida.dart
 lib/src/model/conta_entrada.dart
 lib/src/model/conta_na_revisao.dart
 lib/src/model/conta_saida.dart
@@ -68,7 +74,9 @@ lib/src/model/grupo_categoria.dart
 lib/src/model/http_validation_error.dart
 lib/src/model/importacao_saida.dart
 lib/src/model/instituicao_saida.dart
+lib/src/model/item_entrada.dart
 lib/src/model/linha_repetida_saida.dart
+lib/src/model/lista_conexoes_saida.dart
 lib/src/model/lista_faturas_saida.dart
 lib/src/model/location_inner.dart
 lib/src/model/login_entrada.dart
@@ -83,8 +91,11 @@ lib/src/model/par_entrada.dart
 lib/src/model/par_recusa_entrada.dart
 lib/src/model/par_saida.dart
 lib/src/model/parcela_saida.dart
+lib/src/model/previa_saida.dart
 lib/src/model/previsao_do_tipo_saida.dart
 lib/src/model/previsao_saida.dart
+lib/src/model/problema.dart
+lib/src/model/problema_saida.dart
 lib/src/model/proxima_data_saida.dart
 lib/src/model/rascunho_saida.dart
 lib/src/model/rascunhos_casados_saida.dart
@@ -97,6 +108,7 @@ lib/src/model/renda_entrada.dart
 lib/src/model/renda_saida.dart
 lib/src/model/resposta_erro.dart
 lib/src/model/resultado_importacao_saida.dart
+lib/src/model/resultado_sync_saida.dart
 lib/src/model/resumo_saida.dart
 lib/src/model/revisao_saida.dart
 lib/src/model/salario_recebido_saida.dart
@@ -117,5 +129,6 @@ lib/src/model/transferencia_revisao_entrada.dart
 lib/src/model/transferencia_saida.dart
 lib/src/model/usuario_saida.dart
 lib/src/model/validation_error.dart
+lib/src/model/vinculo_entrada.dart
 lib/src/serializers.dart
 pubspec.yaml

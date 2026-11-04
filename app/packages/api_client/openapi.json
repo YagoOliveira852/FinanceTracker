@@ -3295,6 +3295,471 @@
         ]
       }
     },
+    "/pluggy/conexoes": {
+      "get": {
+        "tags": [
+          "pluggy"
+        ],
+        "summary": "Listar",
+        "description": "Conexões com o estado do sync e o problema mais grave (card do Início).",
+        "operationId": "pluggy_listar",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaConexoesSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "pluggy"
+        ],
+        "summary": "Criar",
+        "description": "Cadastra a conexão e vincula as contas (cria as novas).",
+        "operationId": "pluggy_criar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConexaoEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConexaoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/pluggy/conexoes/previa": {
+      "post": {
+        "tags": [
+          "pluggy"
+        ],
+        "summary": "Previa",
+        "description": "Valida o item na Pluggy e lista as contas com a sugestão de vínculo. Não grava.",
+        "operationId": "pluggy_previa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/pluggy/conexoes/{conexao_id}/renovacao/previa": {
+      "post": {
+        "tags": [
+          "pluggy"
+        ],
+        "summary": "Previa Renovacao",
+        "description": "Prévia da renovação: o item pode ser o mesmo; sugere as contas que a\nconexão já alimentava.",
+        "operationId": "pluggy_previa_renovacao",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conexao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conexao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviaSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pluggy/conexoes/{conexao_id}/renovacao": {
+      "post": {
+        "tags": [
+          "pluggy"
+        ],
+        "summary": "Renovar",
+        "description": "Associa o item renovado à conexão, com os vínculos confirmados.",
+        "operationId": "pluggy_renovar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conexao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conexao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConexaoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConexaoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pluggy/conexoes/{conexao_id}": {
+      "put": {
+        "tags": [
+          "pluggy"
+        ],
+        "summary": "Editar",
+        "description": "Desativa (o sync para; as contas continuam) ou reativa (confere o item).",
+        "operationId": "pluggy_editar",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conexao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conexao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConexaoEdicao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConexaoSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pluggy/conexoes/{conexao_id}/sync": {
+      "post": {
+        "tags": [
+          "pluggy"
+        ],
+        "summary": "Buscar Agora",
+        "description": "Roda o nosso sync para a conexão, no máximo 1×/hora. A Pluggy atualiza\nos dados uma vez por dia.",
+        "operationId": "pluggy_buscar_agora",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conexao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conexao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoSyncSaida"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErro"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/saude": {
       "get": {
         "tags": [
@@ -3789,6 +4254,191 @@
         ],
         "title": "CompraParceladaSaida"
       },
+      "ConexaoEdicao": {
+        "properties": {
+          "ativa": {
+            "type": "boolean",
+            "title": "Ativa"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ativa"
+        ],
+        "title": "ConexaoEdicao"
+      },
+      "ConexaoEntrada": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Item Id",
+            "description": "ID do item MeuPluggy."
+          },
+          "vinculos": {
+            "items": {
+              "$ref": "#/components/schemas/VinculoEntrada"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Vinculos"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "item_id",
+          "vinculos"
+        ],
+        "title": "ConexaoEntrada"
+      },
+      "ConexaoSaida": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id"
+          },
+          "instituicao": {
+            "type": "string",
+            "title": "Instituicao",
+            "description": "Nome do banco (do conector da Pluggy)."
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "Como a Pluggy informa o item (UPDATED, LOGIN_ERROR...)."
+          },
+          "ativa": {
+            "type": "boolean",
+            "title": "Ativa"
+          },
+          "consentimento_expira_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consentimento Expira Em"
+          },
+          "ultimo_sync_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultimo Sync Em",
+            "description": "Último sync bem-sucedido."
+          },
+          "ultima_tentativa_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultima Tentativa Em"
+          },
+          "ultimo_erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultimo Erro",
+            "description": "Em português; nulo depois de um sucesso."
+          },
+          "proximo_sync": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo Sync",
+            "description": "Próximo sync diário; nulo se desativada."
+          },
+          "buscar_a_partir_de": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buscar A Partir De",
+            "description": "Quando o Buscar agora volta a valer (1×/hora); nulo se já vale."
+          },
+          "problema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Problema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Só nas ativas; nulo quando está tudo bem."
+          },
+          "contas": {
+            "items": {
+              "$ref": "#/components/schemas/ContaDoAppSaida"
+            },
+            "type": "array",
+            "title": "Contas",
+            "description": "Contas do app que a conexão alimenta."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "item_id",
+          "instituicao",
+          "status",
+          "ativa",
+          "consentimento_expira_em",
+          "ultimo_sync_em",
+          "ultima_tentativa_em",
+          "ultimo_erro",
+          "proximo_sync",
+          "buscar_a_partir_de",
+          "problema",
+          "contas"
+        ],
+        "title": "ConexaoSaida"
+      },
       "ConfiguracaoEntrada": {
         "properties": {
           "colchao": {
@@ -4023,6 +4673,60 @@
         ],
         "title": "ContaDaImportacao"
       },
+      "ContaDaPreviaSaida": {
+        "properties": {
+          "pluggy_account_id": {
+            "type": "string",
+            "title": "Pluggy Account Id"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoConta",
+            "description": "Tipo que a conta tem (ou teria) no app."
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "numero_final": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero Final",
+            "description": "4 últimos dígitos do número."
+          },
+          "sugestao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContaDoAppSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Conta do app sugerida pelo final do número; nula sem sugestão."
+          },
+          "pode_criar": {
+            "type": "boolean",
+            "title": "Pode Criar",
+            "description": "Falso no cartão sem fechamento na Pluggy: só vincular a um existente."
+          }
+        },
+        "type": "object",
+        "required": [
+          "pluggy_account_id",
+          "tipo",
+          "nome",
+          "numero_final",
+          "sugestao",
+          "pode_criar"
+        ],
+        "title": "ContaDaPreviaSaida"
+      },
       "ContaDaRegra": {
         "properties": {
           "id": {
@@ -4041,6 +4745,29 @@
           "nome"
         ],
         "title": "ContaDaRegra"
+      },
+      "ContaDoAppSaida": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoConta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "tipo"
+        ],
+        "title": "ContaDoAppSaida"
       },
       "ContaEntrada": {
         "properties": {
@@ -5011,6 +5738,23 @@
         ],
         "title": "InstituicaoSaida"
       },
+      "ItemEntrada": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Item Id",
+            "description": "ID do item MeuPluggy."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "item_id"
+        ],
+        "title": "ItemEntrada"
+      },
       "LinhaRepetidaSaida": {
         "properties": {
           "fitid": {
@@ -5042,6 +5786,35 @@
           "descricao"
         ],
         "title": "LinhaRepetidaSaida"
+      },
+      "ListaConexoesSaida": {
+        "properties": {
+          "conexoes": {
+            "items": {
+              "$ref": "#/components/schemas/ConexaoSaida"
+            },
+            "type": "array",
+            "title": "Conexoes",
+            "description": "Ativas primeiro, pela criação."
+          },
+          "problema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProblemaSaida"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O mais grave entre as ativas (vencido > erro > sem_dados > vencendo): o card do Início; nulo sem problema."
+          }
+        },
+        "type": "object",
+        "required": [
+          "conexoes",
+          "problema"
+        ],
+        "title": "ListaConexoesSaida"
       },
       "ListaFaturasSaida": {
         "properties": {
@@ -5309,6 +6082,45 @@
         ],
         "title": "ParcelaSaida"
       },
+      "PreviaSaida": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "title": "Item Id"
+          },
+          "instituicao": {
+            "type": "string",
+            "title": "Instituicao"
+          },
+          "consentimento_expira_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consentimento Expira Em"
+          },
+          "contas": {
+            "items": {
+              "$ref": "#/components/schemas/ContaDaPreviaSaida"
+            },
+            "type": "array",
+            "title": "Contas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "instituicao",
+          "consentimento_expira_em",
+          "contas"
+        ],
+        "title": "PreviaSaida"
+      },
       "PrevisaoDoTipoSaida": {
         "properties": {
           "tipo": {
@@ -5427,6 +6239,39 @@
         ],
         "title": "PrevisaoSaida",
         "description": "Projeção até o próximo salário; a sobra e o alerta são a mesma conta."
+      },
+      "Problema": {
+        "type": "string",
+        "enum": [
+          "vencido",
+          "erro",
+          "sem_dados",
+          "vencendo"
+        ],
+        "title": "Problema"
+      },
+      "ProblemaSaida": {
+        "properties": {
+          "problema": {
+            "$ref": "#/components/schemas/Problema"
+          },
+          "conexao_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conexao Id"
+          },
+          "instituicao": {
+            "type": "string",
+            "title": "Instituicao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "problema",
+          "conexao_id",
+          "instituicao"
+        ],
+        "title": "ProblemaSaida"
       },
       "ProximaDataSaida": {
         "properties": {
@@ -5942,6 +6787,53 @@
           "importacao"
         ],
         "title": "ResultadoImportacaoSaida"
+      },
+      "ResultadoSyncSaida": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erro"
+          },
+          "novas": {
+            "type": "integer",
+            "title": "Novas"
+          },
+          "atualizadas": {
+            "type": "integer",
+            "title": "Atualizadas"
+          },
+          "removidas": {
+            "type": "integer",
+            "title": "Removidas",
+            "description": "Rascunhos que sumiram da Pluggy e foram apagados."
+          },
+          "marcadas_removidas": {
+            "type": "integer",
+            "title": "Marcadas Removidas",
+            "description": "Confirmadas que sumiram da Pluggy (alerta na revisão)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "erro",
+          "novas",
+          "atualizadas",
+          "removidas",
+          "marcadas_removidas"
+        ],
+        "title": "ResultadoSyncSaida"
       },
       "ResumoSaida": {
         "properties": {
@@ -6692,6 +7584,34 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VinculoEntrada": {
+        "properties": {
+          "pluggy_account_id": {
+            "type": "string",
+            "title": "Pluggy Account Id"
+          },
+          "conta_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conta Id",
+            "description": "Conta do app a alimentar; nulo = criar nova."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pluggy_account_id",
+          "conta_id"
+        ],
+        "title": "VinculoEntrada"
       }
     },
     "securitySchemes": {
