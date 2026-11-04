@@ -386,6 +386,7 @@ Uso: conferir saldos, rendimento real (`saldo atual − saldo anterior − aport
 | ultimo_sync_em | timestamptz null | último sync bem-sucedido |
 | ultima_tentativa_em | timestamptz null | última execução, com ou sem sucesso; limita o "Buscar agora" (1×/hora) |
 | ultimo_erro | text null | |
+| renovada_em | timestamptz null | renovação com item novo: no próximo sync, transação nova que casa (data, valor, descrição) só troca o `id_externo` |
 
 O estado do sync aparece na tela Open Finance e, só quando há problema, num card no Início (consentimento vencido > sync com erro > mais de 30 h sem dados > consentimento vencendo em até 30 dias). Regras na spec `2026-10-20-conexoes-pluggy-design.md`.
 
@@ -458,7 +459,7 @@ FinanceTracker/
 │   │   │   │   └── calculo.py    # funções puras: aporte, meses de reserva, alerta
 │   │   │   ├── investimentos/
 │   │   │   ├── indices/          # cliente SGS/BCB
-│   │   │   ├── pluggy/           # client.py (só leitura), tipos.py, normalizacao.py (puro), sync.py
+│   │   │   ├── pluggy/           # client.py (só leitura), tipos.py, normalizacao.py e problema.py (puros), sync.py, service.py/router.py (conexões)
 │   │   │   └── relatorios/       # exportação anual / 31-12
 │   │   └── jobs/                 # scripts chamados pelo cron
 │   │       ├── sync_pluggy.py
@@ -488,7 +489,7 @@ FinanceTracker/
         │   └── notificacoes/     # Notificador (interface) e o plugin de notificações locais
         └── features/             # espelha os módulos do backend
             ├── login/
-            ├── inicio/           # tela principal: aporte, reserva, alerta
+            ├── inicio/           # tela principal: aporte, reserva, alerta, problema do Open Finance
             ├── revisao/          # rascunhos para confirmar
             ├── transacoes/
             ├── contas/
@@ -496,6 +497,7 @@ FinanceTracker/
             ├── categorias/       # categorias e regras (Mais)
             ├── importacao/
             ├── planejamento/     # rendas previstas, aporte e reserva (Mais), lembretes de salário
+            ├── open_finance/     # conexões da Pluggy (Mais): estado do sync, adicionar, vincular, renovar
             ├── investimentos/
             └── configuracoes/
             # cada feature: data/ (repositório), cubit/ (estado), ui/ (telas e widgets)
