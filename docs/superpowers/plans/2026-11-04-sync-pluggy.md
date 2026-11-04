@@ -25,7 +25,8 @@ Card "S7 · Cliente Pluggy (só leitura) + sync diário". Specs: `2026-10-19-plu
   5. transação já gravada: o rascunho é atualizado (valor, data, descrição; `PENDING` → `POSTED` mantém o id); a confirmada não muda, só perde `removida_na_origem_em` se tinha;
   6. reconciliação: transação `pluggy` da conta com data na janela que não veio → rascunho apagado, confirmada marcada `removida_na_origem_em`;
   7. sucesso: `ultimo_sync_em` = agora e `ultimo_erro` nulo. Erro: desfaz o que a conexão gravou, guarda o `ultimo_erro` e segue para a próxima conexão.
-  Cada conta sincronizada grava uma `importacao` com `fonte=pluggy` (contagens e status), que as transações novas apontam. Desfazer não vale para ela.
+  O sync não grava linha em `importacao`: ela apareceria no histórico e no "Desfazer" das importações de arquivo, e o estado de cada execução já fica na `conexao_pluggy`. As transações da Pluggy têm `importacao_id` nulo.
+- **Faturas do `/bills`:** só as que vencem a partir do início da janela (hoje − 40 dias). Uma fatura antiga sem o pagamento registrado no app ficaria "vencida e não paga" e entraria no cálculo do aporte.
 - **Agendamento:** como o backup, um timer do systemd na VPS roda `docker compose run --rm api python -m app.jobs.sync_pluggy` às 07:00 e `... --repescagem` às 13:00 (`America/Fortaleza`). A repescagem só relê as conexões cuja última tentativa falhou. Sem container `jobs` permanente: na VPS de 1 GB, a RAM fica livre o resto do dia.
 - **"Buscar agora"** (`POST /pluggy/conexoes/{id}/sync`): roda a mesma execução para uma conexão, recusando com 429 se `ultima_tentativa_em` tem menos de 1 hora.
 
