@@ -8,6 +8,9 @@ import '../../../app/widgets/estados.dart';
 import '../../../core/formatacao/datas.dart';
 import '../../../core/formatacao/dinheiro.dart';
 import '../../contas/cubit/contas_cubit.dart';
+import '../../open_finance/data/open_finance.dart';
+import '../../open_finance/ui/open_finance_tela.dart';
+import '../../open_finance/ui/textos.dart' as textos_open_finance;
 import '../../planejamento/data/resumo.dart';
 import '../../planejamento/ui/textos.dart';
 import '../../revisao/cubit/revisao_cubit.dart';
@@ -78,6 +81,19 @@ class _Conteudo extends StatelessWidget {
         Espaco.x4,
       ),
       children: [
+        if (estado.openFinance case ListaConexoes(
+          problema: final problema?,
+          :final conexoes,
+        )) ...[
+          _CardOpenFinance(
+            problema,
+            conexao: conexoes
+                .where((c) => c.id == problema.conexaoId)
+                .firstOrNull,
+            hoje: estado.hoje,
+          ),
+          const SizedBox(height: Espaco.x4),
+        ],
         if (previsao == null) ...[
           const _CadastrarSalario(),
           const SizedBox(height: Espaco.x4),
@@ -610,6 +626,86 @@ class _CardReserva extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Card de problema do Open Finance no topo do Início: só aparece quando há
+/// um, e só o mais grave (vencido > erro > sem dados > vencendo).
+class _CardOpenFinance extends StatelessWidget {
+  const _CardOpenFinance(
+    this.problema, {
+    required this.conexao,
+    required this.hoje,
+  });
+
+  final ProblemaDoInicio problema;
+  final Conexao? conexao;
+  final DateTime hoje;
+
+  @override
+  Widget build(BuildContext context) {
+    final cores = context.cores;
+    final textos = context.textos;
+    final risco = switch (problema.problema) {
+      ProblemaOpenFinance.vencido || ProblemaOpenFinance.erro => true,
+      _ => false,
+    };
+    final (fundo, cor) = risco
+        ? (cores.ritmoRiscoContainer, cores.ritmoRisco)
+        : (cores.ritmoAtencaoContainer, cores.ritmoAtencao);
+    final icone = switch (problema.problema) {
+      ProblemaOpenFinance.vencido => Icons.event_busy_rounded,
+      ProblemaOpenFinance.erro => Icons.sync_problem_rounded,
+      ProblemaOpenFinance.semDados => Icons.schedule_rounded,
+      ProblemaOpenFinance.vencendo => Icons.hourglass_bottom_rounded,
+    };
+    final renovar = switch (problema.problema) {
+      ProblemaOpenFinance.vencido || ProblemaOpenFinance.vencendo => true,
+      _ => false,
+    };
+    final texto = textos_open_finance.textoDoProblema(problema, conexao, hoje);
+    return Container(
+      padding: const EdgeInsets.all(Espaco.x4),
+      decoration: BoxDecoration(
+        color: fundo,
+        borderRadius: BorderRadius.circular(Raio.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icone, color: cor),
+              const SizedBox(width: Espaco.x2),
+              Expanded(
+                child: Text(
+                  texto.titulo,
+                  style: textos.titleMedium?.copyWith(color: cor),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Espaco.x2),
+          Text(texto.texto, style: textos.bodyMedium?.copyWith(color: cor)),
+          const SizedBox(height: Espaco.x3),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: cor,
+              side: BorderSide(color: cor),
+            ),
+            onPressed: () {
+              final alvo = conexao;
+              if (renovar && alvo != null) {
+                context.push(rotaRenovarConexao(alvo.id), extra: alvo);
+              } else {
+                context.go(rotaOpenFinance);
+              }
+            },
+            child: Text(renovar ? 'Renovar' : 'Ver Open Finance'),
+          ),
+        ],
       ),
     );
   }

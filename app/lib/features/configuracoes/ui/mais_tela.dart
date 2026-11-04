@@ -7,6 +7,7 @@ import '../../../app/widgets/chip_opcao.dart';
 import '../../../app/widgets/lista.dart';
 import '../../importacao/ui/importar_tela.dart';
 import '../../login/cubit/sessao_cubit.dart';
+import '../../open_finance/ui/open_finance_tela.dart';
 import '../cubit/tema_cubit.dart';
 import 'aparencia_folha.dart';
 
@@ -71,10 +72,12 @@ class MaisTela extends StatelessWidget {
                 direita: seta,
                 aoTocar: () => context.push(rotaImportar),
               ),
-              const _EmBreve(
+              ItemLista(
                 icone: Icons.sync_rounded,
                 titulo: 'Open Finance',
-                subtitulo: 'Conexões do Meu Pluggy',
+                subtitulo: const Text('Conexões do Meu Pluggy'),
+                direita: seta,
+                aoTocar: () => context.go(rotaOpenFinance),
               ),
             ],
           ),

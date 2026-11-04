@@ -1,6 +1,7 @@
 import 'package:financas/app/app.dart';
 import 'package:financas/app/injecao.dart';
 import 'package:financas/core/formatacao/datas.dart';
+import 'package:financas/features/open_finance/data/open_finance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,6 +12,7 @@ import '../apoio/contas_falso.dart';
 import '../apoio/faturas_falso.dart';
 import '../apoio/importacoes_falso.dart';
 import '../apoio/notificador_falso.dart';
+import '../apoio/open_finance_falso.dart';
 import '../apoio/planejamento_falso.dart';
 import '../apoio/preferencia_tema_falsa.dart';
 import '../apoio/revisao_falso.dart';
@@ -24,6 +26,7 @@ Future<Dependencias> _abrir(
   FonteCompartilhamentoFalsa? compartilhamento,
   PreferenciaTemaFalsa? preferenciaTema,
   PlanejamentoRepositorioFalso? planejamento,
+  OpenFinanceRepositorioFalso? openFinance,
   NotificadorFalso? notificador,
 }) async {
   tester.view.physicalSize = const Size(1170, 2532);
@@ -38,6 +41,7 @@ Future<Dependencias> _abrir(
     categorias: CategoriasRepositorioFalso(),
     revisao: RevisaoRepositorioFalso(),
     planejamento: planejamento ?? PlanejamentoRepositorioFalso(),
+    openFinance: openFinance ?? OpenFinanceRepositorioFalso(),
     importacoes: importacoes ?? ImportacoesRepositorioFalso(),
     seletorArquivo: SeletorArquivoFalso(arquivoExemplo()),
     compartilhamento: compartilhamento ?? FonteCompartilhamentoFalsa(),
@@ -210,12 +214,55 @@ void main() {
     await tester.tap(find.text('Mais'));
     await tester.pumpAndSettle();
     expect(find.text('Open Finance'), findsOneWidget);
-    expect(find.text('Em breve'), findsNWidgets(4));
+    expect(find.text('Em breve'), findsNWidgets(3));
 
     await tester.tap(find.text('Contas'));
     await tester.pumpAndSettle();
     expect(find.text('Total disponível'), findsOneWidget);
     expect(find.byType(BackButton), findsOneWidget);
+  });
+
+  testWidgets('Mais → Open Finance lista as conexões', (tester) async {
+    await _abrir(
+      tester,
+      openFinance: OpenFinanceRepositorioFalso(
+        lista: ListaConexoes(conexoes: [conexaoExemplo()]),
+      ),
+    );
+
+    await tester.tap(find.text('Mais'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open Finance'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Banco Exemplo'), findsOneWidget);
+    expect(find.text('Em dia'), findsOneWidget);
+    expect(find.text('Adicionar conexão'), findsOneWidget);
+  });
+
+  testWidgets('problema no Open Finance aparece no topo do Início', (
+    tester,
+  ) async {
+    await _abrir(
+      tester,
+      openFinance: OpenFinanceRepositorioFalso(
+        lista: ListaConexoes(
+          conexoes: [conexaoExemplo(problema: ProblemaOpenFinance.erro)],
+          problema: const ProblemaDoInicio(
+            problema: ProblemaOpenFinance.erro,
+            conexaoId: 'x1',
+            instituicao: 'Banco Exemplo',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Open Finance com erro'), findsOneWidget);
+
+    await tester.tap(find.text('Ver Open Finance'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Com erro'), findsOneWidget);
   });
 
   testWidgets('Transações → Lançar → Transferência abre o formulário', (

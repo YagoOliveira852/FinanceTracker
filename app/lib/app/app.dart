@@ -49,6 +49,7 @@ class _FinancasAppState extends State<FinancasApp> {
   late final InicioCubit _inicio = InicioCubit(
     widget.dependencias.planejamento,
     widget.dependencias.aporteDispensado,
+    openFinance: widget.dependencias.openFinance,
   );
   late final StreamSubscription<void> _toques;
 
@@ -86,6 +87,7 @@ class _FinancasAppState extends State<FinancasApp> {
         RepositoryProvider.value(value: dependencias.categorias),
         RepositoryProvider.value(value: dependencias.revisao),
         RepositoryProvider.value(value: dependencias.planejamento),
+        RepositoryProvider.value(value: dependencias.openFinance),
         RepositoryProvider.value(value: dependencias.importacoes),
         RepositoryProvider.value(value: dependencias.seletorArquivo),
         RepositoryProvider.value(value: dependencias.lembretes),

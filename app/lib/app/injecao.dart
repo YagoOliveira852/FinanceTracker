@@ -13,6 +13,7 @@ import '../features/importacao/data/importacoes_repositorio.dart';
 import '../features/inicio/data/aporte_dispensado.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/login/data/auth_repositorio.dart';
+import '../features/open_finance/data/open_finance_repositorio.dart';
 import '../features/planejamento/data/lembretes_salario.dart';
 import '../features/planejamento/data/planejamento_repositorio.dart';
 import '../features/revisao/data/revisao_repositorio.dart';
@@ -33,6 +34,7 @@ class Dependencias {
     required this.categorias,
     required this.revisao,
     required this.planejamento,
+    required this.openFinance,
     required this.importacoes,
     required this.seletorArquivo,
     required this.compartilhamento,
@@ -66,6 +68,7 @@ class Dependencias {
       categorias: CategoriasRepositorioApi(cliente),
       revisao: RevisaoRepositorioApi(cliente),
       planejamento: PlanejamentoRepositorioApi(cliente),
+      openFinance: OpenFinanceRepositorioApi(cliente),
       importacoes: ImportacoesRepositorioApi(cliente),
       seletorArquivo: SeletorArquivoSistema(),
       compartilhamento: FonteCompartilhamentoSistema(),
@@ -82,6 +85,7 @@ class Dependencias {
   final CategoriasRepositorio categorias;
   final RevisaoRepositorio revisao;
   final PlanejamentoRepositorio planejamento;
+  final OpenFinanceRepositorio openFinance;
   final ImportacoesRepositorio importacoes;
   final SeletorArquivo seletorArquivo;
 

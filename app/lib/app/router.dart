@@ -42,6 +42,12 @@ import '../features/login/cubit/login_cubit.dart';
 import '../features/login/cubit/sessao_cubit.dart';
 import '../features/login/data/auth_repositorio.dart';
 import '../features/login/ui/login_tela.dart';
+import '../features/open_finance/cubit/conexao_cubit.dart';
+import '../features/open_finance/cubit/open_finance_cubit.dart';
+import '../features/open_finance/data/open_finance.dart';
+import '../features/open_finance/data/open_finance_repositorio.dart';
+import '../features/open_finance/ui/conexao_tela.dart';
+import '../features/open_finance/ui/open_finance_tela.dart';
 import '../features/planejamento/cubit/ajustes_calculo_cubit.dart';
 import '../features/planejamento/cubit/editar_renda_cubit.dart';
 import '../features/planejamento/cubit/planejamento_cubit.dart';
@@ -388,6 +394,41 @@ GoRouter criarRouter(SessaoCubit sessao) {
                               leitura,
                             ),
                             child: AjustesCalculoTela(leitura: leitura),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'open-finance',
+                    builder: (context, _) => BlocProvider(
+                      create: (context) => OpenFinanceCubit(
+                        context.read<OpenFinanceRepositorio>(),
+                      )..carregar(),
+                      child: const OpenFinanceTela(),
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'adicionar',
+                        parentNavigatorKey: chaveRaiz,
+                        builder: (context, _) => BlocProvider(
+                          create: (context) => ConexaoCubit(
+                            context.read<OpenFinanceRepositorio>(),
+                          ),
+                          child: const ConexaoTela(),
+                        ),
+                      ),
+                      GoRoute(
+                        path: ':id/renovar',
+                        parentNavigatorKey: chaveRaiz,
+                        builder: (context, state) {
+                          final conexao = state.extra! as Conexao;
+                          return BlocProvider(
+                            create: (context) => ConexaoCubit(
+                              context.read<OpenFinanceRepositorio>(),
+                              conexaoId: conexao.id,
+                            ),
+                            child: ConexaoTela(conexao: conexao),
                           );
                         },
                       ),

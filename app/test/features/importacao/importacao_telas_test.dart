@@ -17,6 +17,7 @@ import '../../apoio/contas_falso.dart';
 import '../../apoio/faturas_falso.dart';
 import '../../apoio/importacoes_falso.dart';
 import '../../apoio/notificador_falso.dart';
+import '../../apoio/open_finance_falso.dart';
 import '../../apoio/planejamento_falso.dart';
 import '../../apoio/preferencia_tema_falsa.dart';
 import '../../apoio/revisao_falso.dart';
@@ -39,6 +40,7 @@ Future<void> _abrirImportar(
     categorias: CategoriasRepositorioFalso(),
     revisao: RevisaoRepositorioFalso(),
     planejamento: PlanejamentoRepositorioFalso(),
+    openFinance: OpenFinanceRepositorioFalso(),
     importacoes: importacoes,
     seletorArquivo: seletor ?? SeletorArquivoFalso(arquivoExemplo()),
     compartilhamento: FonteCompartilhamentoFalsa(),

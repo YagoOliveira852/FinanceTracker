@@ -3,6 +3,7 @@ import 'package:financas/core/api/erro_api.dart';
 import 'package:financas/features/contas/cubit/contas_cubit.dart';
 import 'package:financas/features/inicio/cubit/inicio_cubit.dart';
 import 'package:financas/features/inicio/ui/inicio_tela.dart';
+import 'package:financas/features/open_finance/data/open_finance.dart';
 import 'package:financas/features/planejamento/data/resumo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../apoio/aporte_dispensado_falso.dart';
 import '../../apoio/contas_falso.dart';
+import '../../apoio/open_finance_falso.dart';
 import '../../apoio/planejamento_falso.dart';
 
 /// Os estados do design "Início": no ritmo, atenção, risco, salário chegou e
@@ -28,6 +30,7 @@ void main() {
     Resumo resumo, {
     DateTime? hoje,
     ThemeData? tema,
+    OpenFinanceRepositorioFalso? openFinance,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -47,6 +50,7 @@ void main() {
               create: (_) => InicioCubit(
                 planejamento,
                 dispensado,
+                openFinance: openFinance,
                 hoje: () => hoje ?? DateTime(2026, 10, 20),
               )..carregar(),
             ),
@@ -215,5 +219,53 @@ void main() {
 
     final sobra = tester.widget<Text>(find.text('− R\$ 252,05'));
     expect(sobra.style?.color, CoresFinancas.escuro.ritmoRisco);
+  });
+
+  testWidgets('consentimento vencendo: card no topo com Renovar', (
+    tester,
+  ) async {
+    await abrir(
+      tester,
+      resumoComPrevisao(),
+      openFinance: OpenFinanceRepositorioFalso(
+        lista: ListaConexoes(
+          conexoes: [
+            conexaoExemplo(
+              instituicao: 'Banco Fictício',
+              problema: ProblemaOpenFinance.vencendo,
+              consentimentoExpiraEm: DateTime(2026, 11, 1, 12),
+            ),
+          ],
+          problema: const ProblemaDoInicio(
+            problema: ProblemaOpenFinance.vencendo,
+            conexaoId: 'x1',
+            instituicao: 'Banco Fictício',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Consentimento vence em 12 dias'), findsOneWidget);
+    expect(
+      find.text(
+        'Renove o Banco Fictício no Meu Pluggy até 1 nov para não perder dados.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Renovar'), findsOneWidget);
+    expect(find.text('Sobra prevista até o salário'), findsOneWidget);
+  });
+
+  testWidgets('sem problema no Open Finance, sem card', (tester) async {
+    await abrir(
+      tester,
+      resumoComPrevisao(),
+      openFinance: OpenFinanceRepositorioFalso(
+        lista: ListaConexoes(conexoes: [conexaoExemplo()]),
+      ),
+    );
+
+    expect(find.text('Ver Open Finance'), findsNothing);
+    expect(find.text('Renovar'), findsNothing);
   });
 }
