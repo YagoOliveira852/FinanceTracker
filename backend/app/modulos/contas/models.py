@@ -51,6 +51,14 @@ class Conta(ComTimestamps, Base):
     saldo_inicial: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     data_saldo_inicial: Mapped[date] = mapped_column(Date)
     ativa: Mapped[bool] = mapped_column(default=True, server_default=true())
+    # Vínculo com a Pluggy: a conta de lá que alimenta esta, e de qual conexão.
+    # Desativar a conexão não desativa a conta.
+    pluggy_account_id: Mapped[str | None] = mapped_column(Text, unique=True)
+    conexao_pluggy_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("conexao_pluggy.id"), index=True
+    )
+    # 4 últimos dígitos do `number` da Pluggy: sugerem o vínculo na renovação.
+    pluggy_numero_final: Mapped[str | None] = mapped_column(Text)
 
     # lazy="joined": a lista de contas traz a instituição no mesmo SELECT (sem N+1).
     instituicao: Mapped[Instituicao | None] = relationship(lazy="joined")
