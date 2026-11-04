@@ -130,9 +130,9 @@ Tomadas ao implementar o card "S6 · Tela inicial" sobre a página "Início" do 
 - **Sem salário cadastrado** (sem renda ativa ou sem configuração): "Cadastre seu salário", que abre Mais → Planejamento, e o saldo disponível **oficial** (só confirmadas, o mesmo da aba Contas): sem cálculo, não há por que contar os rascunhos nem mostrar o aviso deles.
 - **Recarga:** o Início carrega o resumo ao abrir, ao puxar para atualizar e a cada volta para a aba; o cubit fica no topo do app, como o das contas, e recarrega também no login.
 
-### Plano de aporte recorrente (proposta, 2026-10-31)
+### Plano de aporte recorrente (2026-10-31)
 
-Pedido do Yago no design de Investimentos: planejar um aporte fixo e periódico (ex.: R$ 20,00 toda semana), ver se ele cabe no que está guardado e no ritmo de gastos, e ser avisado quando o ritmo ameaçar o plano. Entra na S8, com os investimentos, porque o aporte do plano vai para um investimento. Em discussão até o design ser aprovado.
+Pedido do Yago no design de Investimentos: planejar um aporte fixo e periódico (ex.: R$ 20,00 toda semana), ver se ele cabe no que está guardado e no ritmo de gastos, e ser avisado quando o ritmo ameaçar o plano. Entra na S8, com os investimentos, porque o aporte do plano vai para um investimento. Design aprovado em 2026-11-04 (página Investimentos do canvas).
 
 - **Onde:** "Planejar aporte" na tela Investimentos. O plano tem valor (> 0), frequência (`semanal`, `quinzenal` ou `mensal`), o dia (da semana, ou do mês de 1 a 31, com a regra do mês curto da renda), a conta de onde sai (corrente ou carteira ativa), o investimento de destino e se está ativo. Como a renda, é desativado, nunca excluído. Tabela nova `plano_aporte`.
 - **Com o aporte do dia do salário:** ao salvar o primeiro plano, o app pergunta se mantém os dois ou só o plano (`configuracao.aporte_no_salario`, padrão verdadeiro; editável depois em "Aporte e reserva"). Só o plano: o Início deixa de sugerir o aporte do salário e passa a mostrar o plano.
