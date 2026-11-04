@@ -1,0 +1,14 @@
+# Sync diário da Pluggy (deploy/sync.sh), disparado pelo financas-sync.timer.
+# Instalação e comandos em docs/runbooks/sync-pluggy.md.
+[Unit]
+Description=Sync diário da Pluggy (Open Finance)
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# O usuário do deploy, que está no grupo docker; nada roda como root.
+User=deploy
+ExecStart=/usr/bin/bash /opt/financas/sync.sh
+TimeoutStartSec=30min

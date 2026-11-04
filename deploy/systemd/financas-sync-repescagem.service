@@ -1,0 +1,14 @@
+# Nova tentativa do sync (deploy/sync.sh --repescagem), só para as conexões que
+# falharam; disparada pelo financas-sync-repescagem.timer.
+# Instalação e comandos em docs/runbooks/sync-pluggy.md.
+[Unit]
+Description=Nova tentativa do sync da Pluggy
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/usr/bin/bash /opt/financas/sync.sh --repescagem
+TimeoutStartSec=30min

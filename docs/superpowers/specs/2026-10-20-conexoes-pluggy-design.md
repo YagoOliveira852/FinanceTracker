@@ -24,11 +24,12 @@ Depois de validar o item, o backend lê `GET /accounts?itemId=` e o app mostra c
 
 `conta` ganha `conexao_pluggy_id` (FK nula: de qual conexão a conta recebe dados) e `pluggy_numero_final` (text, nulo): os 4 últimos dígitos do `number` da Pluggy, gravados no vínculo. Servem para sugerir o casamento na renovação, quando o item antigo já não responde. O número completo não é guardado; a decisão final é sempre do usuário na tela.
 
-### Desativar, sem excluir
+### Desativar e reativar, sem excluir
 
 - Uma conexão pode ser **desativada**: o sync para de lê-la e o histórico fica. Não há exclusão pelo app (irreversível e quase nunca necessária).
 - As contas vinculadas **continuam ativas**, só sem sync; a conta mostra "sem Open Finance" e segue aceitando OFX/CSV e lançamento manual. Desativar a conta é decisão separada (`conta.ativa`).
 - `conexao_pluggy` ganha `ativa` (bool, padrão verdadeiro).
+- A conexão desativada pode ser **reativada** pelo app (decidido em 2026-10-31, no design da tela Open Finance). Reativar revalida o item com `GET /items/{id}` e volta `ativa` para verdadeiro; as contas vinculadas voltam a receber dados no próximo sync (ou no "Buscar agora"), e a janela de 40 dias cobre o que faltou se a pausa foi curta. Se o item não responde mais (por exemplo, a renovação gerou um id novo) ou o consentimento venceu durante a pausa, o app leva ao fluxo de renovação, que associa o item novo à mesma conexão.
 
 ### "Buscar agora"
 
@@ -62,6 +63,6 @@ Com mais de um problema, o card mostra só o mais grave, nessa ordem (vencido > 
 ## Consequências
 
 - O `itemId` sozinho não dá acesso a nada sem o client id/secret, que ficam só no backend; digitá-lo no celular não expõe segredo.
-- Novos endpoints protegidos por `UsuarioDep`: listar, cadastrar/renovar e desativar conexões; vincular contas; "buscar agora". Entram no card da S7.
+- Novos endpoints protegidos por `UsuarioDep`: listar, cadastrar/renovar, desativar e reativar conexões; vincular contas; "buscar agora". Entram no card da S7.
 - `conexao_pluggy.ultimo_sync_em` passa a significar "último sync bem-sucedido"; a tabela ganha `ultima_tentativa_em` (timestamptz, nulo), a última execução com ou sem sucesso, que o limite do "Buscar agora" e o gatilho "sync com erro" usam.
 - O app da S2 já mostra a entrada Open Finance em Mais como "em breve".

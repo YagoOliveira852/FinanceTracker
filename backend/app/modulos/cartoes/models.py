@@ -72,6 +72,8 @@ class Fatura(ComTimestamps, Base):
     data_vencimento: Mapped[date] = mapped_column(Date)
     # O total que o banco mostra; nulo enquanto não informado.
     valor_informado: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    # A fatura em `/bills` da Pluggy; as transações chegam com o `billId` dela.
+    pluggy_bill_id: Mapped[str | None] = mapped_column(Text, unique=True)
 
 
 class Feriado(ComTimestamps, Base):

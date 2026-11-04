@@ -11,8 +11,8 @@ ARQUIVO_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
-    # Variável de ambiente tem prioridade sobre o .env. Chaves que ainda não
-    # usamos (ex.: PLUGGY_*) são ignoradas em vez de derrubar a aplicação.
+    # Variável de ambiente tem prioridade sobre o .env. Chaves desconhecidas
+    # são ignoradas em vez de derrubar a aplicação.
     model_config = SettingsConfigDict(
         env_file=ARQUIVO_ENV, env_file_encoding="utf-8", extra="ignore"
     )
@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # Fuso das datas de negócio: "hoje" é calculado nele, não no do servidor
     # (a VPS roda em UTC, 3 h à frente de Fortaleza).
     tz_negocio: str = "America/Fortaleza"
+    # Credenciais da Pluggy, só no backend. Opcionais: sem elas a API sobe e
+    # o sync recusa rodar.
+    pluggy_client_id: str | None = None
+    pluggy_client_secret: SecretStr | None = None
+    pluggy_url: str = "https://api.pluggy.ai"
 
     @field_validator("tz_negocio")
     @classmethod
