@@ -195,6 +195,7 @@ A conta do cartão entra com `saldo_inicial = 0` a partir do dia do cadastro: o 
 | data_fechamento | date | calculada pela regra do cartão, ajustada para dia útil, editável |
 | data_vencimento | date | idem; depois do fechamento (`CHECK`) |
 | valor_informado | numeric(14,2) null | valor que o banco mostra (Pluggy, OFX ou manual); `>= 0` |
+| pluggy_bill_id | text null unique | fatura em `/bills` da Pluggy; as transações chegam com o `billId` dela |
 | unique | (cartao_id, competencia) | |
 
 **Regra das datas** (funções puras em `cartoes/datas.py`): se o dia de fechamento é maior que o de vencimento, o fechamento cai no mês anterior ao da competência; dia inexistente no mês vira o último; fechamento e vencimento em fim de semana ou feriado passam para o próximo dia útil; uma compra entra na primeira fatura cujo fechamento (gravado, se a fatura foi editada, ou calculado) é depois da data da compra.
@@ -457,7 +458,7 @@ FinanceTracker/
 │   │   │   │   └── calculo.py    # funções puras: aporte, meses de reserva, alerta
 │   │   │   ├── investimentos/
 │   │   │   ├── indices/          # cliente SGS/BCB
-│   │   │   ├── pluggy/           # client.py (só leitura), sync.py, mapeamento.py
+│   │   │   ├── pluggy/           # client.py (só leitura), tipos.py, normalizacao.py (puro), sync.py
 │   │   │   └── relatorios/       # exportação anual / 31-12
 │   │   └── jobs/                 # scripts chamados pelo cron
 │   │       ├── sync_pluggy.py
