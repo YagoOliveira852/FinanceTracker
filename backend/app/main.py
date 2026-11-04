@@ -18,6 +18,7 @@ from app.modulos.categorias.router import router as categorias_router
 from app.modulos.contas.router import router as contas_router
 from app.modulos.importacao.router import router as importacao_router
 from app.modulos.planejamento.router import router as planejamento_router
+from app.modulos.pluggy.router import router as pluggy_router
 from app.modulos.revisao.router import router as revisao_router
 from app.modulos.transacoes.router import router as transacoes_router
 
@@ -51,6 +52,7 @@ app.include_router(regras_router)
 app.include_router(revisao_router)
 app.include_router(importacao_router)
 app.include_router(planejamento_router)
+app.include_router(pluggy_router)
 
 
 class Saude(BaseModel):

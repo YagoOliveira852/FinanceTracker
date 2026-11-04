@@ -1,6 +1,6 @@
 """Dependências compartilhadas pelas rotas (`Depends`)."""
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
@@ -52,3 +52,12 @@ def get_hoje(config: ConfigDep) -> date:
 
 
 HojeDep = Annotated[date, Depends(get_hoje)]
+
+
+def get_agora() -> datetime:
+    """O instante atual (UTC), para auditoria e prazos do sync. Os testes fixam
+    sobrescrevendo esta dependência."""
+    return datetime.now(UTC)
+
+
+AgoraDep = Annotated[datetime, Depends(get_agora)]

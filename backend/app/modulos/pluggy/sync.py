@@ -162,9 +162,21 @@ def _sincronizar(
         )
         .order_by(Conta.nome, Conta.id)
     )
+    # Primeiro sync bem-sucedido depois da renovação: o item novo pode trazer
+    # as mesmas transações com outros ids.
+    renovada = conexao.renovada_em is not None and (
+        conexao.ultimo_sync_em is None or conexao.ultimo_sync_em < conexao.renovada_em
+    )
     for conta in contas:
         _sincronizar_conta(
-            sessao, fonte, conta, inicio=inicio, agora=agora, fuso=fuso, contagem=contagem
+            sessao,
+            fonte,
+            conta,
+            inicio=inicio,
+            agora=agora,
+            fuso=fuso,
+            contagem=contagem,
+            renovada=renovada,
         )
     conexao.ultimo_sync_em = agora
     conexao.ultimo_erro = None
@@ -181,6 +193,7 @@ def _sincronizar_conta(
     agora: datetime,
     fuso: ZoneInfo,
     contagem: _Contagem,
+    renovada: bool = False,
 ) -> None:
     assert conta.pluggy_account_id is not None
     cartao = None
@@ -209,6 +222,8 @@ def _sincronizar_conta(
         )
     }
 
+    orfas = _orfas_da_renovacao(sessao, conta, inicio, set(ids)) if renovada else []
+
     novas: list[Transacao] = []
     for transacao, tipo in linhas:
         dia = data_local(transacao.momento, fuso)
@@ -217,7 +232,7 @@ def _sincronizar_conta(
             fatura = faturas_por_bill.get(transacao.bill_id or "") or _fatura_pela_regra(
                 sessao, cartao, dia
             )
-        existente = gravadas.get(transacao.id)
+        existente = gravadas.get(transacao.id) or _casar_orfa(orfas, transacao, dia)
         if existente is not None:
             if _atualizar(existente, transacao, dia, fatura):
                 contagem.atualizadas += 1
@@ -244,6 +259,38 @@ def _sincronizar_conta(
     _marcar_duplicatas(sessao, conta.id, novas)
     contagem.novas += len(novas)
     _reconciliar(sessao, conta, inicio, set(ids), agora, contagem)
+
+
+def _orfas_da_renovacao(
+    sessao: Session, conta: Conta, inicio: date, recebidas: set[str]
+) -> list[Transacao]:
+    """As transações da Pluggy na janela que o item novo não trouxe pelo id:
+    candidatas a serem as mesmas, com outro id (spec das conexões, renovação)."""
+    return list(
+        sessao.scalars(
+            select(Transacao)
+            .where(
+                Transacao.conta_id == conta.id,
+                Transacao.fonte == FonteTransacao.pluggy,
+                Transacao.data >= inicio,
+                Transacao.id_externo.not_in(recebidas),
+            )
+            .order_by(Transacao.data, Transacao.criado_em, Transacao.id)
+        )
+    )
+
+
+def _casar_orfa(orfas: list[Transacao], transacao: TransacaoPluggy, dia: date) -> Transacao | None:
+    """A primeira órfã com a mesma data local, valor e descrição original: só
+    troca o id externo (e sai da lista, para casar uma vez só)."""
+    valor = valor_da_transacao(transacao)
+    original = descricao_original(transacao)
+    for orfa in orfas:
+        if (orfa.data, orfa.valor, orfa.descricao_original) == (dia, valor, original):
+            orfas.remove(orfa)
+            orfa.id_externo = transacao.id
+            return orfa
+    return None
 
 
 def _gravar_faturas(

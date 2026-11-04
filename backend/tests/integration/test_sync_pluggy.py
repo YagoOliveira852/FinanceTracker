@@ -2,7 +2,7 @@
 a Pluggy. Hoje = 2026-10-20; a janela de 40 dias começa em 2026-09-10. Dados
 fictícios."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -319,3 +319,38 @@ def test_conexao_desativada_e_conta_desativada_ficam_de_fora(sessao, pluggy, con
     assert [r.conexao_id for r in resultados] == [conexao.id]
     assert inativa.ultima_tentativa_em is None
     assert pluggy.pedidos == []
+
+
+def test_depois_da_renovacao_o_id_novo_casa_com_a_transacao_gravada(sessao, pluggy, conexao, conta):
+    pluggy.transacoes["conta-1"] = [_tx("tx-1"), _tx("tx-2", valor=Decimal("-42.00"))]
+    _rodar(sessao, pluggy)
+    confirmada = sessao.scalar(select(Transacao).where(Transacao.id_externo == "tx-1"))
+    confirmada.status = "confirmada"
+    # Renovada depois do último sync.
+    conexao.renovada_em = AGORA + timedelta(minutes=30)
+    sessao.commit()
+
+    # O item novo traz as mesmas transações com outros ids, e uma nova.
+    pluggy.transacoes["conta-1"] = [
+        _tx("novo-1"),
+        _tx("novo-2", valor=Decimal("-42.00")),
+        _tx("novo-3", valor=Decimal("-7.00")),
+    ]
+    depois = datetime(2026, 10, 20, 11, tzinfo=UTC)
+    (resultado,) = sincronizar_todas(sessao, pluggy, agora=depois, hoje=HOJE, fuso=FORTALEZA)
+
+    assert (resultado.novas, resultado.removidas, resultado.marcadas_removidas) == (1, 0, 0)
+    ids = [t.id_externo for t in _transacoes(sessao, conta)]
+    assert ids == ["novo-1", "novo-2", "novo-3"]
+    sessao.refresh(confirmada)
+    assert (confirmada.id_externo, confirmada.status) == ("novo-1", "confirmada")
+
+
+def test_fora_da_renovacao_id_novo_e_transacao_nova(sessao, pluggy, conexao, conta):
+    pluggy.transacoes["conta-1"] = [_tx("tx-1")]
+    _rodar(sessao, pluggy)
+
+    pluggy.transacoes["conta-1"] = [_tx("recriada")]
+    (resultado,) = _rodar(sessao, pluggy)
+
+    assert (resultado.novas, resultado.removidas) == (1, 1)
