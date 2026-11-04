@@ -87,13 +87,17 @@ jobs:
           test -s ~/.ssh/known_hosts || { echo "A VPS não anunciou chave de host na tailnet." >&2; exit 1; }
           printf 'Host %s\n  User deploy\n  BatchMode yes\n  StrictHostKeyChecking yes\n' "$VPS_HOST" > ~/.ssh/config
 
-      # Os units do backup só são copiados; instalá-los é um passo à mão (ver
-      # docs/runbooks/backup-restauracao.md), e o deploy não usa sudo.
+      # Os units do backup e do sync só são copiados; instalá-los é um passo à
+      # mão (docs/runbooks/backup-restauracao.md e sync-pluggy.md), e o deploy
+      # não usa sudo.
       - name: Copiar compose e scripts
         run: |
           scp deploy/compose.prod.yml deploy/implantar.sh \
-            deploy/backup.sh deploy/testar-restauracao.sh \
+            deploy/backup.sh deploy/testar-restauracao.sh deploy/sync.sh \
             deploy/systemd/financas-backup.service deploy/systemd/financas-backup.timer \
+            deploy/systemd/financas-sync.service deploy/systemd/financas-sync.timer \
+            deploy/systemd/financas-sync-repescagem.service \
+            deploy/systemd/financas-sync-repescagem.timer \
             "$VPS_HOST:/opt/financas/"
 
       - name: Implantar

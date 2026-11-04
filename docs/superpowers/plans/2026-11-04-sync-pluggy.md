@@ -38,7 +38,7 @@ Card "S7 · Cliente Pluggy (só leitura) + sync diário". Specs: `2026-10-19-plu
 3. `normalizacao.py` test-first (tabela de casos: transação noturna em UTC, cartão × conta, cofrinho, pagamento da fatura no cartão).
 4. `client.py` com testes respx (auth e renovação, cursor, páginas, erros).
 5. `sync.py` com testes de integração (cliente falso): nova, duplicata, atualização do rascunho, confirmada intocada, reconciliação, fatura e parcela, erro numa conexão sem afetar as outras.
-6. `jobs/sync_pluggy.py` e os units do systemd em `deploy/systemd/`, com o runbook.
+6. `jobs/sync_pluggy.py`, `deploy/sync.sh` e os units do systemd em `deploy/systemd/`, com o runbook `docs/runbooks/sync-pluggy.md`.
 
 **PR 2, estado e telas** (junto com o card "Vínculo de contas"): endpoints de conexões (listar com o estado, cadastrar, vincular, desativar, reativar, renovar, "Buscar agora"), o card de problema no `GET /planejamento/resumo`, a tela Open Finance e o card no Início.
 

@@ -1,0 +1,14 @@
+# Agenda o financas-sync.service. Instalação em docs/runbooks/sync-pluggy.md.
+[Unit]
+Description=Sync diário da Pluggy às 07:00
+
+[Timer]
+# No fuso do negócio; o servidor roda em UTC. A Pluggy atualiza o item proxy
+# uma vez por dia, de madrugada.
+OnCalendar=*-*-* 07:00:00 America/Fortaleza
+# Se o servidor estava desligado no horário, roda assim que ligar.
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

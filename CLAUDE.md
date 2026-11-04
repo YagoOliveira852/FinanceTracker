@@ -127,7 +127,7 @@ ssh deploy@<maquina>.<tailnet>.ts.net                   # nome real em CLAUDE.lo
 curl https://<maquina>.<tailnet>.ts.net/saude           # {"status":"ok"}, do PC ou do celular na tailnet
 ```
 
-**No servidor**, em `/opt/financas`: `compose.prod.yml`, `implantar.sh`, `backup.sh`, `testar-restauracao.sh` e os units `financas-backup.{service,timer}` (copiados pelo deploy), `.env` (segredos, permissão 600), `restic.env` (segredos do backup, permissão 600, lido só pelo container `restic`) e `versao.env` (`TAG=sha-<7>` da versão no ar, gravado pelo `implantar.sh`). Todo comando do compose leva os dois arquivos de ambiente; sem o `versao.env`, um `up -d` trocaria a imagem pela `latest`:
+**No servidor**, em `/opt/financas`: `compose.prod.yml`, `implantar.sh`, `backup.sh`, `testar-restauracao.sh`, `sync.sh` e os units `financas-backup.{service,timer}`, `financas-sync.{service,timer}` e `financas-sync-repescagem.{service,timer}` (copiados pelo deploy), `.env` (segredos, permissão 600), `restic.env` (segredos do backup, permissão 600, lido só pelo container `restic`) e `versao.env` (`TAG=sha-<7>` da versão no ar, gravado pelo `implantar.sh`). Todo comando do compose leva os dois arquivos de ambiente; sem o `versao.env`, um `up -d` trocaria a imagem pela `latest`:
 
 ```bash
 cd /opt/financas
@@ -137,6 +137,14 @@ dc logs -f api
 dc exec db psql -U financas -d financas                 # console do banco
 bash implantar.sh sha-1a2b3c4                           # o mesmo que o deploy faz (pull, migrations, up --wait)
 dc down                                                 # para (NUNCA use -v: apaga os dados)
+```
+
+**Sync da Pluggy** (07:00 pelo `financas-sync.timer`; às 13:00, `financas-sync-repescagem.timer` relê só as conexões que falharam; credenciais `PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET` no `.env`). Instalação dos units e conexão com erro em [`docs/runbooks/sync-pluggy.md`](docs/runbooks/sync-pluggy.md):
+
+```bash
+systemctl list-timers 'financas-sync*'                  # última e próxima execução
+sudo journalctl -u financas-sync --since yesterday      # resumo por conexão
+sudo systemctl start financas-sync                      # roda agora (não em laço: a Pluggy atualiza 1×/dia)
 ```
 
 **Backup** (restic → Backblaze B2, todo dia às 03:30 pelo `financas-backup.timer`; retenção de 30 dias; alerta pelo healthchecks.io). Preparação, restauração e o caso da VPS perdida em [`docs/runbooks/backup-restauracao.md`](docs/runbooks/backup-restauracao.md):
@@ -193,7 +201,8 @@ Organizado **por módulo de domínio**, não por camada: `backend/app/modulos/<m
 - `app/modulos/` — `auth`, `contas`, `cartoes`, `transacoes`, `categorias`, `revisao` (lista e decisões; `pareamento.py` puro), `importacao` (com `parsers/`), `planejamento`, `investimentos`, `indices`, `pluggy`, `relatorios`.
 - `app/modulos/planejamento/` — rendas previstas (só desativadas, nunca excluídas; a lista traz a próxima data ajustada e os feriados que a moveram) e a configuração (linha única `id = 1`, criada no primeiro salvamento; o `GET` devolve `configuracao: null` antes disso). A leitura da configuração chama `calculo.calcular` para o gasto mensal automático, a média semanal real e os meses de reserva; `movimentos_recentes` e `inicio_do_historico` do service montam a entrada do cálculo. `GET /planejamento/resumo` (o Início) monta a entrada inteira: saldos com rascunhos (`contas.saldos_com_rascunhos`), faturas gravadas dos cartões ativos, rendas ativas, configuração e feriados; devolve a previsão (nula sem renda ativa ou sem configuração), os rascunhos considerados, o gasto mensal e a meta.
 - `app/modulos/planejamento/calculo.py` — **funções puras** (sem banco, sem I/O, a data de referência é parâmetro): aporte do dia de salário, meses de reserva, alerta de ritmo. Recebe dataclasses próprias (`EntradaPlanejamento`: saldos já com rascunhos, faturas, transações recentes, rendas, configuração) e devolve o `Planejamento`; filtra rascunhos e duplicatas, define gasto (despesa − estorno) e detecta o salário (receita de 80% a 120% do previsto, de 3 dias antes a 5 depois). É a regra mais importante do app; cobertura de linhas e ramos em 100%.
-- `app/jobs/` — scripts do cron; reutilizam os services, não duplicam lógica.
+- `app/modulos/pluggy/` — `client.py` (só GET além do `/auth`; chave de 2 h renovada antes de vencer ou num 401; percorre cursor e páginas; devolve as dataclasses de `tipos.py`; erros viram `ErroPluggy` com mensagem em pt-BR), `normalizacao.py` (puro: data local, valor, tipo) e `sync.py` (por conexão ativa, numa transação do banco: janela de 40 dias por conta vinculada, rascunhos novos com possível duplicata, rascunho acompanha a Pluggy, confirmada não muda, reconciliação, faturas do `/bills` que vencem na janela, parcelas pela data real da compra; sem linha em `importacao`). Plano `2026-11-04-sync-pluggy.md`.
+- `app/jobs/` — scripts do cron; reutilizam os services, não duplicam lógica. `sync_pluggy.py [--repescagem]` sai com 1 se alguma conexão falhou.
 
 ### App — `features/` espelha `modulos/`
 
@@ -254,7 +263,7 @@ DATABASE_URL=postgresql+psycopg://financas:<senha>@127.0.0.1:5432/financas
 JWT_SECRET=...                     # 32+ caracteres
 ACCESS_TOKEN_MINUTOS=15
 REFRESH_TOKEN_DIAS=30
-PLUGGY_CLIENT_ID=...
+PLUGGY_CLIENT_ID=...               # opcionais: sem elas a API sobe e o sync recusa rodar
 PLUGGY_CLIENT_SECRET=...
 TZ_NEGOCIO=America/Fortaleza
 ```
@@ -298,7 +307,7 @@ As telas são desenhadas no **Claude Design** antes de implementadas, sempre com
 | `docs/superpowers/specs/` | Decisões e motivos, escritas antes de implementar |
 | `docs/superpowers/plans/` | Planos passo a passo derivados de uma spec |
 | `docs/explicacoes/` | **Local, fora do git:** notas de aprendizado (FastAPI, Flutter, conceitos do domínio) |
-| `docs/runbooks/` | Procedimentos de produção passo a passo: backup e restauração |
+| `docs/runbooks/` | Procedimentos de produção passo a passo: backup e restauração, sync da Pluggy |
 | `docs/agents/` | Configuração dos skills de engenharia: issue tracker, labels de triagem, docs de domínio |
 | `README.md` | Vitrine do portfólio: prints do modo demo, arquitetura, como rodar |
 

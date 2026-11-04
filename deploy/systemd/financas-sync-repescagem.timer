@@ -1,0 +1,12 @@
+# Agenda o financas-sync-repescagem.service. Instalação em docs/runbooks/sync-pluggy.md.
+[Unit]
+Description=Nova tentativa do sync da Pluggy às 13:00
+
+[Timer]
+OnCalendar=*-*-* 13:00:00 America/Fortaleza
+# Sem Persistent: se a VPS estava desligada às 13:00, o sync das 07:00 do dia
+# seguinte resolve.
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target
