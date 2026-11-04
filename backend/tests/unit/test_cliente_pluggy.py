@@ -157,6 +157,11 @@ def test_contas_com_tipo_numero_e_saldo(pluggy, cliente):
                     "name": "Cartão Exemplo",
                     "number": "5678",
                     "balance": 1032.15,
+                    "creditData": {
+                        "balanceCloseDate": "2026-11-03",
+                        "balanceDueDate": "2026-11-10T00:00:00.000Z",
+                        "creditLimit": 5000,
+                    },
                 },
             ],
         },
@@ -166,6 +171,8 @@ def test_contas_com_tipo_numero_e_saldo(pluggy, cliente):
 
     assert (conta.cartao, conta.numero_final, conta.saldo) == (False, "3456", Decimal("3180.1"))
     assert (cartao.cartao, cartao.numero_final) == (True, "5678")
+    assert (cartao.dia_fechamento, cartao.dia_vencimento, cartao.limite) == (3, 10, Decimal("5000"))
+    assert (conta.dia_fechamento, conta.limite) == (None, None)
 
 
 def test_transacoes_percorrem_o_cursor(pluggy, cliente):

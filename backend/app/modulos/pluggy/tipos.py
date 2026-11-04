@@ -29,6 +29,10 @@ class ContaPluggy:
     nome: str
     numero: str | None
     saldo: Decimal | None
+    # Cartão (`creditData`): dias de fechamento e vencimento da fatura atual e limite.
+    dia_fechamento: int | None = None
+    dia_vencimento: int | None = None
+    limite: Decimal | None = None
 
     @property
     def cartao(self) -> bool:

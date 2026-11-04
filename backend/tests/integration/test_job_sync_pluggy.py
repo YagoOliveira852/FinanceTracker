@@ -8,7 +8,9 @@ import pytest
 from app.core.config import Settings
 from app.jobs import sync_pluggy
 from app.modulos.pluggy.client import ErroPluggy
-from tests.integration.test_sync_pluggy import PluggyFalsa, _conexao, _tx
+from tests.integration.test_sync_pluggy import _conexao
+from tests.pluggy_falsa import PluggyFalsa
+from tests.pluggy_falsa import tx as _tx
 from tests.utils import criar_conta
 
 

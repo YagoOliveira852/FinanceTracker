@@ -36,5 +36,8 @@ class ConexaoPluggy(ComTimestamps, Base):
     ultima_tentativa_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Em português, para a tela; nulo depois de um sync bem-sucedido.
     ultimo_erro: Mapped[str | None] = mapped_column(Text)
+    # Renovação com item novo: até o próximo sync bem-sucedido, transação nova
+    # que casa com uma da conta (data, valor, descrição) só troca o id externo.
+    renovada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     instituicao: Mapped[Instituicao] = relationship(lazy="joined")

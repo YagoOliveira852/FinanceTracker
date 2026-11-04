@@ -71,17 +71,7 @@ class ClientePluggy:
         )
 
     def listar_contas(self, item_id: str) -> list[ContaPluggy]:
-        return [
-            ContaPluggy(
-                id=conta["id"],
-                tipo=conta.get("type") or "",
-                subtipo=conta.get("subtype") or "",
-                nome=conta.get("name") or conta.get("marketingName") or "Conta",
-                numero=conta.get("number"),
-                saldo=_decimal(conta.get("balance")),
-            )
-            for conta in self._paginas("/accounts", {"itemId": item_id})
-        ]
+        return [_conta(conta) for conta in self._paginas("/accounts", {"itemId": item_id})]
 
     def listar_transacoes(self, account_id: str, *, desde: date) -> list[TransacaoPluggy]:
         """As transações da conta com data a partir de `desde`, incluindo as
@@ -162,6 +152,23 @@ def _verificar(resposta: httpx.Response) -> None:
         raise ErroPluggy("A Pluggy recusou por limite de requisições. Tente mais tarde.")
     if resposta.status_code >= 400:
         raise ErroPluggy(f"A Pluggy respondeu com erro ({resposta.status_code}).")
+
+
+def _conta(dados: dict[str, Any]) -> ContaPluggy:
+    credito = dados.get("creditData") or {}
+    fechamento = _dia(credito.get("balanceCloseDate"))
+    vencimento = _dia(credito.get("balanceDueDate"))
+    return ContaPluggy(
+        id=dados["id"],
+        tipo=dados.get("type") or "",
+        subtipo=dados.get("subtype") or "",
+        nome=dados.get("name") or dados.get("marketingName") or "Conta",
+        numero=dados.get("number"),
+        saldo=_decimal(dados.get("balance")),
+        dia_fechamento=None if fechamento is None else fechamento.day,
+        dia_vencimento=None if vencimento is None else vencimento.day,
+        limite=_decimal(credito.get("creditLimit")),
+    )
 
 
 def _transacao(dados: dict[str, Any]) -> TransacaoPluggy:

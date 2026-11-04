@@ -15,54 +15,13 @@ from app.modulos.contas.models import Instituicao
 from app.modulos.pluggy.client import ErroPluggy
 from app.modulos.pluggy.models import ConexaoPluggy
 from app.modulos.pluggy.sync import ERRO_INESPERADO, sincronizar_todas
-from app.modulos.pluggy.tipos import FaturaPluggy, ItemPluggy, TransacaoPluggy
+from app.modulos.pluggy.tipos import FaturaPluggy
 from app.modulos.transacoes.models import CompraParcelada, Transacao
+from tests.pluggy_falsa import AGORA, CONSENTIMENTO, PluggyFalsa
+from tests.pluggy_falsa import tx as _tx
 from tests.utils import HOJE, criar_conta, criar_transacao
 
 FORTALEZA = ZoneInfo("America/Fortaleza")
-AGORA = datetime(2026, 10, 20, 10, 0, tzinfo=UTC)
-CONSENTIMENTO = datetime(2027, 8, 15, 12, tzinfo=UTC)
-
-
-class PluggyFalsa:
-    def __init__(self):
-        self.transacoes: dict[str, list[TransacaoPluggy]] = {}
-        self.faturas: dict[str, list[FaturaPluggy]] = {}
-        self.erros: dict[str, Exception] = {}
-        self.pedidos: list[tuple[str, date]] = []
-
-    def obter_item(self, item_id: str) -> ItemPluggy:
-        if item_id in self.erros:
-            raise self.erros[item_id]
-        return ItemPluggy(
-            id=item_id,
-            instituicao="Banco Exemplo",
-            status="UPDATED",
-            consentimento_expira_em=CONSENTIMENTO,
-            atualizado_em=AGORA,
-        )
-
-    def listar_transacoes(self, account_id: str, *, desde: date) -> list[TransacaoPluggy]:
-        self.pedidos.append((account_id, desde))
-        return list(self.transacoes.get(account_id, []))
-
-    def listar_faturas(self, account_id: str) -> list[FaturaPluggy]:
-        return list(self.faturas.get(account_id, []))
-
-
-def _tx(id_: str, **mudancas) -> TransacaoPluggy:
-    dados = {
-        "id": id_,
-        "descricao": "Padaria Exemplo",
-        "descricao_bruta": "PADARIA EXEMPLO",
-        "valor": Decimal("-18.50"),
-        "momento": datetime(2026, 10, 19, 15, tzinfo=UTC),
-        "sentido": "DEBIT",
-        "status": "POSTED",
-        "tipo_operacao": "PIX",
-        "categoria": None,
-    }
-    return TransacaoPluggy(**(dados | mudancas))
 
 
 @pytest.fixture
