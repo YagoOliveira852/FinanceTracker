@@ -50,6 +50,19 @@ Depois de validar o item, o backend lê `GET /accounts?itemId=` e o app mostra c
 
 Com mais de um problema, o card mostra só o mais grave, nessa ordem (vencido > erro > sem dados novos > vencendo); a tela Open Finance mostra todos.
 
+### Decisões do código (2026-11-04)
+
+Tomadas ao implementar o card "S7 · Vínculo de contas e aviso de consentimento", sobre o design aprovado (página Open Finance do canvas) e o sync do PR anterior. API conferida no MCP `pluggy-docs`.
+
+- **Rotas** em `/pluggy`, tag `pluggy`: `GET /conexoes` (lista com o estado e o problema mais grave), `POST /conexoes/previa` (valida o `itemId` e lista as contas da Pluggy com a sugestão de vínculo, sem gravar), `POST /conexoes` (cria a conexão com os vínculos), `POST /conexoes/{id}/renovacao` (item novo na mesma conexão, com os vínculos), `PUT /conexoes/{id}` (`ativa`: desativar ou reativar) e `POST /conexoes/{id}/sync` ("Buscar agora").
+- **Prévia:** `GET /items/{id}` e `GET /accounts?itemId=`. Item que não existe é 422 no campo `item_id`; item já cadastrado em outra conexão também. Cada conta vem com os 4 últimos dígitos e a sugestão: a conta do app ativa, do mesmo tipo, com o mesmo `pluggy_numero_final`, ou, na primeira conexão, com o mesmo final no nome (ainda não há número gravado). Conta da Pluggy já vinculada a outra conexão não aparece de novo.
+- **Tipos:** `BANK` (corrente ou poupança) vira `corrente`; `CREDIT` vira `cartao_credito`. Cartão novo usa os dias de `creditData.balanceCloseDate` e `balanceDueDate` e o `creditLimit`, e paga pela primeira corrente do mesmo vínculo (criada ou vinculada); sem as datas na Pluggy, ou sem corrente no vínculo, a opção "criar nova" fica fora para o cartão e a tela pede o vínculo a um cartão existente.
+- **Conta nova** recebe o nome da Pluggy, a instituição do conector, saldo inicial zero na data de hoje e o vínculo. Vincular a uma existente grava o vínculo e o final; o tipo precisa bater.
+- **Renovação:** grava o item novo e os vínculos (as contas casam pelo final, confirmadas na tela) e marca `renovada_em`. No primeiro sync depois dela, uma transação nova que casa com uma da mesma conta, da Pluggy, por (data local, valor, descrição original) só troca o `id_externo`; depois desse sync, vale de novo a regra de que id novo é transação nova.
+- **Reativar** confere o item (`GET /items/{id}`); item que não responde é 422 e a tela leva à renovação.
+- **Problema** de cada conexão ativa, nesta ordem: `vencido` (consentimento já passou), `erro` (as duas tentativas do dia falharam: `ultimo_erro` e nenhum sucesso desde as 07:00 de hoje, passada a repescagem das 13:00), `sem_dados` (mais de 30 h desde o último sucesso) e `vencendo` (consentimento em 30 dias ou menos). A lista devolve o de cada conexão e o mais grave entre todas, que o Início mostra.
+- **"Buscar agora"** roda o sync daquela conexão; com menos de 1 hora desde `ultima_tentativa_em`, responde 429 com o horário a partir do qual pode buscar de novo, que a lista também traz.
+
 ## Alternativas consideradas
 
 - **Comando de terminal (`python -m app.adicionar_conexao`):** em produção exige ssh na VPS a cada conexão e a cada renovação anual.
