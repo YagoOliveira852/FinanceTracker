@@ -109,6 +109,8 @@ cd app && flutter analyze && flutter test
 
 ### Produção (VPS)
 
+> **Projeto em pausa (16/11/2026):** a assinatura da Locaweb foi cancelada e o workflow `deploy` está desativado (`gh workflow disable deploy`). Os snapshots do backup continuam no B2. Para retomar: contratar nova VPS, refazer a preparação do servidor abaixo, restaurar o banco do B2 (`docs/runbooks/backup-restauracao.md`, "Desastre"), atualizar o secret `VPS_HOST` e rodar `gh workflow enable deploy`.
+
 A imagem da API (`backend/Dockerfile`, amd64 e arm64) é publicada em `ghcr.io/yagooliveira852/financetracker-api` pelo workflow `imagem.yml` a cada push na `main`, com as tags `latest` e `sha-<7 caracteres>`. Quando ele termina, o `deploy.yml` implanta essa versão sozinho. Decisões e motivos na spec `2026-10-19-hospedagem-deploy-design.md`.
 
 **Deploy** (do PC, com o `gh`):
